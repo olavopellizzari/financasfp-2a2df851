@@ -1,11 +1,50 @@
--- 1. ENUMS
+-- ==========================================
+-- 1. LIMPEZA TOTAL (DROP)
+-- ==========================================
+
+-- Remover tabelas (ordem inversa das dependências)
+DROP TABLE IF EXISTS public.household_invites CASCADE;
+DROP TABLE IF EXISTS public.installments CASCADE;
+DROP TABLE IF EXISTS public.card_purchases CASCADE;
+DROP TABLE IF EXISTS public.despesas_variaveis CASCADE;
+DROP TABLE IF EXISTS public.despesas_fixas CASCADE;
+DROP TABLE IF EXISTS public.fixed_expense_templates CASCADE;
+DROP TABLE IF EXISTS public.receitas CASCADE;
+DROP TABLE IF EXISTS public.categories CASCADE;
+DROP TABLE IF EXISTS public.accounts CASCADE;
+DROP TABLE IF EXISTS public.household_members CASCADE;
+DROP TABLE IF EXISTS public.households CASCADE;
+
+-- Remover tipos customizados
+DROP TYPE IF EXISTS public.category_kind CASCADE;
+DROP TYPE IF EXISTS public.expense_status CASCADE;
+DROP TYPE IF EXISTS public.invite_status CASCADE;
+DROP TYPE IF EXISTS public.member_role CASCADE;
+DROP TYPE IF EXISTS public.variable_expense_type CASCADE;
+
+-- Remover funções
+DROP FUNCTION IF EXISTS public.current_user_email CASCADE;
+DROP FUNCTION IF EXISTS public.is_household_member CASCADE;
+DROP FUNCTION IF EXISTS public.is_household_admin CASCADE;
+DROP FUNCTION IF EXISTS public.bootstrap_household CASCADE;
+DROP FUNCTION IF EXISTS public.get_account_balance CASCADE;
+DROP FUNCTION IF EXISTS public.get_household_balance CASCADE;
+DROP FUNCTION IF EXISTS public.sync_fixed_expenses CASCADE;
+DROP FUNCTION IF EXISTS public.get_monthly_summary CASCADE;
+DROP FUNCTION IF EXISTS public.accept_household_invite CASCADE;
+
+-- ==========================================
+-- 2. CRIAÇÃO DOS ENUMS
+-- ==========================================
 CREATE TYPE public.category_kind AS ENUM ('receita', 'despesa', 'cartao');
 CREATE TYPE public.expense_status AS ENUM ('Pago', 'Pendente');
 CREATE TYPE public.invite_status AS ENUM ('pending', 'accepted', 'revoked', 'expired');
 CREATE TYPE public.member_role AS ENUM ('admin', 'member');
 CREATE TYPE public.variable_expense_type AS ENUM ('Pago', 'Planejado');
 
--- 2. TABELAS
+-- ==========================================
+-- 3. CRIAÇÃO DAS TABELAS
+-- ==========================================
 CREATE TABLE public.households (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
@@ -92,7 +131,7 @@ CREATE TABLE public.despesas_variaveis (
   category_id UUID REFERENCES public.categories(id) ON DELETE SET NULL,
   payment_method TEXT,
   amount NUMERIC NOT NULL,
-  installment_id UUID, -- Referência lógica para parcelas se necessário
+  installment_id UUID,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
 
@@ -136,7 +175,9 @@ CREATE TABLE public.household_invites (
   expires_at TIMESTAMP WITH TIME ZONE DEFAULT (now() + interval '7 days') NOT NULL
 );
 
--- 3. HELPER FUNCTIONS
+-- ==========================================
+-- 4. FUNÇÕES AUXILIARES
+-- ==========================================
 CREATE OR REPLACE FUNCTION public.current_user_email()
 RETURNS TEXT LANGUAGE sql STABLE AS $$
   SELECT lower((auth.jwt() ->> 'email')::text);
@@ -158,7 +199,9 @@ RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$
   );
 $$;
 
--- 4. RLS POLICIES
+-- ==========================================
+-- 5. POLÍTICAS DE SEGURANÇA (RLS)
+-- ==========================================
 ALTER TABLE public.households ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "households_select" ON public.households FOR SELECT TO authenticated USING (is_household_member(id));
 
@@ -193,9 +236,10 @@ ALTER TABLE public.household_invites ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "invites_select" ON public.household_invites FOR SELECT TO authenticated USING (is_household_admin(household_id) OR lower(invited_email) = current_user_email());
 CREATE POLICY "invites_insert" ON public.household_invites FOR INSERT TO authenticated WITH CHECK (is_household_admin(household_id));
 
--- 5. BUSINESS LOGIC FUNCTIONS (RPC)
+-- ==========================================
+-- 6. FUNÇÕES DE NEGÓCIO (RPC)
+-- ==========================================
 
--- Bootstrap Household
 CREATE OR REPLACE FUNCTION public.bootstrap_household(_household_name TEXT, _opening_balance NUMERIC, _opening_date DATE)
 RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -207,7 +251,6 @@ BEGIN
   INSERT INTO public.accounts (household_id, name, account_type, opening_balance, opening_date)
   VALUES (v_household_id, 'Conta Corrente', 'corrente', _opening_balance, _opening_date) RETURNING id INTO v_account_id;
 
-  -- Categorias Padrão
   INSERT INTO public.categories (household_id, kind, name, is_default) VALUES
     (v_household_id, 'despesa', 'Moradia', true), (v_household_id, 'despesa', 'Alimentação', true),
     (v_household_id, 'receita', 'Salário', true), (v_household_id, 'cartao', 'Mercado', true);
@@ -216,7 +259,6 @@ BEGIN
 END;
 $$;
 
--- Get Account Balance
 CREATE OR REPLACE FUNCTION public.get_account_balance(_account_id UUID, _until_date DATE)
 RETURNS NUMERIC LANGUAGE sql STABLE AS $$
   SELECT COALESCE((SELECT opening_balance FROM public.accounts WHERE id = _account_id), 0) +
@@ -225,14 +267,12 @@ RETURNS NUMERIC LANGUAGE sql STABLE AS $$
          COALESCE((SELECT SUM(amount) FROM public.despesas_variaveis WHERE account_id = _account_id AND type = 'Pago' AND paid_at <= _until_date), 0);
 $$;
 
--- Get Household Balance
 CREATE OR REPLACE FUNCTION public.get_household_balance(_household_id UUID, _until_date DATE)
 RETURNS NUMERIC LANGUAGE sql STABLE AS $$
   SELECT COALESCE(SUM(public.get_account_balance(id, _until_date)), 0)
   FROM public.accounts WHERE household_id = _household_id AND active = true;
 $$;
 
--- Sync Fixed Expenses
 CREATE OR REPLACE FUNCTION public.sync_fixed_expenses(_household_id UUID, _month TEXT, _default_account_id UUID)
 RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -254,7 +294,6 @@ BEGIN
 END;
 $$;
 
--- Get Monthly Summary
 CREATE OR REPLACE FUNCTION public.get_monthly_summary(_account_id UUID, _month TEXT)
 RETURNS JSON LANGUAGE plpgsql STABLE AS $$
 DECLARE
@@ -278,7 +317,6 @@ BEGIN
 END;
 $$;
 
--- Accept Invite
 CREATE OR REPLACE FUNCTION public.accept_household_invite(_token TEXT)
 RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
