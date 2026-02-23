@@ -19,17 +19,23 @@ const Setup = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    
     const { data, error } = await supabase.rpc('bootstrap_household', {
       _household_name: householdName,
       _opening_balance: parseFloat(openingBalance),
       _opening_date: openingDate,
     });
-    setLoading(false);
+
     if (error) {
+      setLoading(false);
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Household criado!', description: 'Tudo pronto para começar.' });
-      navigate('/dashboard');
+      toast({ title: 'Família criada!', description: 'Tudo pronto para começar.' });
+      // Pequeno delay para garantir que o banco de dados processou a permissão
+      setTimeout(() => {
+        setLoading(false);
+        window.location.href = '/dashboard'; // Força um recarregamento completo para limpar estados antigos
+      }, 1000);
     }
   };
 

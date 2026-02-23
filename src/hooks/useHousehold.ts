@@ -7,33 +7,35 @@ export function useHousehold() {
   const [householdId, setHouseholdId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchHousehold = async () => {
     if (!user) {
       setHouseholdId(null);
       setLoading(false);
       return;
     }
 
-    const fetchHousehold = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('household_members')
-          .select('household_id')
-          .eq('user_id', user.id)
-          .maybeSingle(); // Usar maybeSingle para não dar erro se não existir
+    try {
+      const { data, error } = await supabase
+        .from('household_members')
+        .select('household_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-        if (data) {
-          setHouseholdId(data.household_id);
-        }
-      } catch (err) {
-        console.error('Error fetching household:', err);
-      } finally {
-        setLoading(false);
+      if (data) {
+        setHouseholdId(data.household_id);
+      } else {
+        setHouseholdId(null);
       }
-    };
+    } catch (err) {
+      console.error('Error fetching household:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchHousehold();
   }, [user]);
 
-  return { householdId, loading };
+  return { householdId, loading, refresh: fetchHousehold };
 }
