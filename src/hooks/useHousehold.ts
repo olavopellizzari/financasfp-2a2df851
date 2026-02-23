@@ -13,18 +13,26 @@ export function useHousehold() {
       setLoading(false);
       return;
     }
-    supabase
-      .from('household_members')
-      .select('household_id')
-      .eq('user_id', user.id)
-      .limit(1)
-      .single()
-      .then(({ data, error }) => {
-        if (data && !error) {
+
+    const fetchHousehold = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('household_members')
+          .select('household_id')
+          .eq('user_id', user.id)
+          .maybeSingle(); // Usar maybeSingle para não dar erro se não existir
+
+        if (data) {
           setHouseholdId(data.household_id);
         }
+      } catch (err) {
+        console.error('Error fetching household:', err);
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    fetchHousehold();
   }, [user]);
 
   return { householdId, loading };
