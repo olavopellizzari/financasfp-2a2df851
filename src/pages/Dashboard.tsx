@@ -10,7 +10,7 @@ import { formatCurrency, currentMonth, monthLabel, addMonths } from '@/lib/forma
 import { ChevronLeft, ChevronRight, FileText, Wallet, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 
 const Dashboard = () => {
-  const { householdId, loading: hhLoading } = useHousehold();
+  const { householdId, loading: hhLoading, refresh } = useHousehold();
   const navigate = useNavigate();
   const [accounts, setAccounts] = useState<any[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
@@ -20,9 +20,13 @@ const Dashboard = () => {
   const [householdBalance, setHouseholdBalance] = useState<number>(0);
   const [loadingData, setLoadingData] = useState(false);
 
+  // Redirecionamento para Setup se não houver família, com um pequeno delay para evitar loops
   useEffect(() => {
     if (!hhLoading && !householdId) {
-      navigate('/setup');
+      const timer = setTimeout(() => {
+        if (!householdId) navigate('/setup');
+      }, 1000);
+      return () => clearTimeout(timer);
     }
   }, [hhLoading, householdId, navigate]);
 
@@ -62,7 +66,7 @@ const Dashboard = () => {
           setLoadingData(false); 
         });
     } else {
-      setSummary(null); // Não exibe resumo parcial para "Todas as contas"
+      setSummary(null);
       setLoadingData(false);
     }
   }, [householdId, selectedAccount, month, accounts.length]);

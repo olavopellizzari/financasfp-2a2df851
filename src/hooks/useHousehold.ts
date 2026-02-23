@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -7,7 +7,7 @@ export function useHousehold() {
   const [householdId, setHouseholdId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchHousehold = async () => {
+  const fetchHousehold = useCallback(async () => {
     if (!user) {
       setHouseholdId(null);
       setLoading(false);
@@ -18,11 +18,10 @@ export function useHousehold() {
       const { data, error } = await supabase
         .from('household_members')
         .select('household_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+        .eq('user_id', user.id);
 
-      if (data) {
-        setHouseholdId(data.household_id);
+      if (data && data.length > 0) {
+        setHouseholdId(data[0].household_id);
       } else {
         setHouseholdId(null);
       }
@@ -31,11 +30,11 @@ export function useHousehold() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchHousehold();
-  }, [user]);
+  }, [fetchHousehold]);
 
   return { householdId, loading, refresh: fetchHousehold };
 }

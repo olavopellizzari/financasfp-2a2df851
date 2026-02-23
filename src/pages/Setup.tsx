@@ -20,22 +20,29 @@ const Setup = () => {
     e.preventDefault();
     setLoading(true);
     
-    const { data, error } = await supabase.rpc('bootstrap_household', {
-      _household_name: householdName,
-      _opening_balance: parseFloat(openingBalance),
-      _opening_date: openingDate,
-    });
+    try {
+      const { data, error } = await supabase.rpc('bootstrap_household', {
+        _household_name: householdName,
+        _opening_balance: parseFloat(openingBalance),
+        _opening_date: openingDate,
+      });
 
-    if (error) {
-      setLoading(false);
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
-    } else {
+      const result = data as any;
+
+      if (error || !result?.ok) {
+        throw new Error(error?.message || result?.error || 'Erro ao criar família');
+      }
+
       toast({ title: 'Família criada!', description: 'Tudo pronto para começar.' });
-      // Pequeno delay para garantir que o banco de dados processou a permissão
+      
+      // Força o redirecionamento e recarregamento para garantir que o estado global seja atualizado
       setTimeout(() => {
-        setLoading(false);
-        window.location.href = '/dashboard'; // Força um recarregamento completo para limpar estados antigos
-      }, 1000);
+        window.location.href = '/dashboard';
+      }, 500);
+      
+    } catch (err: any) {
+      setLoading(false);
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
     }
   };
 
