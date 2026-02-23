@@ -58,16 +58,16 @@ const Cartoes = () => {
     }
     
     setLoading(true);
-    const { data, error } = await supabase.rpc('create_card_purchase_with_installments', {
-      _household_id: householdId,
-      _account_id: accountId || null,
-      _purchase_at: purchaseAt,
-      _description: description,
-      _category_id: categoryId || null,
-      _card_name: cardName,
-      _amount_total: parseFloat(amountTotal),
-      _installments_count: parseInt(installmentsCount),
-      _first_statement_month: firstMonth
+    const { error } = await supabase.from('card_purchases').insert({
+      household_id: householdId,
+      account_id: accountId || null,
+      purchase_at: purchaseAt,
+      description,
+      category_id: categoryId || null,
+      card_name: cardName,
+      amount_total: parseFloat(amountTotal),
+      installments_count: parseInt(installmentsCount),
+      first_statement_month: firstMonth,
     });
 
     setLoading(false);
