@@ -54,7 +54,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
       )}>
         <div className="flex items-center gap-3 px-6 py-5 border-b border-sidebar-border">
           <CircleDollarSign className="h-8 w-8 text-sidebar-primary" />
-          <span className="text-lg font-bold font-heading">Finanças FP</span>
+          <span className="text-lg font-bold font-heading neon-glow">Finanças FP</span>
           <button className="ml-auto lg:hidden" onClick={() => setSidebarOpen(false)}>
             <X className="h-5 w-5" />
           </button>
