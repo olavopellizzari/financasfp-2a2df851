@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, currentMonth, monthLabel, addMonths } from '@/lib/format';
-import { ChevronLeft, ChevronRight, FileText, Wallet, TrendingUp, TrendingDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText, Wallet, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 
 const Dashboard = () => {
   const { householdId, loading: hhLoading } = useHousehold();
@@ -26,21 +26,14 @@ const Dashboard = () => {
     }
   }, [hhLoading, householdId, navigate]);
 
-  // Load accounts
   useEffect(() => {
     if (!householdId) return;
     supabase.from('accounts').select('*').eq('household_id', householdId).eq('active', true).order('name')
       .then(({ data }) => {
-        if (data) {
-          setAccounts(data);
-          if (data.length > 0 && selectedAccount === 'all') {
-            // keep all
-          }
-        }
+        if (data) setAccounts(data);
       });
   }, [householdId]);
 
-  // Load balance & summary
   useEffect(() => {
     if (!householdId) return;
     setLoadingData(true);
@@ -48,7 +41,6 @@ const Dashboard = () => {
     const lastDay = new Date(parseInt(month.split('-')[0]), parseInt(month.split('-')[1]), 0);
     const untilDate = lastDay.toISOString().split('T')[0];
 
-    // Sync fixed expenses for this month
     if (accounts.length > 0) {
       supabase.rpc('sync_fixed_expenses', {
         _household_id: householdId,
@@ -57,23 +49,20 @@ const Dashboard = () => {
       }).then(() => {});
     }
 
-    // Get household balance
     supabase.rpc('get_household_balance', { _household_id: householdId, _until_date: untilDate })
       .then(({ data }) => { if (data !== null) setHouseholdBalance(Number(data)); });
 
     if (selectedAccount !== 'all') {
-      // Account balance
       supabase.rpc('get_account_balance', { _account_id: selectedAccount, _until_date: untilDate })
         .then(({ data }) => { if (data !== null) setBalance(Number(data)); });
-      // Monthly summary
+      
       supabase.rpc('get_monthly_summary', { _account_id: selectedAccount, _month: month })
-        .then(({ data }) => { setSummary(data); setLoadingData(false); });
-    } else if (accounts.length > 0) {
-      setBalance(householdBalance);
-      // Summary for first account as reference
-      supabase.rpc('get_monthly_summary', { _account_id: accounts[0].id, _month: month })
-        .then(({ data }) => { setSummary(data); setLoadingData(false); });
+        .then(({ data }) => { 
+          setSummary(data); 
+          setLoadingData(false); 
+        });
     } else {
+      setSummary(null); // Não exibe resumo parcial para "Todas as contas"
       setLoadingData(false);
     }
   }, [householdId, selectedAccount, month, accounts.length]);
@@ -102,7 +91,6 @@ const Dashboard = () => {
           </Select>
         </div>
 
-        {/* Balance Card */}
         <Card className="bg-primary text-primary-foreground">
           <CardContent className="py-6">
             <p className="text-sm opacity-80">{selectedAccount === 'all' ? 'Saldo Conjunto' : 'Saldo da Conta'}</p>
@@ -113,7 +101,6 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Month Selector */}
         <div className="flex items-center justify-between">
           <Button variant="ghost" size="icon" onClick={() => setMonth(addMonths(month, -1))}>
             <ChevronLeft className="h-5 w-5" />
@@ -124,8 +111,14 @@ const Dashboard = () => {
           </Button>
         </div>
 
-        {/* Monthly Summary */}
-        {summary && (
+        {selectedAccount === 'all' ? (
+          <Card className="bg-muted/50 border-dashed">
+            <CardContent className="py-8 flex flex-col items-center text-center">
+              <AlertCircle className="h-8 w-8 text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">Selecione uma conta específica para ver o resumo de receitas e despesas do mês.</p>
+            </CardContent>
+          </Card>
+        ) : summary && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
               <CardContent className="py-4">
@@ -166,14 +159,15 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Quick Actions */}
         <div className="flex flex-wrap gap-3">
-          <Link to={`/relatorio?month=${month}&accountId=${selectedAccount !== 'all' ? selectedAccount : accounts[0]?.id || ''}`}>
-            <Button variant="outline" className="gap-2">
-              <FileText className="h-4 w-4" />
-              Relatório do Mês
-            </Button>
-          </Link>
+          {selectedAccount !== 'all' && (
+            <Link to={`/relatorio?month=${month}&accountId=${selectedAccount}`}>
+              <Button variant="outline" className="gap-2">
+                <FileText className="h-4 w-4" />
+                Relatório do Mês
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
     </AppLayout>
