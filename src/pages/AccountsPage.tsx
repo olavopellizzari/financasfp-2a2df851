@@ -34,7 +34,8 @@ import {
   Trash2,
   Archive,
   Users,
-  User as UserIcon
+  User as UserIcon,
+  Loader2
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -43,6 +44,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { toast } from '@/hooks/use-toast';
 
 const ACCOUNT_TYPES = [
   { value: 'checking', label: 'Conta Corrente', icon: Wallet, color: '#3b82f6' },
@@ -71,6 +73,7 @@ export function AccountsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
+  const [isLoading, setIsLoading] = useState(false);
   
   const [formData, setFormData] = useState<AccountFormData>({
     name: '',
@@ -84,7 +87,6 @@ export function AccountsPage() {
   const isAdmin = isCurrentUserAdmin();
   const activeUsers = users.filter(u => u.is_active !== false);
 
-  // Filter accounts based on selected user
   const filteredAccounts = useMemo(() => {
     const sourceAccounts = isAdmin ? allAccounts : accounts;
     
@@ -126,61 +128,83 @@ export function AccountsPage() {
     setFormData({
       name: account.name,
       type: account.type,
-      balance: account.balance.toString(),
-      color: account.color,
-      userId: account.userId,
-      isShared: account.isShared || false,
+      balance: account.opening_balance.toString(),
+      color: account.color || ACCOUNT_COLORS[0],
+      userId: account.user_id || currentUser?.id || '',
+      isShared: account.is_shared || false,
     });
     setIsDialogOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
 
-    const accountData = {
-      name: formData.name,
-      type: formData.type,
-      balance: parseFloat(formData.balance) || 0,
-      color: formData.color,
-      icon: ACCOUNT_TYPES.find(t => t.value === formData.type)?.icon.name || 'Wallet',
-      currency: 'BRL',
-      userId: formData.isShared ? currentUser?.id || '' : formData.userId,
-      isArchived: false,
-      isShared: formData.isShared,
-    };
+    try {
+      const accountData = {
+        name: formData.name,
+        type: formData.type,
+        balance: parseFloat(formData.balance) || 0,
+        color: formData.color,
+        userId: formData.userId,
+        isShared: formData.isShared,
+      };
 
-    if (editingAccount) {
-      await updateAccount(editingAccount.id, accountData);
-    } else {
-      await createAccount(accountData);
+      if (editingAccount) {
+        await updateAccount(editingAccount.id, accountData);
+        toast({ title: "Sucesso", description: "Conta atualizada com sucesso!" });
+      } else {
+        await createAccount(accountData);
+        toast({ title: "Sucesso", description: "Conta criada com sucesso!" });
+      }
+
+      setIsDialogOpen(false);
+      resetForm();
+    } catch (error: any) {
+      console.error('Erro ao salvar conta:', error);
+      toast({ 
+        title: "Erro ao salvar", 
+        description: error.message || "Ocorreu um erro inesperado.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsDialogOpen(false);
-    resetForm();
   };
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Tem certeza que deseja excluir esta conta?')) {
-      await deleteAccount(id);
+      try {
+        await deleteAccount(id);
+        toast({ title: "Sucesso", description: "Conta excluída!" });
+      } catch (error: any) {
+        toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+      }
     }
   };
 
   const handleArchive = async (account: Account) => {
-    await updateAccount(account.id, { isArchived: !account.isArchived });
+    try {
+      await updateAccount(account.id, { isArchived: !account.active });
+      toast({ title: account.active ? "Conta arquivada" : "Conta restaurada" });
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
   };
 
-  const getAccountIcon = (type: Account['type']) => {
-    const accountType = ACCOUNT_TYPES.find(t => t.value === type);
+  const getAccountIcon = (type: Account['account_type']) => {
+    const accountType = ACCOUNT_TYPES.find(t => t.value === (type === 'corrente' ? 'checking' : type));
     return accountType?.icon || Wallet;
   };
 
-  const getUserName = (userId: string) => {
+  const getUserName = (userId?: string) => {
+    if (!userId) return 'Família';
     const user = users.find(u => u.id === userId);
     return user?.name || 'Desconhecido';
   };
 
   const AccountCard = ({ account }: { account: Account }) => {
-    const Icon = getAccountIcon(account.type);
+    const Icon = getAccountIcon(account.account_type);
     const balance = getAccountBalance(account.id);
     
     return (
@@ -190,14 +214,14 @@ export function AccountsPage() {
             <div className="flex items-center gap-3">
               <div 
                 className="p-3 rounded-xl"
-                style={{ backgroundColor: `${account.color}20` }}
+                style={{ backgroundColor: `${account.color || '#3b82f6'}20` }}
               >
-                <Icon className="w-5 h-5" style={{ color: account.color }} />
+                <Icon className="w-5 h-5" style={{ color: account.color || '#3b82f6' }} />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-foreground">{account.name}</p>
-                  {account.isShared && (
+                  {account.is_shared && (
                     <Badge variant="secondary" className="text-[10px] h-5">
                       <Users className="w-3 h-3 mr-1" />
                       Compartilhada
@@ -205,7 +229,7 @@ export function AccountsPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>{ACCOUNT_TYPES.find(t => t.value === account.type)?.label}</span>
+                  <span>{ACCOUNT_TYPES.find(t => t.value === (account.account_type === 'corrente' ? 'checking' : account.account_type))?.label}</span>
                 </div>
               </div>
             </div>
@@ -223,7 +247,7 @@ export function AccountsPage() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleArchive(account)}>
                   <Archive className="w-4 h-4 mr-2" />
-                  Arquivar
+                  {account.active ? 'Arquivar' : 'Restaurar'}
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={() => handleDelete(account.id)}
@@ -248,7 +272,6 @@ export function AccountsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Contas</h1>
@@ -275,46 +298,6 @@ export function AccountsPage() {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Usuário vinculado */}
-                {!formData.isShared && (
-                  <div className="space-y-2">
-                    <Label>Usuário Vinculado</Label>
-                    <Select
-                      value={formData.userId}
-                      onValueChange={(value) => setFormData({ ...formData, userId: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o usuário" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {activeUsers.map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            <div className="flex items-center gap-2">
-                              <div 
-                                className="w-3 h-3 rounded-full" 
-                                style={{ backgroundColor: user.avatar_color }}
-                              />
-                              {user.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {/* Conta compartilhada */}
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="isShared"
-                    checked={formData.isShared}
-                    onCheckedChange={(checked) => setFormData({ ...formData, isShared: !!checked })}
-                  />
-                  <Label htmlFor="isShared" className="text-sm font-normal cursor-pointer">
-                    Conta compartilhada (visível para todos)
-                  </Label>
-                </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome da Conta</Label>
                   <Input
@@ -330,7 +313,7 @@ export function AccountsPage() {
                   <Label>Tipo de Conta</Label>
                   <Select
                     value={formData.type}
-                    onValueChange={(value: Account['type']) => setFormData({ ...formData, type: value })}
+                    onValueChange={(value: Account['account_type']) => setFormData({ ...formData, type: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -381,7 +364,8 @@ export function AccountsPage() {
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1">
                     Cancelar
                   </Button>
-                  <Button type="submit" className="flex-1">
+                  <Button type="submit" className="flex-1" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                     {editingAccount ? 'Salvar' : 'Criar Conta'}
                   </Button>
                 </div>
@@ -391,7 +375,6 @@ export function AccountsPage() {
         </div>
       </div>
 
-      {/* Total balance card */}
       <Card className="finance-card-gradient">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
@@ -413,28 +396,25 @@ export function AccountsPage() {
         </CardContent>
       </Card>
 
-      {/* Account list - Grouped by User if "All" is selected */}
       <div className="space-y-8">
         {selectedUserId === 'all' ? (
           <>
-            {/* Shared Accounts Section */}
-            {activeAccounts.some(a => a.isShared) && (
+            {activeAccounts.some(a => a.is_shared) && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 px-1">
                   <Users className="w-5 h-5 text-primary" />
                   <h2 className="text-lg font-bold">Contas Compartilhadas</h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {activeAccounts.filter(a => a.isShared).map(account => (
+                  {activeAccounts.filter(a => a.is_shared).map(account => (
                     <AccountCard key={account.id} account={account} />
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Individual User Sections */}
             {activeUsers.map(user => {
-              const userAccounts = activeAccounts.filter(a => a.userId === user.id && !a.isShared);
+              const userAccounts = activeAccounts.filter(a => a.user_id === user.id && !a.is_shared);
               if (userAccounts.length === 0) return null;
 
               return (
@@ -461,7 +441,6 @@ export function AccountsPage() {
             })}
           </>
         ) : (
-          /* Single User View */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {activeAccounts.map((account) => (
               <AccountCard key={account.id} account={account} />
@@ -469,7 +448,6 @@ export function AccountsPage() {
           </div>
         )}
 
-        {/* Empty state */}
         {activeAccounts.length === 0 && (
           <Card className="finance-card">
             <CardContent className="p-8 text-center">
@@ -481,7 +459,6 @@ export function AccountsPage() {
         )}
       </div>
 
-      {/* Archived accounts */}
       {archivedAccounts.length > 0 && (
         <div className="space-y-4 pt-8 border-t">
           <h2 className="text-lg font-semibold text-muted-foreground flex items-center gap-2">
@@ -490,7 +467,7 @@ export function AccountsPage() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {archivedAccounts.map((account) => {
-              const Icon = getAccountIcon(account.type);
+              const Icon = getAccountIcon(account.account_type);
               const balance = getAccountBalance(account.id);
               
               return (
@@ -504,7 +481,7 @@ export function AccountsPage() {
                         <div>
                           <p className="font-semibold text-muted-foreground">{account.name}</p>
                           <p className="text-sm text-muted-foreground/80">
-                            De {getUserName(account.userId)}
+                            De {getUserName(account.user_id)}
                           </p>
                         </div>
                       </div>

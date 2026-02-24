@@ -220,8 +220,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       account_type: data.type === 'checking' ? 'corrente' : data.type,
       opening_balance: data.balance,
       opening_date: new Date().toISOString().split('T')[0],
-      active: !data.isArchived,
-      is_shared: data.isShared
+      active: true
     }]);
     if (error) throw error;
     await fetchData();
