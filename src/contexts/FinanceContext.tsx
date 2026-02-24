@@ -216,11 +216,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const createAccount = async (data: any) => {
     const { error } = await supabase.from('accounts').insert([{
       household_id: currentUser?.family_id,
+      user_id: data.userId || currentUser?.id,
       name: data.name,
       account_type: data.type === 'checking' ? 'corrente' : data.type,
       opening_balance: data.balance,
       opening_date: new Date().toISOString().split('T')[0],
-      active: true
+      active: true,
+      is_shared: data.isShared ?? true
     }]);
     if (error) throw error;
     await fetchData();
@@ -231,6 +233,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.name) updateData.name = data.name;
     if (data.balance !== undefined) updateData.opening_balance = data.balance;
     if (data.isArchived !== undefined) updateData.active = !data.isArchived;
+    if (data.isShared !== undefined) updateData.is_shared = data.isShared;
+    if (data.userId !== undefined) updateData.user_id = data.userId;
 
     const { error } = await supabase.from('accounts').update(updateData).eq('id', id);
     if (error) throw error;
