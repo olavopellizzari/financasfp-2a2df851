@@ -1,6 +1,6 @@
 // IndexedDB Wrapper with Schema Versioning and Migrations
 export const DB_NAME = 'FinancasDB';
-export const DB_VERSION = 2;
+export const DB_VERSION = 3; // Incrementado para forçar a atualização do schema
 
 export interface User {
   id: string;
@@ -34,7 +34,7 @@ export interface Card {
 export interface Account {
   id: string;
   household_id: string;
-  user_id?: string; // Opcional pois pertence ao household
+  user_id?: string;
   name: string;
   account_type: 'corrente' | 'poupanca' | 'investimento' | 'carteira';
   opening_balance: number;
@@ -52,9 +52,9 @@ export interface Transaction {
   type: TransactionType;
   amount: number;
   description: string;
-  purchaseDate: string; // ISO Date string
-  effectiveDate: string; // ISO Date string
-  effectiveMonth: string; // yyyy-MM
+  purchaseDate: string;
+  effectiveDate: string;
+  effectiveMonth: string;
   mesFatura: string | null;
   status: TransactionStatus;
   isPaid: boolean;
@@ -68,6 +68,31 @@ export interface Transaction {
   notes: string;
   isRecurring: boolean;
   createdAt: Date;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  message: string;
+  entityType: string;
+  entityId: string;
+  dueDate?: Date;
+  isRead: boolean;
+  createdAt: Date;
+}
+
+export interface AuditLog {
+  id: string;
+  timestamp: Date;
+  actorUserId: string;
+  action: 'create' | 'update' | 'delete' | 'import' | 'pay_invoice' | 'login' | 'logout' | 'export' | 'backup';
+  entityType: string;
+  entityId: string;
+  before?: any;
+  after?: any;
+  meta?: any;
 }
 
 export interface Budget {
@@ -127,6 +152,8 @@ export interface Debt {
   monthly_payment: number;
   is_active: boolean;
   notes: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 class FinancasDB {
@@ -142,9 +169,30 @@ class FinancasDB {
       request.onsuccess = () => { this.db = request.result; resolve(this.db); };
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains('cycleSnapshots')) {
-          db.createObjectStore('cycleSnapshots', { keyPath: 'id' });
-        }
+        
+        // Lista de todas as stores necessárias
+        const stores = [
+          'cycleSnapshots', 
+          'auditLogs', 
+          'notifications', 
+          'settings', 
+          'tags', 
+          'users', 
+          'accounts', 
+          'cards', 
+          'categories', 
+          'transactions', 
+          'invoices', 
+          'budgets', 
+          'goals', 
+          'debts'
+        ];
+
+        stores.forEach(storeName => {
+          if (!db.objectStoreNames.contains(storeName)) {
+            db.createObjectStore(storeName, { keyPath: 'id' });
+          }
+        });
       };
     });
     return this.dbPromise;
@@ -160,10 +208,15 @@ class FinancasDB {
     });
   }
 
+  async add<T extends { id: string }>(storeName: string, data: T): Promise<T> {
+    return this.put(storeName, data);
+  }
+
   async getAll<T>(storeName: string): Promise<T[]> {
     const db = await this.open();
     return new Promise((resolve, reject) => {
-      const request = db.transaction(storeName, 'readonly').objectStore(storeName).getAll();
+      const tx = db.transaction(storeName, 'readonly');
+      const request = tx.objectStore(storeName).getAll();
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
@@ -174,6 +227,16 @@ class FinancasDB {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(storeName, 'readwrite');
       tx.objectStore(storeName).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async clear(storeName: string): Promise<void> {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      tx.objectStore(storeName).clear();
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
