@@ -84,7 +84,7 @@ function hexToHslComponents(hex: string): string {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const { currentUser, signOut, isCurrentUserAdmin } = useAuth();
+  const { currentUser, familyName, signOut, isCurrentUserAdmin } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isAdmin = isCurrentUserAdmin();
@@ -122,8 +122,8 @@ export function AppLayout({ children }: AppLayoutProps) {
             <Wallet className="w-5 h-5 text-white" />
           </div>
           {!isCollapsed && (
-            <div>
-              <h1 className="font-bold text-sidebar-foreground">Finanças</h1>
+            <div className="min-w-0">
+              <h1 className="font-bold text-sidebar-foreground truncate">{familyName || 'Finanças'}</h1>
               <p className="text-xs text-sidebar-foreground/60">Controle pessoal</p>
             </div>
           )}
@@ -191,13 +191,15 @@ export function AppLayout({ children }: AppLayoutProps) {
       </aside>
 
       <main className="flex-1 flex flex-col min-h-screen">
-        <header className="lg:hidden flex items-center justify-between p-4 border-b bg-card">
-          <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)}>
-            <Menu className="w-5 h-5" />
-          </Button>
-          <div className="flex items-center gap-2">
-            <Wallet className="w-5 h-5 text-primary" />
-            <span className="font-bold">Finanças</span>
+        <header className="flex items-center justify-between p-4 border-b bg-card">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setIsMobileMenuOpen(true)}>
+              <Menu className="w-5 h-5" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <Wallet className="w-5 h-5 text-primary" />
+              <span className="font-bold text-lg">{familyName || 'Finanças'}</span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <NotificationsPanel />

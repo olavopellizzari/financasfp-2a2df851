@@ -17,6 +17,7 @@ interface AuthContextType {
   session: Session | null;
   user: SupabaseUser | null;
   currentUser: UserProfile | null;
+  familyName: string | null;
   users: UserProfile[];
   isLoading: boolean;
   signOut: () => Promise<void>;
@@ -31,6 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [familyName, setFamilyName] = useState<string | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -62,6 +64,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (data) {
         setCurrentUser(data);
+        if (data.family_id) {
+          const { data: familyData } = await supabase
+            .from('households')
+            .select('name')
+            .eq('id', data.family_id)
+            .single();
+          
+          if (familyData) {
+            setFamilyName(familyData.name);
+          }
+        }
       }
     } catch (err) {
       console.error('[AuthContext] Erro ao buscar perfil:', err);
@@ -97,6 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fetchUsers();
       } else {
         setCurrentUser(null);
+        setFamilyName(null);
         setUsers([]);
         setIsLoading(false);
       }
@@ -116,6 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       user,
       currentUser,
+      familyName,
       users,
       isLoading,
       signOut,
