@@ -79,18 +79,23 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         supabase.from('debts').select('*')
       ]);
 
-      if (catData.data) setCategories(catData.data);
+      if (catData.data) {
+        setCategories(catData.data.map(c => ({
+          ...c,
+          type: c.kind === 'receita' ? 'income' : 'expense'
+        })));
+      }
       
       if (accData.data) {
         const mapped = accData.data.map(a => ({
           ...a,
           userId: a.user_id,
           isShared: a.is_shared,
-          isArchived: a.is_archived,
-          initialBalance: a.balance
+          isArchived: !a.active,
+          balance: a.opening_balance
         }));
         setAllAccounts(mapped);
-        setAccounts(mapped.filter(a => a.userId === currentUser.id || a.isShared));
+        setAccounts(mapped); // Contas agora são por família
       }
 
       if (cardData.data) {
@@ -103,7 +108,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           defaultAccountId: c.default_account_id
         }));
         setAllCards(mapped);
-        setCards(mapped.filter(c => c.userId === currentUser.id));
+        setCards(mapped);
       }
 
       if (txData.data) {
@@ -125,7 +130,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           createdAt: new Date(t.created_at)
         }));
         setAllTransactions(mappedTxs);
-        setTransactions(mappedTxs.filter(t => t.userId === currentUser.id));
+        setTransactions(mappedTxs);
       }
 
       if (invData.data) setInvoices(invData.data);
@@ -226,13 +231,12 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const createAccount = async (data: any) => {
     const { error } = await supabase.from('accounts').insert([{
-      user_id: data.userId,
       household_id: currentUser?.family_id,
       name: data.name,
-      type: data.type,
-      balance: data.balance,
-      color: data.color,
-      icon: data.icon,
+      account_type: data.type === 'checking' ? 'corrente' : data.type,
+      opening_balance: data.balance,
+      opening_date: new Date().toISOString().split('T')[0],
+      active: !data.isArchived,
       is_shared: data.isShared
     }]);
     if (error) throw error;
@@ -240,11 +244,12 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateAccount = async (id: string, data: any) => {
-    const { error } = await supabase.from('accounts').update({
-      name: data.name,
-      balance: data.balance,
-      is_archived: data.isArchived
-    }).eq('id', id);
+    const updateData: any = {};
+    if (data.name) updateData.name = data.name;
+    if (data.balance !== undefined) updateData.opening_balance = data.balance;
+    if (data.isArchived !== undefined) updateData.active = !data.isArchived;
+
+    const { error } = await supabase.from('accounts').update(updateData).eq('id', id);
     if (error) throw error;
     await fetchData();
   };
@@ -274,12 +279,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateCard = async (id: string, data: any) => {
-    const { error } = await supabase.from('cards').update({
-      name: data.name,
-      limit: data.limit,
-      closing_day: data.closingDay,
-      due_day: data.dueDay
-    }).eq('id', id);
+    const updateData: any = {};
+    if (data.name) updateData.name = data.name;
+    if (data.limit !== undefined) updateData.limit = data.limit;
+    if (data.closingDay !== undefined) updateData.closing_day = data.closingDay;
+    if (data.dueDay !== undefined) updateData.due_day = data.dueDay;
+
+    const { error } = await supabase.from('cards').update(updateData).eq('id', id);
     if (error) throw error;
     await fetchData();
   };
