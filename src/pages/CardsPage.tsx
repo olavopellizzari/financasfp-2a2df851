@@ -86,7 +86,7 @@ export function CardsPage() {
   }, [selectedMonth]);
 
   const cardsWithStats = useMemo(() => {
-    return allCards.filter(card => card.user_id === currentUser?.id || card.is_shared).map(card => {
+    return allCards.filter(card => card.user_id === currentUser?.id || (card as any).is_shared).map(card => {
       const nextMonthStr = format(addMonths(selectedDate, 1), 'yyyy-MM');
       
       const currentInvoiceTransactions = allTransactions.filter(t => 
@@ -107,8 +107,8 @@ export function CardsPage() {
       }, 0);
 
       const totalPaidInInvoices = invoices
-        .filter(inv => inv.cardId === card.id)
-        .reduce((sum, inv) => sum + inv.paidAmount, 0);
+        .filter(inv => inv.card_id === card.id)
+        .reduce((sum, inv) => sum + inv.paid_amount, 0);
 
       const totalDebt = totalSpentEver - totalPaidInInvoices;
       const availableLimit = Math.max(0, card.limit - totalDebt);
@@ -149,14 +149,14 @@ export function CardsPage() {
     setEditingCard(card);
     setFormData({
       name: card.name,
-      lastDigits: card.lastDigits || '',
+      lastDigits: card.last_digits || '',
       brand: card.brand || 'Visa',
       limit: card.limit.toString(),
-      closingDay: card.closingDay.toString(),
-      dueDay: card.dueDay.toString(),
+      closingDay: card.closing_day.toString(),
+      dueDay: card.due_day.toString(),
       color: card.color,
-      responsibleUserId: card.responsibleUserId || card.userId,
-      defaultAccountId: card.defaultAccountId || ''
+      responsibleUserId: card.responsible_user_id || card.user_id,
+      defaultAccountId: card.default_account_id || ''
     });
     setIsDialogOpen(true);
   };
@@ -275,7 +275,7 @@ export function CardsPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-[16px] font-mono tracking-[4px] opacity-90">
-                      •••• {card.lastDigits || '0000'}
+                      •••• {card.last_digits || '0000'}
                     </p>
                     <p className="text-[10px] font-bold opacity-70 uppercase mt-1">
                       {card.brand || 'Crédito'}
@@ -461,7 +461,7 @@ export function CardsPage() {
               <Select value={formData.defaultAccountId} onValueChange={v => setFormData({...formData, defaultAccountId: v})}>
                 <SelectTrigger><SelectValue placeholder="Selecione uma conta" /></SelectTrigger>
                 <SelectContent>
-                  {allAccounts.filter(a => !a.isArchived).map(a => (
+                  {allAccounts.filter(a => a.active !== false).map(a => (
                     <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                   ))}
                 </SelectContent>

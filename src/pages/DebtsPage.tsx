@@ -53,7 +53,7 @@ export function DebtsPage() {
   const loadDebts = async () => {
     if (!currentUser) return;
     const data = await db.getAll<Debt>('debts');
-    setDebts(data.filter(d => d.userId === currentUser.id));
+    setDebts(data.filter(d => d.user_id === currentUser.id));
   };
 
   const handleSaveDebt = async () => {
@@ -65,22 +65,22 @@ export function DebtsPage() {
     try {
       const debt: Debt = {
         id: editingDebt?.id || generateId(),
-        userId: currentUser.id,
+        user_id: currentUser.id,
         name: debtForm.name,
-        totalAmount: parseFloat(debtForm.totalAmount) || 0,
-        paidAmount: parseFloat(debtForm.paidAmount) || 0,
-        interestRate: parseFloat(debtForm.interestRate) || 0,
-        startDate: debtForm.startDate,
-        dueDate: debtForm.dueDate,
-        monthlyPayment: parseFloat(debtForm.monthlyPayment) || 0,
-        isActive: true,
+        total_amount: parseFloat(debtForm.totalAmount) || 0,
+        paid_amount: parseFloat(debtForm.paidAmount) || 0,
+        interest_rate: parseFloat(debtForm.interestRate) || 0,
+        start_date: debtForm.startDate as any,
+        due_date: debtForm.dueDate as any,
+        monthly_payment: parseFloat(debtForm.monthlyPayment) || 0,
+        is_active: true,
         notes: debtForm.notes,
         createdAt: editingDebt?.createdAt || new Date(),
         updatedAt: new Date()
       };
 
-      if (debt.paidAmount >= debt.totalAmount) {
-        debt.isActive = false;
+      if (debt.paid_amount >= debt.total_amount) {
+        debt.is_active = false;
       }
 
       if (editingDebt) {
@@ -103,12 +103,12 @@ export function DebtsPage() {
     setEditingDebt(debt);
     setDebtForm({
       name: debt.name,
-      totalAmount: debt.totalAmount.toString(),
-      paidAmount: debt.paidAmount.toString(),
-      interestRate: debt.interestRate.toString(),
-      startDate: new Date(debt.startDate),
-      dueDate: new Date(debt.dueDate),
-      monthlyPayment: debt.monthlyPayment.toString(),
+      totalAmount: debt.total_amount.toString(),
+      paidAmount: debt.paid_amount.toString(),
+      interestRate: debt.interest_rate.toString(),
+      startDate: new Date(debt.start_date),
+      dueDate: new Date(debt.due_date),
+      monthlyPayment: debt.monthly_payment.toString(),
       notes: debt.notes
     });
     setDialogOpen(true);
@@ -127,7 +127,7 @@ export function DebtsPage() {
 
   const handlePayment = (debt: Debt) => {
     setSelectedDebt(debt);
-    setPaymentAmount(debt.monthlyPayment.toString());
+    setPaymentAmount(debt.monthly_payment.toString());
     setPaymentDialogOpen(true);
   };
 
@@ -136,18 +136,18 @@ export function DebtsPage() {
 
     try {
       const amount = parseFloat(paymentAmount);
-      const newPaidAmount = selectedDebt.paidAmount + amount;
+      const newPaidAmount = selectedDebt.paid_amount + amount;
 
       const updatedDebt: Debt = {
         ...selectedDebt,
-        paidAmount: newPaidAmount,
-        isActive: newPaidAmount < selectedDebt.totalAmount,
+        paid_amount: newPaidAmount,
+        is_active: newPaidAmount < selectedDebt.total_amount,
         updatedAt: new Date()
       };
 
       await db.put('debts', updatedDebt);
 
-      if (!updatedDebt.isActive) {
+      if (!updatedDebt.is_active) {
         toast({ title: '🎉 Parabéns!', description: 'Dívida quitada!' });
       } else {
         toast({ title: 'Pagamento registrado!' });
@@ -174,11 +174,11 @@ export function DebtsPage() {
     });
   };
 
-  const activeDebts = debts.filter(d => d.isActive);
-  const paidDebts = debts.filter(d => !d.isActive);
-  const totalDebt = activeDebts.reduce((sum, d) => sum + (d.totalAmount - d.paidAmount), 0);
-  const overdueDebts = activeDebts.filter(d => isBefore(new Date(d.dueDate), new Date()));
-  const monthlyPayments = activeDebts.reduce((sum, d) => sum + d.monthlyPayment, 0);
+  const activeDebts = debts.filter(d => d.is_active);
+  const paidDebts = debts.filter(d => !d.is_active);
+  const totalDebt = activeDebts.reduce((sum, d) => sum + (d.total_amount - d.paid_amount), 0);
+  const overdueDebts = activeDebts.filter(d => isBefore(new Date(d.due_date), new Date()));
+  const monthlyPayments = activeDebts.reduce((sum, d) => sum + d.monthly_payment, 0);
 
   const safeFormatDate = (date: Date | string, formatStr: string) => {
     const d = typeof date === 'string' ? new Date(date) : date;
@@ -261,10 +261,10 @@ export function DebtsPage() {
           <h2 className="text-xl font-semibold mb-4">Dívidas Ativas</h2>
           <div className="grid gap-4">
             {activeDebts.map(debt => {
-              const percentage = (debt.paidAmount / debt.totalAmount) * 100;
-              const remaining = debt.totalAmount - debt.paidAmount;
-              const isOverdue = isBefore(new Date(debt.dueDate), new Date());
-              const monthsRemaining = differenceInMonths(new Date(debt.dueDate), new Date());
+              const percentage = (debt.paid_amount / debt.total_amount) * 100;
+              const remaining = debt.total_amount - debt.paid_amount;
+              const isOverdue = isBefore(new Date(debt.due_date), new Date());
+              const monthsRemaining = differenceInMonths(new Date(debt.due_date), new Date());
 
               return (
                 <Card key={debt.id} className={isOverdue ? 'border-destructive' : ''}>
@@ -281,7 +281,7 @@ export function DebtsPage() {
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          Vencimento: {safeFormatDate(debt.dueDate, 'dd/MM/yyyy')}
+                          Vencimento: {safeFormatDate(debt.due_date, 'dd/MM/yyyy')}
                           {monthsRemaining > 0 && ` (${monthsRemaining} meses restantes)`}
                         </p>
                       </div>
@@ -298,11 +298,11 @@ export function DebtsPage() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                       <div>
                         <p className="text-xs text-muted-foreground">Valor Total</p>
-                        <p className="font-semibold">{formatCurrency(debt.totalAmount)}</p>
+                        <p className="font-semibold">{formatCurrency(debt.total_amount)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Pago</p>
-                        <p className="font-semibold text-income">{formatCurrency(debt.paidAmount)}</p>
+                        <p className="font-semibold text-income">{formatCurrency(debt.paid_amount)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Restante</p>
@@ -310,7 +310,7 @@ export function DebtsPage() {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Parcela Mensal</p>
-                        <p className="font-semibold">{formatCurrency(debt.monthlyPayment)}</p>
+                        <p className="font-semibold">{formatCurrency(debt.monthly_payment)}</p>
                       </div>
                     </div>
 
@@ -350,7 +350,7 @@ export function DebtsPage() {
                     <div>
                       <h3 className="font-semibold">{debt.name}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {formatCurrency(debt.totalAmount)} quitados
+                        {formatCurrency(debt.total_amount)} quitados
                       </p>
                     </div>
                   </div>
@@ -515,7 +515,7 @@ export function DebtsPage() {
             </div>
             {selectedDebt && (
               <p className="text-sm text-muted-foreground">
-                Restante após pagamento: {formatCurrency(selectedDebt.totalAmount - selectedDebt.paidAmount - (parseFloat(paymentAmount) || 0))}
+                Restante após pagamento: {formatCurrency(selectedDebt.total_amount - selectedDebt.paid_amount - (parseFloat(paymentAmount) || 0))}
               </p>
             )}
           </div>

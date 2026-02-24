@@ -32,12 +32,12 @@ export function QuickWidget({ selectedUserId, date }: QuickWidgetProps) {
 
     if (!monthStr || !nextMonthStr) return null;
 
-    const targetBudgets = allBudgets.filter(b => b.userId === userId && b.month === monthStr);
+    const targetBudgets = allBudgets.filter(b => b.user_id === userId && b.month === monthStr);
     if (targetBudgets.length === 0) return null;
 
     const salary = targetBudgets.reduce((sum, b) => sum + b.income, 0);
-    const savingsGoal = targetBudgets.reduce((sum, b) => sum + b.savingsGoal, 0);
-    const cycleEndDay = targetBudgets[0]?.cycleEndDay || 28;
+    const savingsGoal = targetBudgets.reduce((sum, b) => sum + b.savings_goal, 0);
+    const cycleEndDay = targetBudgets[0]?.cycle_end_day || 28;
 
     const spent = allTransactions
       .filter(t => t.userId === userId && t.effectiveMonth === nextMonthStr && t.status !== 'cancelled')

@@ -83,7 +83,7 @@ export function Dashboard() {
   }, [allTransactions, selectedUserId]);
 
   const filteredAccounts = useMemo(() => {
-    return allAccounts.filter(a => selectedUserId === 'all' || a.userId === selectedUserId || a.isShared);
+    return allAccounts.filter(a => selectedUserId === 'all' || a.user_id === selectedUserId || a.is_shared);
   }, [allAccounts, selectedUserId]);
 
   const launchTransactions = useMemo(() => {
@@ -98,7 +98,7 @@ export function Dashboard() {
   }, [launchTransactions]);
 
   const totalBalance = useMemo(() => {
-    return filteredAccounts.filter(a => !a.isArchived).reduce((sum, a) => sum + getAccountBalance(a.id), 0);
+    return filteredAccounts.filter(a => a.active !== false).reduce((sum, a) => sum + getAccountBalance(a.id), 0);
   }, [filteredAccounts, getAccountBalance]);
 
   return (

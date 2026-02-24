@@ -72,12 +72,12 @@ export function EvolutionPage() {
   useEffect(() => {
     const targetUserId = configForm.userId;
     if (targetUserId) {
-      const bud = allBudgets.find(b => b.userId === targetUserId && b.month === selectedMonthStr);
+      const bud = allBudgets.find(b => b.user_id === targetUserId && b.month === selectedMonthStr);
       setConfigForm(prev => ({
         ...prev,
         netSalary: bud?.income.toString() || '',
-        savingsGoal: bud?.savingsGoal.toString() || '',
-        cycleEndDay: (bud?.cycleEndDay || 28).toString()
+        savingsGoal: bud?.savings_goal.toString() || '',
+        cycleEndDay: (bud?.cycle_end_day || 28).toString()
       }));
     }
   }, [configForm.userId, selectedMonthStr, allBudgets]);
@@ -96,7 +96,7 @@ export function EvolutionPage() {
 
     const targetBudgets = selectedUserId === 'all'
       ? allBudgets.filter(b => b.month === selectedMonthStr)
-      : allBudgets.filter(b => b.userId === selectedUserId && b.month === selectedMonthStr);
+      : allBudgets.filter(b => b.user_id === selectedUserId && b.month === selectedMonthStr);
 
     const targetTransactions = (selectedUserId === 'all' ? allTransactions : allTransactions.filter(t => t.userId === selectedUserId))
       .filter(t => t.effectiveMonth === nextMonthStr && t.status !== 'cancelled');
@@ -104,8 +104,8 @@ export function EvolutionPage() {
     if (targetBudgets.length === 0) return null;
 
     const salary = targetBudgets.reduce((sum, b) => sum + b.income, 0);
-    const goal = targetBudgets.reduce((sum, b) => sum + b.savingsGoal, 0);
-    const cycleEndDay = targetBudgets[0]?.cycleEndDay || 28;
+    const goal = targetBudgets.reduce((sum, b) => sum + b.savings_goal, 0);
+    const cycleEndDay = targetBudgets[0]?.cycle_end_day || 28;
 
     const spent = targetTransactions
       .filter(t => t.type === 'EXPENSE' || t.type === 'CREDIT' || t.type === 'REFUND')
@@ -121,7 +121,7 @@ export function EvolutionPage() {
 
   const evolutionData = useMemo(() => {
     const today = new Date();
-    const currentBalance = (selectedUserId === 'all' ? allAccounts : allAccounts.filter(a => a.userId === selectedUserId))
+    const currentBalance = (selectedUserId === 'all' ? allAccounts : allAccounts.filter(a => a.user_id === selectedUserId))
       .reduce((sum, a) => sum + getAccountBalance(a.id), 0);
 
     const historyData = [];
@@ -178,7 +178,7 @@ export function EvolutionPage() {
   }, [snapshots, selectedUserId, allAccounts, getAccountBalance, allTransactions, cycleInfo]);
 
   const handleSaveConfig = async () => {
-    const existing = allBudgets.find(b => b.userId === configForm.userId && b.month === selectedMonthStr);
+    const existing = allBudgets.find(b => b.user_id === configForm.userId && b.month === selectedMonthStr);
     await saveBudget({
       id: existing?.id || generateId(), 
       userId: configForm.userId, 
@@ -187,8 +187,8 @@ export function EvolutionPage() {
       expenses: existing?.expenses || 0,
       savingsGoal: parseFloat(configForm.savingsGoal) || 0, 
       cycleEndDay: parseInt(configForm.cycleEndDay) || 28,
-      categoryLimits: existing?.categoryLimits || {}, 
-      createdAt: existing?.createdAt || new Date(), 
+      categoryLimits: existing?.category_limits || {}, 
+      createdAt: existing?.created_at || new Date(), 
       updatedAt: new Date()
     });
     toast({ title: 'Configuração salva!' });
@@ -204,7 +204,7 @@ export function EvolutionPage() {
       for (const user of usersToRegister) {
         let balance = parseFloat(snapshotForm.totalBalance);
         if (isNaN(balance) || snapshotForm.userId === 'all') {
-          const userAccs = allAccounts.filter(a => a.userId === user.id || a.isShared);
+          const userAccs = allAccounts.filter(a => a.user_id === user.id || a.is_shared);
           balance = userAccs.reduce((sum, a) => sum + getAccountBalance(a.id), 0);
         }
 

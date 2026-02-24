@@ -14,6 +14,25 @@ export interface User {
   updated_at: Date;
 }
 
+export interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  type: string;
+  kind?: string;
+  parentId?: string | null;
+  isSystem?: boolean;
+  createdAt?: Date;
+}
+
+export interface Tag {
+  id: string;
+  name: string;
+  color: string;
+  createdAt?: Date;
+}
+
 export interface Card {
   id: string;
   user_id: string;
@@ -100,9 +119,12 @@ export interface Budget {
   user_id: string;
   month: string;
   income: number;
+  expenses?: number;
   savings_goal: number;
+  cycle_end_day?: number;
   category_limits: Record<string, number>;
   created_at: Date;
+  updatedAt?: Date;
 }
 
 export interface Goal {
@@ -137,6 +159,8 @@ export interface CycleSnapshot {
   day: number;
   userId: string;
   totalBalance: number;
+  savingsGoal?: number;
+  accountBalances?: Record<string, number>;
   createdAt: Date;
 }
 
