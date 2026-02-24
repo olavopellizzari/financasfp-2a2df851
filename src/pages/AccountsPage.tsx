@@ -89,15 +89,16 @@ export function AccountsPage() {
 
   const activeUsers = users.filter(u => u.is_active !== false);
 
-  // Filtro principal das contas
+  // Filtro principal das contas ajustado para exclusividade
   const filteredAccounts = useMemo(() => {
     if (selectedUserId === 'all') {
-      return allAccounts;
+      // Se "Família" estiver selecionado, mostra APENAS as contas compartilhadas
+      return allAccounts.filter(a => a.is_shared === true);
     }
     
-    // Se um usuário específico for selecionado, mostra as contas dele + as compartilhadas (família)
+    // Se um usuário específico for selecionado, mostra APENAS as contas exclusivas dele
     return allAccounts.filter(a => 
-      a.user_id === selectedUserId || a.is_shared === true
+      a.user_id === selectedUserId && a.is_shared !== true
     );
   }, [allAccounts, selectedUserId]);
 
@@ -295,7 +296,7 @@ export function AccountsPage() {
       </Card>
 
       <div className="space-y-10">
-        {/* SEÇÃO: CONTAS DA FAMÍLIA (Sempre aparecem se o filtro for 'all' ou se houver contas compartilhadas) */}
+        {/* SEÇÃO: CONTAS DA FAMÍLIA */}
         {activeAccounts.some(a => a.is_shared) && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 px-1">
@@ -312,7 +313,7 @@ export function AccountsPage() {
           </div>
         )}
 
-        {/* SEÇÃO: CONTAS EXCLUSIVAS (Filtradas pelo usuário selecionado) */}
+        {/* SEÇÃO: CONTAS EXCLUSIVAS */}
         {activeAccounts.some(a => !a.is_shared) && (
           <div className="space-y-6">
             <div className="flex items-center gap-2 px-1">
