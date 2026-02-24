@@ -31,7 +31,7 @@ export function SetupPage() {
 
       if (hhError) throw hhError;
 
-      // 2. Adicionar o usuário como membro ADMIN imediatamente
+      // 2. Adicionar o usuário como membro ADMIN
       const { error: memberError } = await supabase
         .from('household_members')
         .insert({
@@ -54,54 +54,49 @@ export function SetupPage() {
 
       if (profileError) throw profileError;
 
-      // 4. Criar a primeira conta bancária
+      // 4. Criar a primeira conta bancária (Ajustado para o Schema real)
       const { error: accError } = await supabase
         .from('accounts')
         .insert({
-          user_id: currentUser.id,
           household_id: household.id,
           name: 'Conta Corrente',
-          type: 'checking',
-          balance: parseFloat(initialBalance) || 0,
-          color: '#22c55e',
-          icon: 'Wallet',
-          is_shared: false,
-          is_archived: false
+          account_type: 'corrente',
+          opening_balance: parseFloat(initialBalance) || 0,
+          opening_date: new Date().toISOString().split('T')[0],
+          active: true
         });
 
       if (accError) throw accError;
 
-      // 5. Criar categorias essenciais
+      // 5. Criar categorias essenciais (Ajustado para o Schema real)
       const defaultCategories = [
-        { name: 'Salário', icon: '💰', color: '#22c55e', type: 'income' },
-        { name: 'Alimentação', icon: '🛒', color: '#f97316', type: 'expense' },
-        { name: 'Moradia', icon: '🏠', color: '#ef4444', type: 'expense' },
-        { name: 'Lazer', icon: '🎡', color: '#8b5cf6', type: 'expense' },
-        { name: 'Transporte', icon: '🚗', color: '#3b82f6', type: 'expense' }
+        { name: 'Salário', kind: 'receita' },
+        { name: 'Alimentação', kind: 'despesa' },
+        { name: 'Moradia', kind: 'despesa' },
+        { name: 'Lazer', kind: 'despesa' },
+        { name: 'Transporte', kind: 'despesa' }
       ];
 
-      await supabase.from('categories').insert(
+      const { error: catError } = await supabase.from('categories').insert(
         defaultCategories.map(cat => ({ 
           ...cat, 
           household_id: household.id, 
-          user_id: currentUser.id,
-          is_system: true 
+          is_default: true 
         }))
       );
 
+      if (catError) throw catError;
+
       toast({ title: "Configuração concluída!", description: "Bem-vindo ao seu novo controle financeiro." });
       
-      // Força a atualização do contexto de autenticação antes de navegar
       await refreshProfile();
-      
-      // Pequeno delay para garantir que o Supabase propagou as mudanças
       setTimeout(() => navigate('/'), 500);
       
     } catch (error: any) {
       console.error('Erro no setup:', error);
       toast({ 
         title: "Erro no setup", 
-        description: error.message || "Ocorreu um erro inesperado.", 
+        description: error.message || "Verifique os campos e tente novamente.", 
         variant: "destructive" 
       });
     } finally {
