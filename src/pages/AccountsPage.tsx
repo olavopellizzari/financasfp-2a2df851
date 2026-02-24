@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatCurrency, Account, User } from '@/lib/db';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatCurrency, Account } from '@/lib/db';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +14,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter
 } from '@/components/ui/dialog';
 import {
@@ -73,7 +72,7 @@ interface AccountFormData {
 
 export function AccountsPage() {
   const { currentUser, users, isCurrentUserAdmin } = useAuth();
-  const { accounts, allAccounts, createAccount, updateAccount, deleteAccount, getAccountBalance } = useFinance();
+  const { allAccounts, createAccount, updateAccount, deleteAccount, getAccountBalance } = useFinance();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
@@ -88,23 +87,22 @@ export function AccountsPage() {
     isShared: true,
   });
 
-  const isAdmin = isCurrentUserAdmin();
   const activeUsers = users.filter(u => u.is_active !== false);
 
+  // Filtro principal das contas
   const filteredAccounts = useMemo(() => {
-    const sourceAccounts = isAdmin ? allAccounts : accounts;
-    
     if (selectedUserId === 'all') {
-      return sourceAccounts;
+      return allAccounts;
     }
     
-    return sourceAccounts.filter(a => 
-      a.userId === selectedUserId || a.isShared
+    // Se um usuário específico for selecionado, mostra as contas dele + as compartilhadas (família)
+    return allAccounts.filter(a => 
+      a.user_id === selectedUserId || a.is_shared === true
     );
-  }, [accounts, allAccounts, selectedUserId, isAdmin]);
+  }, [allAccounts, selectedUserId]);
 
-  const activeAccounts = filteredAccounts.filter(a => !a.isArchived);
-  const archivedAccounts = filteredAccounts.filter(a => a.isArchived);
+  const activeAccounts = filteredAccounts.filter(a => a.active !== false);
+  const archivedAccounts = filteredAccounts.filter(a => a.active === false);
 
   const totalBalance = activeAccounts.reduce((sum, account) => {
     return sum + getAccountBalance(account.id);
@@ -131,9 +129,9 @@ export function AccountsPage() {
     setEditingAccount(account);
     setFormData({
       name: account.name,
-      type: account.type === 'corrente' ? 'checking' : account.type,
+      type: account.account_type === 'corrente' ? 'checking' : account.account_type as any,
       balance: account.opening_balance.toString(),
-      color: account.color || ACCOUNT_COLORS[0],
+      color: (account as any).color || ACCOUNT_COLORS[0],
       userId: account.user_id || currentUser?.id || '',
       isShared: account.is_shared ?? true,
     });
@@ -167,7 +165,7 @@ export function AccountsPage() {
     } catch (error: any) {
       toast({ 
         title: "Erro ao salvar", 
-        description: error.message || "Verifique se você executou o SQL necessário.", 
+        description: error.message || "Ocorreu um erro ao salvar a conta.", 
         variant: "destructive" 
       });
     } finally {
@@ -203,6 +201,7 @@ export function AccountsPage() {
   const AccountCard = ({ account }: { account: Account }) => {
     const Icon = getAccountIcon(account.account_type);
     const balance = getAccountBalance(account.id);
+    const accountColor = (account as any).color || '#3b82f6';
     
     return (
       <Card key={account.id} className="finance-card group">
@@ -211,9 +210,9 @@ export function AccountsPage() {
             <div className="flex items-center gap-3">
               <div 
                 className="p-3 rounded-xl"
-                style={{ backgroundColor: `${account.color || '#3b82f6'}20` }}
+                style={{ backgroundColor: `${accountColor}20` }}
               >
-                <Icon className="w-5 h-5" style={{ color: account.color || '#3b82f6' }} />
+                <Icon className="w-5 h-5" style={{ color: accountColor }} />
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -283,7 +282,9 @@ export function AccountsPage() {
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-primary-foreground/80 text-sm font-medium">Saldo Consolidado</p>
+              <p className="text-primary-foreground/80 text-sm font-medium">
+                {selectedUserId === 'all' ? 'Saldo Consolidado (Família)' : `Saldo de ${users.find(u => u.id === selectedUserId)?.name}`}
+              </p>
               <p className="text-4xl font-bold text-primary-foreground mt-1">{formatCurrency(totalBalance)}</p>
             </div>
             <div className="p-4 rounded-2xl bg-white/20 shadow-inner">
@@ -294,17 +295,14 @@ export function AccountsPage() {
       </Card>
 
       <div className="space-y-10">
-        {/* SEÇÃO: CONTAS DA FAMÍLIA */}
-        {(selectedUserId === 'all' || activeAccounts.some(a => a.is_shared)) && (
+        {/* SEÇÃO: CONTAS DA FAMÍLIA (Sempre aparecem se o filtro for 'all' ou se houver contas compartilhadas) */}
+        {activeAccounts.some(a => a.is_shared) && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 px-1">
               <div className="p-1.5 bg-primary/10 rounded-lg">
                 <Users className="w-5 h-5 text-primary" />
               </div>
               <h2 className="text-xl font-bold">Contas da Família</h2>
-              <Badge className="ml-2 bg-primary/10 text-primary border-none">
-                {formatCurrency(activeAccounts.filter(a => a.is_shared).reduce((s, a) => s + getAccountBalance(a.id), 0))}
-              </Badge>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {activeAccounts.filter(a => a.is_shared).map(account => (
@@ -314,39 +312,30 @@ export function AccountsPage() {
           </div>
         )}
 
-        {/* SEÇÃO: CONTAS EXCLUSIVAS */}
-        <div className="space-y-6">
-          <div className="flex items-center gap-2 px-1">
-            <div className="p-1.5 bg-orange-100 rounded-lg">
-              <UserIcon className="w-5 h-5 text-orange-600" />
+        {/* SEÇÃO: CONTAS EXCLUSIVAS (Filtradas pelo usuário selecionado) */}
+        {activeAccounts.some(a => !a.is_shared) && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-2 px-1">
+              <div className="p-1.5 bg-orange-100 rounded-lg">
+                <UserIcon className="w-5 h-5 text-orange-600" />
+              </div>
+              <h2 className="text-xl font-bold">Contas Exclusivas</h2>
             </div>
-            <h2 className="text-xl font-bold">Contas Exclusivas</h2>
-          </div>
 
-          {selectedUserId === 'all' ? (
-            activeUsers.map(user => {
-              const userAccounts = activeAccounts.filter(a => a.user_id === user.id && !a.is_shared);
-              if (userAccounts.length === 0) return null;
-              return (
-                <div key={user.id} className="space-y-3 pl-4 border-l-2 border-muted">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold" style={{ backgroundColor: user.avatar_color }}>
-                      {user.name.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="font-bold text-sm text-muted-foreground uppercase tracking-wider">{user.name}</span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {userAccounts.map(account => <AccountCard key={account.id} account={account} />)}
-                  </div>
-                </div>
-              );
-            })
-          ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {activeAccounts.filter(a => !a.is_shared).map(account => <AccountCard key={account.id} account={account} />)}
+              {activeAccounts.filter(a => !a.is_shared).map(account => (
+                <AccountCard key={account.id} account={account} />
+              ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {activeAccounts.length === 0 && (
+          <div className="text-center py-12 bg-muted/20 rounded-2xl border border-dashed">
+            <Wallet className="w-12 h-12 mx-auto text-muted-foreground mb-4 opacity-20" />
+            <p className="text-muted-foreground">Nenhuma conta encontrada para este filtro.</p>
+          </div>
+        )}
       </div>
 
       {/* DIÁLOGO DE CRIAÇÃO/EDIÇÃO */}
