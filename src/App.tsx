@@ -18,24 +18,27 @@ import { BackupPage } from "./pages/BackupPage";
 import { UsersPage } from "./pages/UsersPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { LoginPage } from "./pages/LoginPage";
+import { SetupPage } from "./pages/SetupPage";
 import NotFound from "./pages/NotFound";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { session, isLoading } = useAuth();
+  const { session, currentUser, isLoading } = useAuth();
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Carregando...</p>
-        </div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   if (!session) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Se o usuário não tem família vinculada, obriga a passar pelo Setup
+  if (currentUser && !currentUser.family_id && window.location.pathname !== '/setup') {
+    return <Navigate to="/setup" replace />;
   }
 
   return <AppLayout>{children}</AppLayout>;
@@ -46,6 +49,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/setup" element={<ProtectedRoute><SetupPage /></ProtectedRoute>} />
         
         <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/accounts" element={<ProtectedRoute><AccountsPage /></ProtectedRoute>} />
