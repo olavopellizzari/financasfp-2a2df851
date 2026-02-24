@@ -1,0 +1,17 @@
+{
+  "name": "Finanças - Controle Pessoal",
+  "short_name": "Finanças",
+  "description": "Controle total das suas finanças pessoais",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#22c55e",
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
