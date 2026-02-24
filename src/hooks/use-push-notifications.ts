@@ -85,7 +85,6 @@ export function usePushNotifications() {
             body: 'As notificações estão funcionando! Você será avisado 3 dias antes dos vencimentos.',
             icon: '/app-icon.svg',
             badge: '/app-icon.svg',
-            vibrate: [100, 50, 100],
             tag: 'test-notification',
             data: { url: '/' }
           });

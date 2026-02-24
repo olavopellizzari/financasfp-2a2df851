@@ -63,7 +63,7 @@ const ACCOUNT_COLORS = [
 
 interface AccountFormData {
   name: string;
-  type: Account['account_type'];
+  type: string;
   balance: string;
   color: string;
   userId: string;

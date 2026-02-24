@@ -55,17 +55,17 @@ export function GoalsPage() {
   // Filtra as metas pelo usuário selecionado
   const filteredGoals = useMemo(() => {
     if (selectedUserId === 'all') return goals;
-    return goals.filter(g => g.userId === selectedUserId);
+    return goals.filter(g => g.user_id === selectedUserId);
   }, [goals, selectedUserId]);
 
   // Calcula o saldo real disponível para o usuário/família selecionado
   const currentBalance = useMemo(() => {
-    const sourceAccounts = selectedUserId === 'all' ? allAccounts : allAccounts.filter(a => a.userId === selectedUserId);
-    return sourceAccounts.filter(a => !a.isArchived).reduce((sum, a) => sum + getAccountBalance(a.id), 0);
+    const sourceAccounts = selectedUserId === 'all' ? allAccounts : allAccounts.filter(a => a.user_id === selectedUserId);
+    return sourceAccounts.filter(a => a.active !== false).reduce((sum, a) => sum + getAccountBalance(a.id), 0);
   }, [allAccounts, selectedUserId, getAccountBalance]);
 
   const totalTarget = useMemo(() => {
-    return filteredGoals.reduce((sum, g) => sum + g.targetAmount, 0);
+    return filteredGoals.reduce((sum, g) => sum + g.target_amount, 0);
   }, [filteredGoals]);
 
   const overallPercentage = totalTarget > 0 ? (currentBalance / totalTarget) * 100 : 0;
@@ -79,15 +79,15 @@ export function GoalsPage() {
     try {
       const goal: Goal = {
         id: editingGoal?.id || generateId(),
-        userId: isAdmin ? goalForm.userId : (currentUser?.id || ''),
+        user_id: isAdmin ? goalForm.userId : (currentUser?.id || ''),
         name: goalForm.name,
-        targetAmount: parseFloat(goalForm.targetAmount),
-        currentAmount: 0, // Agora o saldo é dinâmico, mas mantemos o campo por compatibilidade
-        deadline: goalForm.deadline,
+        target_amount: parseFloat(goalForm.targetAmount),
+        current_amount: 0,
+        deadline: goalForm.deadline ? goalForm.deadline.toISOString() : null,
         icon: goalForm.icon,
         color: goalForm.color,
-        isCompleted: false,
-        createdAt: editingGoal?.createdAt || new Date(),
+        is_completed: false,
+        created_at: editingGoal?.created_at || new Date(),
         updatedAt: new Date()
       };
 
@@ -111,11 +111,11 @@ export function GoalsPage() {
     setEditingGoal(goal);
     setGoalForm({
       name: goal.name,
-      targetAmount: goal.targetAmount.toString(),
+      targetAmount: goal.target_amount.toString(),
       deadline: goal.deadline ? new Date(goal.deadline) : null,
       icon: goal.icon,
       color: goal.color,
-      userId: goal.userId
+      userId: goal.user_id
     });
     setDialogOpen(true);
   };
@@ -214,8 +214,8 @@ export function GoalsPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredGoals.map(goal => {
           // Para metas individuais, mostramos quanto do saldo total "cobre" essa meta específica
-          const percentage = goal.targetAmount > 0 ? (currentBalance / goal.targetAmount) * 100 : 0;
-          const isCompleted = currentBalance >= goal.targetAmount;
+          const percentage = goal.target_amount > 0 ? (currentBalance / goal.target_amount) * 100 : 0;
+          const isCompleted = currentBalance >= goal.target_amount;
           const daysLeft = goal.deadline ? differenceInDays(new Date(goal.deadline), new Date()) : null;
 
           return (
@@ -254,7 +254,7 @@ export function GoalsPage() {
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm">
                       <span className="font-medium">{formatCurrency(currentBalance)}</span>
-                      <span className="text-muted-foreground">{formatCurrency(goal.targetAmount)}</span>
+                      <span className="text-muted-foreground">{formatCurrency(goal.target_amount)}</span>
                     </div>
                     <Progress 
                       value={Math.min(percentage, 100)} 
@@ -263,7 +263,7 @@ export function GoalsPage() {
                     />
                     <div className="flex justify-between items-center">
                       <span className="text-xs text-muted-foreground">
-                        {isCompleted ? 'Meta alcançada!' : `Faltam ${formatCurrency(Math.max(0, goal.targetAmount - currentBalance))}`}
+                        {isCompleted ? 'Meta alcançada!' : `Faltam ${formatCurrency(Math.max(0, goal.target_amount - currentBalance))}`}
                       </span>
                       <span className="text-sm font-bold" style={{ color: goal.color }}>
                         {percentage.toFixed(0)}%

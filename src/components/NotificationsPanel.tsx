@@ -56,7 +56,7 @@ export function NotificationsPanel() {
       const currentMonth = format(today, 'yyyy-MM');
       const monthDate = parse(currentMonth, 'yyyy-MM', new Date());
       
-      let dueDate = setDate(monthDate, card.dueDay);
+      let dueDate = setDate(monthDate, card.due_day);
       if (isBefore(dueDate, today)) {
         dueDate = addDays(dueDate, 30); // Next month
       }
@@ -68,8 +68,8 @@ export function NotificationsPanel() {
         const exists = existingNotifications.some(n => n.id === notificationId);
         
         if (!exists) {
-          const invoice = invoices.find(i => i.cardId === card.id && i.month === currentMonth);
-          const amount = invoice?.totalAmount || 0;
+          const invoice = invoices.find(i => i.card_id === card.id && i.month === currentMonth);
+          const amount = invoice?.total_amount || 0;
 
           newNotifications.push({
             id: notificationId,
@@ -89,11 +89,11 @@ export function NotificationsPanel() {
 
     // Debt due notifications
     const debts = await db.getAll<Debt>('debts');
-    for (const debt of debts.filter(d => d.userId === currentUser.id && d.isActive)) {
-      const daysUntilDue = differenceInDays(new Date(debt.dueDate), today);
+    for (const debt of debts.filter(d => d.user_id === currentUser.id && d.is_active)) {
+      const daysUntilDue = differenceInDays(new Date(debt.due_date), today);
       
       if (daysUntilDue <= 3 && daysUntilDue >= 0) {
-        const notificationId = `debt_due_${debt.id}_${format(new Date(debt.dueDate), 'yyyy-MM-dd')}`;
+        const notificationId = `debt_due_${debt.id}_${format(new Date(debt.due_date), 'yyyy-MM-dd')}`;
         const exists = existingNotifications.some(n => n.id === notificationId);
         
         if (!exists) {
@@ -102,10 +102,10 @@ export function NotificationsPanel() {
             userId: currentUser.id,
             type: 'debt_due',
             title: `Dívida "${debt.name}" vence em ${daysUntilDue} dias`,
-            message: `Parcela: ${formatCurrency(debt.monthlyPayment)}`,
+            message: `Parcela: ${formatCurrency(debt.monthly_payment)}`,
             entityType: 'debt',
             entityId: debt.id,
-            dueDate: new Date(debt.dueDate),
+            dueDate: new Date(debt.due_date),
             isRead: false,
             createdAt: new Date()
           });

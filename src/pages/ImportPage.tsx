@@ -61,8 +61,8 @@ export function ImportPage() {
   const normalize = (str: string) => str?.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() || "";
 
   const findUserAccount = (userId: string): string => {
-    const userAccounts = allAccounts.filter(a => a.userId === userId && !a.isArchived);
-    const checking = userAccounts.find(a => a.type === 'checking');
+    const userAccounts = allAccounts.filter(a => a.user_id === userId && a.active !== false);
+    const checking = userAccounts.find(a => a.account_type === 'corrente');
     return checking ? checking.id : (userAccounts[0]?.id || '');
   };
 
@@ -261,7 +261,7 @@ export function ImportPage() {
                 <Select value={globalTargetId} onValueChange={setGlobalTargetId}>
                   <SelectTrigger><SelectValue placeholder="Selecione o cartão" /></SelectTrigger>
                   <SelectContent>
-                    {allCards.filter(c => !c.isArchived).map(card => (
+                    {allCards.filter(c => !c.is_archived).map(card => (
                       <SelectItem key={card.id} value={card.id}>{card.name}</SelectItem>
                     ))}
                   </SelectContent>

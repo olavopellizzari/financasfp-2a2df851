@@ -95,13 +95,13 @@ export function InvoicesPage() {
 
     filteredCards.forEach(card => {
       const generated = generatedInvoices.find(g => g.cardId === card.id);
-      const existing = invoices.find(i => i.cardId === card.id && i.month === selectedMonth);
+      const existing = invoices.find(i => i.card_id === card.id && i.month === selectedMonth);
       
-      let closingDate = setDate(monthDate, card.closingDay);
-      let dueDate = setDate(addMonths(monthDate, 1), card.dueDay);
+      let closingDate = setDate(monthDate, card.closing_day);
+      let dueDate = setDate(addMonths(monthDate, 1), card.due_day);
 
-      const total = generated?.total || existing?.totalAmount || 0;
-      const paid = existing?.paidAmount || 0;
+      const total = generated?.total || existing?.total_amount || 0;
+      const paid = existing?.paid_amount || 0;
       
       let status: any = 'open';
       if (existing?.status) status = existing.status;
@@ -133,24 +133,24 @@ export function InvoicesPage() {
 
   const handlePayInvoice = (invoice: typeof displayInvoices[0]) => {
     const existingOrNew: Invoice = invoice.existingInvoice || {
-      id: generateId(), cardId: invoice.card.id, userId: currentUser?.id || null,
-      month: invoice.month, closingDate: invoice.closingDate, dueDate: invoice.dueDate,
-      totalAmount: invoice.total, paidAmount: 0, status: 'closed', paidFromAccountId: null,
-      paidAt: null, createdAt: new Date(), updatedAt: new Date()
+      id: generateId(), card_id: invoice.card.id, userId: currentUser?.id || null,
+      month: invoice.month, closing_date: invoice.closingDate as any, due_date: invoice.dueDate as any,
+      total_amount: invoice.total, paid_amount: 0, status: 'closed', paid_from_account_id: null,
+      paid_at: null
     };
     setSelectedInvoice(existingOrNew);
     setPaymentAmount((invoice.total - invoice.paid).toFixed(2));
-    setPaymentAccountId(invoice.card.defaultAccountId || accounts[0]?.id || '');
+    setPaymentAccountId(invoice.card.default_account_id || accounts[0]?.id || '');
     setPayDialogOpen(true);
   };
 
   const handleOpenConfig = (card: CardType) => {
     setEditingCard(card);
     setCardFormData({
-      closingDay: card.closingDay.toString(),
-      dueDay: card.dueDay.toString(),
-      responsibleUserId: card.responsibleUserId || card.userId,
-      defaultAccountId: card.defaultAccountId || ''
+      closingDay: card.closing_day.toString(),
+      dueDay: card.due_day.toString(),
+      responsibleUserId: card.responsible_user_id || card.user_id,
+      defaultAccountId: card.default_account_id || ''
     });
     setConfigDialogOpen(true);
   };
@@ -180,10 +180,10 @@ export function InvoicesPage() {
     try {
       const amount = parseFloat(paymentAmount);
       const invoice = selectedInvoice;
-      const newPaidAmount = invoice.paidAmount + amount;
+      const newPaidAmount = invoice.paid_amount + amount;
       const updatedInvoice: Invoice = {
-        ...invoice, paidAmount: newPaidAmount, status: newPaidAmount >= invoice.totalAmount ? 'paid' : 'partial',
-        paidFromAccountId: paymentAccountId, paidAt: new Date(), updatedAt: new Date()
+        ...invoice, paid_amount: newPaidAmount, status: newPaidAmount >= invoice.total_amount ? 'paid' : 'partial',
+        paid_from_account_id: paymentAccountId, paid_at: new Date() as any
       };
 
       if (invoice.id.startsWith('temp-')) {
@@ -195,8 +195,8 @@ export function InvoicesPage() {
 
       const monthDate = safeParseMonth(invoice.month);
       await db.add('transactions', {
-        id: generateId(), type: 'EXPENSE', amount, description: `Pagamento fatura ${cards.find(c => c.id === invoice.cardId)?.name} - ${format(monthDate, 'MMMM/yyyy', { locale: ptBR })}`,
-        purchaseDate: new Date(), effectiveDate: invoice.dueDate, effectiveMonth: format(invoice.dueDate, 'yyyy-MM'), mesFatura: null, status: 'confirmed', isPaid: true, userId: currentUser?.id || '', accountId: paymentAccountId, cardId: null, invoiceId: updatedInvoice.id, categoryId: '', merchantId: null, tagIds: [], installmentGroupId: null, installmentNumber: null, totalInstallments: null, notes: '', importBatchId: null, isRecurring: false, recurrenceType: null, recurrenceCount: null, createdAt: new Date(), updatedAt: new Date()
+        id: generateId(), type: 'EXPENSE', amount, description: `Pagamento fatura ${cards.find(c => c.id === invoice.card_id)?.name} - ${format(monthDate, 'MMMM/yyyy', { locale: ptBR })}`,
+        purchaseDate: new Date(), effectiveDate: invoice.due_date, effectiveMonth: format(invoice.due_date, 'yyyy-MM'), mesFatura: null, status: 'confirmed', isPaid: true, userId: currentUser?.id || '', accountId: paymentAccountId, cardId: null, invoiceId: updatedInvoice.id, categoryId: '', merchantId: null, tagIds: [], installmentGroupId: null, installmentNumber: null, totalInstallments: null, notes: '', importBatchId: null, isRecurring: false, recurrenceType: null, recurrenceCount: null, createdAt: new Date(), updatedAt: new Date()
       });
       
       toast({ title: 'Pagamento registrado!' });
@@ -226,7 +226,7 @@ export function InvoicesPage() {
         </div>
         <div className="flex items-center gap-2">
           {isAdmin && <UserFilter value={selectedUserId} onChange={setSelectedUserId} className="w-[180px]" />}
-          <Select value={selectedCardId} onValueChange={setSelectedCardId}><SelectTrigger className="w-[180px]"><SelectValue placeholder="Todos os cartões" /></SelectTrigger><SelectContent><SelectItem value="all">Todos os cartões</SelectItem>{(isAdmin ? allCards : cards).filter(c => !c.isArchived).map(card => <SelectItem key={card.id} value={card.id}>{card.name}</SelectItem>)}</SelectContent></Select>
+          <Select value={selectedCardId} onValueChange={setSelectedCardId}><SelectTrigger className="w-[180px]"><SelectValue placeholder="Todos os cartões" /></SelectTrigger><SelectContent><SelectItem value="all">Todos os cartões</SelectItem>{(isAdmin ? allCards : cards).filter(c => !c.is_archived).map(card => <SelectItem key={card.id} value={card.id}>{card.name}</SelectItem>)}</SelectContent></Select>
         </div>
       </div>
 
@@ -242,7 +242,7 @@ export function InvoicesPage() {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="p-3 rounded-xl" style={{ backgroundColor: `${invoice.card.color}20` }}><CreditCard className="h-5 w-5" style={{ color: invoice.card.color }} /></div>
-                      <div><h3 className="font-semibold">{invoice.card.name}</h3><p className="text-sm text-muted-foreground">•••• {invoice.card.lastDigits} · {invoice.transactionCount} lançamentos</p></div>
+                      <div><h3 className="font-semibold">{invoice.card.name}</h3><p className="text-sm text-muted-foreground">•••• {invoice.card.last_digits} · {invoice.transactionCount} lançamentos</p></div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button variant="ghost" size="icon" onClick={() => handleOpenConfig(invoice.card)} title="Configurar Cartão">
@@ -272,7 +272,7 @@ export function InvoicesPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Pagar Fatura</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2"><Label>Conta para débito</Label><Select value={paymentAccountId} onValueChange={setPaymentAccountId}><SelectTrigger><SelectValue placeholder="Selecione a conta" /></SelectTrigger><SelectContent>{accounts.filter(a => !a.isArchived).map(account => <SelectItem key={account.id} value={account.id}>{account.name} - {formatCurrency(account.balance)}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-2"><Label>Conta para débito</Label><Select value={paymentAccountId} onValueChange={setPaymentAccountId}><SelectTrigger><SelectValue placeholder="Selecione a conta" /></SelectTrigger><SelectContent>{accounts.filter(a => a.active !== false).map(account => <SelectItem key={account.id} value={account.id}>{account.name} - {formatCurrency(getAccountBalance(account.id))}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-2"><Label>Valor do pagamento</Label><Input type="number" step="0.01" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} placeholder="0,00" /></div>
           </div>
           <DialogFooter><Button variant="outline" onClick={() => setPayDialogOpen(false)}>Cancelar</Button><Button onClick={handleConfirmPayment}>Confirmar Pagamento</Button></DialogFooter>
@@ -329,7 +329,7 @@ export function InvoicesPage() {
               <Select value={cardFormData.defaultAccountId} onValueChange={v => setCardFormData({...cardFormData, defaultAccountId: v})}>
                 <SelectTrigger><SelectValue placeholder="Selecione uma conta" /></SelectTrigger>
                 <SelectContent>
-                  {allAccounts.filter(a => !a.isArchived).map(a => (
+                  {allAccounts.filter(a => a.active !== false).map(a => (
                     <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                   ))}
                 </SelectContent>

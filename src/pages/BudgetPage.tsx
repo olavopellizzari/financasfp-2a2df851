@@ -32,12 +32,12 @@ export function BudgetPage() {
   const loadBudget = async () => {
     if (!currentUser) return;
     const budgets = await db.getAll<Budget>('budgets');
-    const found = budgets.find(b => b.userId === currentUser.id && b.month === selectedMonth);
+    const found = budgets.find(b => b.user_id === currentUser.id && b.month === selectedMonth);
     setBudget(found || null);
     if (found) {
       setBudgetForm({
         income: found.income.toString(),
-        categoryLimits: Object.fromEntries(Object.entries(found.categoryLimits).map(([k, v]) => [k, v.toString()]))
+        categoryLimits: Object.fromEntries(Object.entries(found.category_limits).map(([k, v]) => [k, v.toString()]))
       });
     }
   };
@@ -81,14 +81,14 @@ export function BudgetPage() {
     try {
       const budgetData: Budget = {
         id: budget?.id || generateId(),
-        userId: currentUser.id,
+        user_id: currentUser.id,
         month: selectedMonth,
         income: parseFloat(budgetForm.income) || 0,
         expenses: monthStats.expenses,
-        savingsGoal: budget?.savingsGoal || 0,
-        cycleEndDay: budget?.cycleEndDay || 28,
-        categoryLimits: Object.fromEntries(Object.entries(budgetForm.categoryLimits).filter(([_, v]) => v).map(([k, v]) => [k, parseFloat(v) || 0])),
-        createdAt: budget?.createdAt || new Date(),
+        savings_goal: budget?.savings_goal || 0,
+        cycle_end_day: budget?.cycle_end_day || 28,
+        category_limits: Object.fromEntries(Object.entries(budgetForm.categoryLimits).filter(([_, v]) => v).map(([k, v]) => [k, parseFloat(v) || 0])),
+        created_at: budget?.created_at || new Date(),
         updatedAt: new Date()
       };
       budget ? await db.put('budgets', budgetData) : await db.add('budgets', budgetData);
@@ -133,9 +133,9 @@ export function BudgetPage() {
           <Card>
             <CardHeader><CardTitle>Limites por Categoria</CardTitle></CardHeader>
             <CardContent className="space-y-6">
-              {expenseCategories.filter(c => budget.categoryLimits[c.id] > 0 || monthStats.byCategory[c.id] > 0).map(cat => {
+              {expenseCategories.filter(c => budget.category_limits[c.id] > 0 || monthStats.byCategory[c.id] > 0).map(cat => {
                 const spent = monthStats.byCategory[cat.id] || 0;
-                const limit = budget.categoryLimits[cat.id] || 0;
+                const limit = budget.category_limits[cat.id] || 0;
                 const percent = limit > 0 ? (spent / limit) * 100 : 0;
                 return (
                   <div key={cat.id} className="space-y-2">
