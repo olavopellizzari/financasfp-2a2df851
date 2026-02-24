@@ -11,8 +11,7 @@ import {
   Debt,
   Invoice
 } from '@/lib/db';
-import { toast } from '@/hooks/use-toast';
-import { format, addMonths, getDate, isValid } from 'date-fns';
+import { format, addMonths, getDate, isValid, parseISO } from 'date-fns';
 
 interface FinanceContextType {
   accounts: Account[];
@@ -48,11 +47,8 @@ const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
-  const [accounts, setAccounts] = useState<Account[]>([]);
   const [allAccounts, setAllAccounts] = useState<Account[]>([]);
-  const [cards, setCards] = useState<Card[]>([]);
   const [allCards, setAllCards] = useState<Card[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [allBudgets, setAllBudgets] = useState<Budget[]>([]);
@@ -87,59 +83,46 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       }
       
       if (accData.data) {
-        const mapped = accData.data.map(a => ({
-          ...a,
-          userId: a.user_id,
-          isShared: a.is_shared,
-          isArchived: !a.active,
-          balance: a.opening_balance
-        }));
-        setAllAccounts(mapped);
-        setAccounts(mapped); // Contas agora são por família
+        setAllAccounts(accData.data as Account[]);
       }
 
       if (cardData.data) {
-        const mapped = cardData.data.map(c => ({
-          ...c,
-          userId: c.user_id,
-          closingDay: c.closing_day,
-          dueDay: c.due_day,
-          isArchived: c.is_archived,
-          defaultAccountId: c.default_account_id
-        }));
-        setAllCards(mapped);
-        setCards(mapped);
+        setAllCards(cardData.data as Card[]);
       }
 
       if (txData.data) {
         const mappedTxs: Transaction[] = txData.data.map(t => ({
-          ...t,
+          id: t.id,
+          type: t.type,
+          amount: t.amount,
+          description: t.description,
+          purchaseDate: t.purchase_date,
+          effectiveDate: t.effective_date,
+          effectiveMonth: t.effective_month,
+          mesFatura: t.mes_fatura,
+          status: t.status,
+          isPaid: t.is_paid,
           userId: t.user_id,
           accountId: t.account_id,
           cardId: t.card_id,
           categoryId: t.category_id,
-          purchaseDate: new Date(t.purchase_date),
-          effectiveDate: new Date(t.effective_date),
-          effectiveMonth: t.effective_month,
-          mesFatura: t.mes_fatura,
+          installmentGroupId: t.installment_group_id,
           installmentNumber: t.installment_number,
           totalInstallments: t.total_installments,
-          installmentGroupId: t.installment_group_id,
+          notes: t.notes || '',
           isRecurring: t.is_recurring,
-          isPaid: t.is_paid,
           createdAt: new Date(t.created_at)
         }));
         setAllTransactions(mappedTxs);
-        setTransactions(mappedTxs);
       }
 
-      if (invData.data) setInvoices(invData.data);
-      if (budData.data) setAllBudgets(budData.data);
-      if (goalData.data) setGoals(goalData.data);
-      if (debtData.data) setDebts(debtData.data);
+      if (invData.data) setInvoices(invData.data as Invoice[]);
+      if (budData.data) setAllBudgets(budData.data as Budget[]);
+      if (goalData.data) setGoals(goalData.data as Goal[]);
+      if (debtData.data) setDebts(debtData.data as Debt[]);
 
     } catch (error) {
-      console.error('Erro ao carregar dados financeiros:', error);
+      console.error('[FinanceContext] Erro ao carregar dados:', error);
     } finally {
       setLoading(false);
     }
@@ -163,7 +146,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       if (t.type === 'INCOME' || t.type === 'REFUND') return sum + t.amount;
       if (t.type === 'EXPENSE' || t.type === 'TRANSFER') return sum - t.amount;
       return sum;
-    }, account.balance || 0);
+    }, account.opening_balance || 0);
   };
 
   const getCardBalance = (cardId: string) => {
@@ -183,7 +166,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const card = allCards.find(c => c.id === cardId);
     if (!card) return format(purchaseDate, 'yyyy-MM');
     const day = getDate(purchaseDate);
-    return format(day >= card.closingDay ? addMonths(purchaseDate, 1) : purchaseDate, 'yyyy-MM');
+    return format(day >= card.closing_day ? addMonths(purchaseDate, 1) : purchaseDate, 'yyyy-MM');
   };
 
   const createTransaction = async (data: any) => {
@@ -214,9 +197,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const updateTransaction = async (id: string, data: any) => {
     const updateData: any = {};
     if (data.amount !== undefined) updateData.amount = data.amount;
-    if (data.description) updateData.description = data.description;
+    if (data.description !== undefined) updateData.description = data.description;
     if (data.isPaid !== undefined) updateData.is_paid = data.isPaid;
-    if (data.categoryId) updateData.category_id = data.categoryId;
+    if (data.categoryId !== undefined) updateData.category_id = data.categoryId;
+    if (data.status !== undefined) updateData.status = data.status;
 
     const { error } = await supabase.from('transactions').update(updateData).eq('id', id);
     if (error) throw error;
@@ -310,7 +294,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <FinanceContext.Provider value={{ 
-      accounts, allAccounts, cards, allCards, transactions, allTransactions, 
+      accounts: allAccounts, allAccounts, cards: allCards, allCards, transactions: allTransactions, allTransactions, 
       categories, allBudgets, invoices, goals, debts, loading, refresh: fetchData,
       getAccountBalance, getCardBalance, getCategoryById,
       createTransaction, updateTransaction, deleteTransaction,

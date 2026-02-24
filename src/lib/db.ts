@@ -6,56 +6,42 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  avatarColor: string;
-  passwordHash: string;
-  salt: string;
-  isAdmin: boolean;
-  isActive: boolean;
-  familyId: string | null;
-  createdAt: Date;
-  updatedAt: Date;
+  avatar_color: string;
+  is_admin: boolean;
+  is_active: boolean;
+  family_id: string | null;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface Card {
   id: string;
-  userId: string;
-  responsibleUserId: string;
-  defaultAccountId: string;
+  user_id: string;
+  household_id: string;
+  responsible_user_id: string;
+  default_account_id: string;
   name: string;
-  lastDigits: string;
+  last_digits: string;
   brand: string;
   limit: number;
-  closingDay: number;
-  dueDay: number;
+  closing_day: number;
+  due_day: number;
   color: string;
-  isShared: boolean;
-  sharedWithUserIds: string[];
-  isArchived: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface CardCycleOverride {
-  id: string;
-  cardId: string;
-  month: string; // yyyy-MM
-  closingDay: number;
-  dueDay: number;
+  is_archived: boolean;
+  created_at: Date;
 }
 
 export interface Account {
   id: string;
-  userId: string;
+  household_id: string;
+  user_id?: string; // Opcional pois pertence ao household
   name: string;
-  type: 'checking' | 'savings' | 'investment' | 'wallet';
-  balance: number;
-  currency: string;
-  color: string;
-  icon: string;
-  isArchived: boolean;
-  isShared: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  account_type: 'corrente' | 'poupanca' | 'investimento' | 'carteira';
+  opening_balance: number;
+  opening_date: string;
+  active: boolean;
+  is_shared: boolean;
+  created_at: Date;
 }
 
 export type TransactionType = 'INCOME' | 'EXPENSE' | 'TRANSFER' | 'CREDIT' | 'REFUND';
@@ -66,164 +52,81 @@ export interface Transaction {
   type: TransactionType;
   amount: number;
   description: string;
-  purchaseDate: Date;
-  effectiveDate: Date;
-  effectiveMonth: string;
+  purchaseDate: string; // ISO Date string
+  effectiveDate: string; // ISO Date string
+  effectiveMonth: string; // yyyy-MM
   mesFatura: string | null;
   status: TransactionStatus;
   isPaid: boolean;
   userId: string;
   accountId: string | null;
   cardId: string | null;
-  invoiceId: string | null;
   categoryId: string;
-  merchantId: string | null;
-  tagIds: string[];
   installmentGroupId: string | null;
   installmentNumber: number | null;
   totalInstallments: number | null;
   notes: string;
-  importBatchId: string | null;
   isRecurring: boolean;
-  recurrenceType: 'monthly' | 'annual' | null;
-  recurrenceCount: number | null;
   createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface Budget {
   id: string;
-  userId: string;
+  user_id: string;
   month: string;
   income: number;
-  expenses: number;
-  savingsGoal: number;
-  cycleEndDay: number;
-  categoryLimits: Record<string, number>;
-  createdAt: Date;
-  updatedAt: Date;
+  savings_goal: number;
+  category_limits: Record<string, number>;
+  created_at: Date;
 }
 
 export interface Goal {
   id: string;
-  userId: string;
+  user_id: string;
   name: string;
-  targetAmount: number;
-  currentAmount: number;
-  deadline: Date | null;
+  target_amount: number;
+  current_amount: number;
+  deadline: string | null;
   icon: string;
   color: string;
-  isCompleted: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  is_completed: boolean;
+  created_at: Date;
 }
 
 export interface Invoice {
   id: string;
-  cardId: string;
-  userId: string | null;
+  card_id: string;
   month: string;
-  closingDate: Date;
-  dueDate: Date;
-  totalAmount: number;
-  paidAmount: number;
+  closing_date: string;
+  due_date: string;
+  total_amount: number;
+  paid_amount: number;
   status: 'open' | 'closed' | 'paid' | 'partial';
-  paidFromAccountId: string | null;
-  paidAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface AuditLog {
-  id: string;
-  timestamp: Date;
-  actorUserId: string;
-  action: 'create' | 'update' | 'delete' | 'import' | 'pay_invoice' | 'login' | 'logout' | 'export' | 'backup';
-  entityType: string;
-  entityId: string;
-  before: any;
-  after: any;
-  meta: Record<string, any>;
-}
-
-export interface Category {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-  type: 'income' | 'expense' | 'both';
-  parentId: string | null;
-  isSystem: boolean;
-  createdAt: Date;
-}
-
-export interface Tag {
-  id: string;
-  name: string;
-  color: string;
-  createdAt: Date;
+  paid_from_account_id: string | null;
+  paid_at: string | null;
 }
 
 export interface CycleSnapshot {
   id: string;
   month: string;
   day: number;
-  userId: string | null;
-  totalBalance: number;
-  savingsGoal: number;
-  accountBalances: Record<string, number>;
-  createdAt: Date;
-}
-
-export interface Notification {
-  id: string;
   userId: string;
-  type: 'card_due' | 'debt_due' | 'recurring' | 'cycle_reminder' | 'general';
-  title: string;
-  message: string;
-  entityType: string | null;
-  entityId: string | null;
-  dueDate: Date | null;
-  isRead: boolean;
+  totalBalance: number;
   createdAt: Date;
 }
 
 export interface Debt {
   id: string;
-  userId: string;
+  user_id: string;
   name: string;
-  totalAmount: number;
-  paidAmount: number;
-  interestRate: number;
-  startDate: Date;
-  dueDate: Date;
-  monthlyPayment: number;
-  isActive: boolean;
+  total_amount: number;
+  paid_amount: number;
+  interest_rate: number;
+  start_date: string;
+  due_date: string;
+  monthly_payment: number;
+  is_active: boolean;
   notes: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface AppSettings {
-  id: string;
-  currentUserId: string | null;
-  isLocked: boolean;
-  lastBackupAt: Date | null;
-  autoBackupEnabled: boolean;
-  theme: 'light' | 'dark' | 'system';
-  currency: string;
-  locale: string;
-}
-
-export interface ImportBatch {
-  id: string;
-  userId: string;
-  source: 'csv' | 'ofx' | 'pdf';
-  fileName: string;
-  totalRecords: number;
-  importedRecords: number;
-  duplicatesSkipped: number;
-  importedAt: Date;
 }
 
 class FinancasDB {
@@ -239,58 +142,12 @@ class FinancasDB {
       request.onsuccess = () => { this.db = request.result; resolve(this.db); };
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
-        this.runMigrations(db);
+        if (!db.objectStoreNames.contains('cycleSnapshots')) {
+          db.createObjectStore('cycleSnapshots', { keyPath: 'id' });
+        }
       };
     });
     return this.dbPromise;
-  }
-
-  private runMigrations(db: IDBDatabase) {
-    const stores = [
-      { name: 'users', options: { keyPath: 'id' }, index: { name: 'email', key: 'email', options: { unique: true } } },
-      { name: 'accounts', options: { keyPath: 'id' }, index: { name: 'userId', key: 'userId' } },
-      { name: 'cards', options: { keyPath: 'id' }, index: { name: 'userId', key: 'userId' } },
-      { name: 'categories', options: { keyPath: 'id' } },
-      { name: 'tags', options: { keyPath: 'id' } },
-      { name: 'merchants', options: { keyPath: 'id' } },
-      { name: 'transactions', options: { keyPath: 'id' }, indexes: [
-        { name: 'userId', key: 'userId' },
-        { name: 'effectiveMonth', key: 'effectiveMonth' },
-        { name: 'installmentGroupId', key: 'installmentGroupId' }
-      ]},
-      { name: 'invoices', options: { keyPath: 'id' } },
-      { name: 'budgets', options: { keyPath: 'id' } },
-      { name: 'goals', options: { keyPath: 'id' } },
-      { name: 'auditLogs', options: { keyPath: 'id' } },
-      { name: 'cycleSnapshots', options: { keyPath: 'id' } },
-      { name: 'notifications', options: { keyPath: 'id' } },
-      { name: 'debts', options: { keyPath: 'id' } },
-      { name: 'settings', options: { keyPath: 'id' } },
-      { name: 'importBatches', options: { keyPath: 'id' } },
-      { name: 'cardCycleOverrides', options: { keyPath: 'id' } }
-    ];
-
-    stores.forEach(store => {
-      if (!db.objectStoreNames.contains(store.name)) {
-        const os = db.createObjectStore(store.name, store.options);
-        if (store.index) {
-          os.createIndex(store.index.name, store.index.key, store.index.options);
-        }
-        if (store.indexes) {
-          store.indexes.forEach(idx => os.createIndex(idx.name, idx.key));
-        }
-      }
-    });
-  }
-
-  async add<T extends { id: string }>(storeName: string, data: T): Promise<T> {
-    const db = await this.open();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(storeName, 'readwrite');
-      tx.objectStore(storeName).add(data);
-      tx.oncomplete = () => resolve(data);
-      tx.onerror = () => reject(tx.error);
-    });
   }
 
   async put<T extends { id: string }>(storeName: string, data: T): Promise<T> {
@@ -300,15 +157,6 @@ class FinancasDB {
       tx.objectStore(storeName).put(data);
       tx.oncomplete = () => resolve(data);
       tx.onerror = () => reject(tx.error);
-    });
-  }
-
-  async get<T>(storeName: string, id: string): Promise<T | undefined> {
-    const db = await this.open();
-    return new Promise((resolve, reject) => {
-      const request = db.transaction(storeName, 'readonly').objectStore(storeName).get(id);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
     });
   }
 
@@ -330,40 +178,11 @@ class FinancasDB {
       tx.onerror = () => reject(tx.error);
     });
   }
-
-  async clear(storeName: string): Promise<void> {
-    const db = await this.open();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(storeName, 'readwrite');
-      tx.objectStore(storeName).clear();
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-  }
-
-  async exportAll(): Promise<Record<string, any[]>> {
-    const stores = ['users', 'accounts', 'cards', 'categories', 'tags', 'transactions', 'invoices', 'budgets', 'goals', 'debts', 'settings', 'cardCycleOverrides'];
-    const result: Record<string, any[]> = {};
-    for (const store of stores) {
-      result[store] = await this.getAll(store);
-    }
-    return result;
-  }
-
-  async importAll(data: Record<string, any[]>, clearFirst = true): Promise<void> {
-    for (const [store, items] of Object.entries(data)) {
-      if (clearFirst) await this.clear(store);
-      for (const item of items) {
-        await this.put(store, item);
-      }
-    }
-  }
 }
 
 export const db = new FinancasDB();
 
 export function generateId(): string { 
-  // Usando UUID nativo para compatibilidade total com Supabase
   return crypto.randomUUID(); 
 }
 

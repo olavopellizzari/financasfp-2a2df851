@@ -289,8 +289,8 @@ export function TransactionsPage() {
       cardId: (tx.type === 'CREDIT' || tx.type === 'REFUND') ? tx.cardId || '' : '',
       installments: (tx.totalInstallments || 1).toString(),
       isPaid: tx.isPaid,
-      recurrence: tx.isRecurring ? (tx.recurrenceType === 'monthly' && tx.recurrenceCount && tx.recurrenceCount < 60 ? 'custom' : tx.recurrenceType as any) : 'none',
-      recurrenceCount: (tx.recurrenceCount || 12).toString(),
+      recurrence: tx.isRecurring ? 'monthly' : 'none',
+      recurrenceCount: (tx.totalInstallments || 12).toString(),
       destinationUserId: tx.userId,
       destinationAccountId: '',
       notes: tx.notes
@@ -340,33 +340,17 @@ export function TransactionsPage() {
     e.preventDefault();
     const totalAmount = parseFloat(formData.amount) || 0;
 
-    const updates: Partial<Transaction> = {
-      userId: formData.userId,
-      type: formData.type,
-      amount: totalAmount,
-      description: formData.description,
-      purchaseDate: formData.purchaseDate,
-      categoryId: formData.categoryId,
-      accountId: (formData.type === 'CREDIT' || formData.type === 'REFUND') ? null : (formData.accountId || null),
-      cardId: (formData.type === 'CREDIT' || formData.type === 'REFUND') ? formData.cardId || null : null,
-      isPaid: formData.isPaid,
-      notes: formData.notes,
-      updatedAt: new Date()
-    };
-
-    if (!editingTransaction) {
-      if (formData.type === 'INCOME') {
-        updates.effectiveMonth = format(addMonths(formData.purchaseDate, 1), 'yyyy-MM');
-      } else if (formData.type === 'CREDIT' || formData.type === 'REFUND') {
-        updates.mesFatura = formData.mesFatura;
-        const mesFaturaDate = parse(formData.mesFatura, 'yyyy-MM', new Date());
-        updates.effectiveMonth = format(addMonths(mesFaturaDate, 1), 'yyyy-MM');
-      } else {
-        updates.effectiveMonth = format(formData.purchaseDate, 'yyyy-MM');
-      }
-    }
-
     if (editingTransaction) {
+      const updates: any = {
+        userId: formData.userId,
+        type: formData.type,
+        amount: totalAmount,
+        description: formData.description,
+        categoryId: formData.categoryId,
+        isPaid: formData.isPaid,
+        notes: formData.notes
+      };
+
       if (editingTransaction.installmentGroupId) {
         setPendingUpdates(updates);
         setSelectedTxForBulk(editingTransaction);
@@ -381,15 +365,17 @@ export function TransactionsPage() {
     }
 
     if (formData.type === 'TRANSFER') {
+      // Saída da conta origem
       await createTransaction({
         type: 'TRANSFER', amount: totalAmount, description: formData.description || `Transferência para ${allAccounts.find(a => a.id === formData.destinationAccountId)?.name}`,
         purchaseDate: formData.purchaseDate, effectiveDate: formData.purchaseDate, effectiveMonth: format(formData.purchaseDate, 'yyyy-MM'),
-        mesFatura: null, status: 'confirmed', isPaid: true, userId: formData.userId, accountId: formData.accountId, cardId: null, invoiceId: null, categoryId: '', merchantId: null, tagIds: [], installmentGroupId: null, installmentNumber: null, totalInstallments: null, notes: formData.notes, importBatchId: null, isRecurring: false, recurrenceType: null, recurrenceCount: null
+        mesFatura: null, status: 'confirmed', isPaid: true, userId: formData.userId, accountId: formData.accountId, cardId: null, categoryId: '', notes: formData.notes, isRecurring: false
       });
+      // Entrada na conta destino (mesmo mês para não sumir do saldo consolidado)
       await createTransaction({
         type: 'INCOME', amount: totalAmount, description: formData.description || `Transferência de ${allAccounts.find(a => a.id === formData.accountId)?.name}`,
-        purchaseDate: formData.purchaseDate, effectiveDate: formData.purchaseDate, effectiveMonth: format(addMonths(formData.purchaseDate, 1), 'yyyy-MM'),
-        mesFatura: null, status: 'confirmed', isPaid: true, userId: formData.destinationUserId, accountId: formData.destinationAccountId, cardId: null, invoiceId: null, categoryId: '', merchantId: null, tagIds: [], installmentGroupId: null, installmentNumber: null, totalInstallments: null, notes: formData.notes, importBatchId: null, isRecurring: false, recurrenceType: null, recurrenceCount: null
+        purchaseDate: formData.purchaseDate, effectiveDate: formData.purchaseDate, effectiveMonth: format(formData.purchaseDate, 'yyyy-MM'),
+        mesFatura: null, status: 'confirmed', isPaid: true, userId: formData.destinationUserId, accountId: formData.destinationAccountId, cardId: null, categoryId: '', notes: formData.notes, isRecurring: false
       });
       toast({ title: 'Transferência realizada!' });
       setIsDialogOpen(false);
@@ -408,14 +394,13 @@ export function TransactionsPage() {
       let effectiveMonthStr = format(dateForIteration, 'yyyy-MM');
       
       if (formData.type === 'INCOME') {
+        // Receitas contam para o mês seguinte (regra de competência do app)
         effectiveMonthStr = format(addMonths(dateForIteration, 1), 'yyyy-MM');
       } else if ((formData.type === 'CREDIT' || formData.type === 'REFUND') && formData.cardId) {
         const baseCalculatedMonth = calculateMesFatura(formData.purchaseDate, formData.cardId);
         const baseMonthDate = parse(baseCalculatedMonth, 'yyyy-MM', new Date());
         currentMesFatura = format(addMonths(baseMonthDate, i), 'yyyy-MM');
         effectiveMonthStr = format(addMonths(baseMonthDate, i + 1), 'yyyy-MM');
-      } else {
-        effectiveMonthStr = format(dateForIteration, 'yyyy-MM');
       }
       
       await createTransaction({
@@ -431,18 +416,12 @@ export function TransactionsPage() {
         userId: formData.userId, 
         accountId: (formData.type === 'CREDIT' || formData.type === 'REFUND') ? null : (formData.accountId || null), 
         cardId: (formData.type === 'CREDIT' || formData.type === 'REFUND') ? formData.cardId || null : null, 
-        invoiceId: null, 
         categoryId: formData.categoryId, 
-        merchantId: null, 
-        tagIds: [], 
         installmentGroupId: groupId, 
         installmentNumber: i + 1, 
         totalInstallments: iterations, 
         notes: formData.notes, 
-        importBatchId: null, 
-        isRecurring: isRecurring, 
-        recurrenceType: (formData.recurrence === 'custom' ? 'monthly' : formData.recurrence as any), 
-        recurrenceCount: iterations
+        isRecurring: isRecurring
       });
     }
     setIsDialogOpen(false);
@@ -453,35 +432,27 @@ export function TransactionsPage() {
     if (!selectedTxForBulk || !bulkActionType) return;
     const groupId = selectedTxForBulk.installmentGroupId;
     const relatedTxs = allTransactions.filter(t => t.installmentGroupId === groupId);
-    const currentEffDate = startOfDay(new Date(selectedTxForBulk.effectiveDate));
+    const currentEffDate = startOfDay(parseISO(selectedTxForBulk.effectiveDate));
 
     if (bulkActionType === 'delete') {
       if (scope === 'single') await deleteTransaction(selectedTxForBulk.id);
       else {
         const toDelete = relatedTxs.filter(t => {
-          const txDate = startOfDay(new Date(t.effectiveDate));
+          const txDate = startOfDay(parseISO(t.effectiveDate));
           return isAfter(txDate, currentEffDate) || isSameDay(txDate, currentEffDate);
         });
         for (const tx of toDelete) await deleteTransaction(tx.id);
       }
       toast({ title: scope === 'single' ? 'Lançamento excluído!' : 'Série excluída!' });
     } else if (bulkActionType === 'edit' && pendingUpdates) {
-      const safeUpdates = { ...pendingUpdates };
-      delete safeUpdates.effectiveMonth;
-      delete safeUpdates.mesFatura;
-      delete safeUpdates.effectiveDate;
-      
       if (scope === 'single') {
-        await updateTransaction(selectedTxForBulk.id, safeUpdates);
+        await updateTransaction(selectedTxForBulk.id, pendingUpdates);
       } else {
         const toUpdate = relatedTxs.filter(t => {
-          const txDate = startOfDay(new Date(t.effectiveDate));
+          const txDate = startOfDay(parseISO(t.effectiveDate));
           return isAfter(txDate, currentEffDate) || isSameDay(txDate, currentEffDate);
         });
-
-        for (const tx of toUpdate) {
-          await updateTransaction(tx.id, safeUpdates);
-        }
+        for (const tx of toUpdate) await updateTransaction(tx.id, pendingUpdates);
       }
       toast({ title: 'Lançamentos atualizados!' });
       setIsDialogOpen(false);
@@ -600,9 +571,9 @@ export function TransactionsPage() {
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Usuário {activeTab === 'TRANSFER' && 'Origem'}</Label><Select value={formData.userId} onValueChange={v => setFormData({ ...formData, userId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{users.filter(u => u.is_active !== false).map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent></Select></div>
-                <div className="space-y-2"><Label>{(formData.type === 'CREDIT' || formData.type === 'REFUND') ? 'Cartão' : 'Conta Origem'}</Label>{(formData.type === 'CREDIT' || formData.type === 'REFUND') ? <Select value={formData.cardId} onValueChange={v => setFormData({ ...formData, cardId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{allCards.filter(c => !c.isArchived).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select> : <Select value={formData.accountId} onValueChange={v => setFormData({ ...formData, accountId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{allAccounts.filter(a => !a.isArchived && (a.userId === formData.userId || a.isShared)).map(a => (<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}</SelectContent></Select>}</div>
+                <div className="space-y-2"><Label>{(formData.type === 'CREDIT' || formData.type === 'REFUND') ? 'Cartão' : 'Conta Origem'}</Label>{(formData.type === 'CREDIT' || formData.type === 'REFUND') ? <Select value={formData.cardId} onValueChange={v => setFormData({ ...formData, cardId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{allCards.filter(c => !c.is_archived).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select> : <Select value={formData.accountId} onValueChange={v => setFormData({ ...formData, accountId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{allAccounts.filter(a => a.active && (a.user_id === formData.userId || a.is_shared)).map(a => (<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}</SelectContent></Select>}</div>
               </div>
-              {activeTab === 'TRANSFER' && (<div className="p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-4"><div className="flex items-center gap-2 text-primary font-bold text-sm"><ArrowRight className="w-4 h-4" /> Destino da Transferência</div><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label>Usuário Destino</Label><Select value={formData.destinationUserId} onValueChange={v => setFormData({ ...formData, destinationUserId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{users.filter(u => u.is_active !== false).map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><Label>Conta Destino</Label><Select value={formData.destinationAccountId} onValueChange={v => setFormData({ ...formData, destinationAccountId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{allAccounts.filter(a => !a.isArchived && (a.userId === formData.destinationUserId || a.isShared)).map(a => (<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}</SelectContent></Select></div></div></div>)}
+              {activeTab === 'TRANSFER' && (<div className="p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-4"><div className="flex items-center gap-2 text-primary font-bold text-sm"><ArrowRight className="w-4 h-4" /> Destino da Transferência</div><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label>Usuário Destino</Label><Select value={formData.destinationUserId} onValueChange={v => setFormData({ ...formData, destinationUserId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{users.filter(u => u.is_active !== false).map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><Label>Conta Destino</Label><Select value={formData.destinationAccountId} onValueChange={v => setFormData({ ...formData, destinationAccountId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{allAccounts.filter(a => a.active && (a.user_id === formData.destinationUserId || a.is_shared)).map(a => (<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}</SelectContent></Select></div></div></div>)}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Data da Compra</Label><Input type="date" value={isValid(formData.purchaseDate) ? format(formData.purchaseDate, 'yyyy-MM-dd') : ''} onChange={e => setFormData({ ...formData, purchaseDate: parseInputDate(e.target.value) })} /></div>
                 <div className="space-y-2"><Label>Valor</Label><Input type="number" step="0.01" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} placeholder="0,00" required /></div>
