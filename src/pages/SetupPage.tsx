@@ -22,7 +22,7 @@ export function SetupPage() {
     setIsLoading(true);
 
     try {
-      // 1. Criar a Família
+      // 1. Criar a Família (Household)
       const { data: household, error: hhError } = await supabase
         .from('households')
         .insert({ name: familyName || 'Minha Família' })
@@ -31,7 +31,7 @@ export function SetupPage() {
 
       if (hhError) throw hhError;
 
-      // 2. Adicionar o usuário como membro ADMIN na tabela de membros
+      // 2. Adicionar o usuário como membro ADMIN imediatamente
       const { error: memberError } = await supabase
         .from('household_members')
         .insert({
@@ -42,10 +42,14 @@ export function SetupPage() {
 
       if (memberError) throw memberError;
 
-      // 3. Vincular o usuário à família no perfil e torná-lo admin
+      // 3. Vincular o perfil à família
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ family_id: household.id, is_admin: true })
+        .update({ 
+          family_id: household.id, 
+          is_admin: true,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', currentUser.id);
 
       if (profileError) throw profileError;
@@ -60,17 +64,20 @@ export function SetupPage() {
           type: 'checking',
           balance: parseFloat(initialBalance) || 0,
           color: '#22c55e',
-          icon: 'Wallet'
+          icon: 'Wallet',
+          is_shared: false,
+          is_archived: false
         });
 
       if (accError) throw accError;
 
-      // 5. Criar categorias padrão
+      // 5. Criar categorias essenciais
       const defaultCategories = [
         { name: 'Salário', icon: '💰', color: '#22c55e', type: 'income' },
         { name: 'Alimentação', icon: '🛒', color: '#f97316', type: 'expense' },
         { name: 'Moradia', icon: '🏠', color: '#ef4444', type: 'expense' },
-        { name: 'Lazer', icon: '🎡', color: '#8b5cf6', type: 'expense' }
+        { name: 'Lazer', icon: '🎡', color: '#8b5cf6', type: 'expense' },
+        { name: 'Transporte', icon: '🚗', color: '#3b82f6', type: 'expense' }
       ];
 
       await supabase.from('categories').insert(
@@ -83,11 +90,20 @@ export function SetupPage() {
       );
 
       toast({ title: "Configuração concluída!", description: "Bem-vindo ao seu novo controle financeiro." });
+      
+      // Força a atualização do contexto de autenticação antes de navegar
       await refreshProfile();
-      navigate('/');
+      
+      // Pequeno delay para garantir que o Supabase propagou as mudanças
+      setTimeout(() => navigate('/'), 500);
+      
     } catch (error: any) {
       console.error('Erro no setup:', error);
-      toast({ title: "Erro no setup", description: error.message, variant: "destructive" });
+      toast({ 
+        title: "Erro no setup", 
+        description: error.message || "Ocorreu um erro inesperado.", 
+        variant: "destructive" 
+      });
     } finally {
       setIsLoading(false);
     }
