@@ -31,7 +31,18 @@ export function SetupPage() {
 
       if (hhError) throw hhError;
 
-      // 2. Vincular o usuário à família e torná-lo admin
+      // 2. Adicionar o usuário como membro ADMIN na tabela de membros
+      const { error: memberError } = await supabase
+        .from('household_members')
+        .insert({
+          household_id: household.id,
+          user_id: currentUser.id,
+          role: 'admin'
+        });
+
+      if (memberError) throw memberError;
+
+      // 3. Vincular o usuário à família no perfil e torná-lo admin
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ family_id: household.id, is_admin: true })
@@ -39,7 +50,7 @@ export function SetupPage() {
 
       if (profileError) throw profileError;
 
-      // 3. Criar a primeira conta bancária
+      // 4. Criar a primeira conta bancária
       const { error: accError } = await supabase
         .from('accounts')
         .insert({
@@ -54,7 +65,7 @@ export function SetupPage() {
 
       if (accError) throw accError;
 
-      // 4. Criar categorias padrão
+      // 5. Criar categorias padrão
       const defaultCategories = [
         { name: 'Salário', icon: '💰', color: '#22c55e', type: 'income' },
         { name: 'Alimentação', icon: '🛒', color: '#f97316', type: 'expense' },
@@ -63,13 +74,19 @@ export function SetupPage() {
       ];
 
       await supabase.from('categories').insert(
-        defaultCategories.map(cat => ({ ...cat, household_id: household.id, is_system: true }))
+        defaultCategories.map(cat => ({ 
+          ...cat, 
+          household_id: household.id, 
+          user_id: currentUser.id,
+          is_system: true 
+        }))
       );
 
       toast({ title: "Configuração concluída!", description: "Bem-vindo ao seu novo controle financeiro." });
       await refreshProfile();
       navigate('/');
     } catch (error: any) {
+      console.error('Erro no setup:', error);
       toast({ title: "Erro no setup", description: error.message, variant: "destructive" });
     } finally {
       setIsLoading(false);
