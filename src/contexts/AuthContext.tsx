@@ -38,7 +38,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data, error } = await supabase.rpc('get_family_members');
       if (!error && data) {
-        // Mapeia os nomes das colunas retornadas pela RPC corrigida
         setUsers(data.map((u: any) => ({
           id: u.f_id || u.id,
           name: u.f_name || u.name,
@@ -47,15 +46,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           is_admin: u.f_is_admin || u.is_admin,
           is_active: u.f_is_active ?? u.is_active ?? true
         })));
-      } else if (error) {
-        console.error('[AuthContext] Erro ao buscar usuários:', error);
       }
     } catch (err) {
-      console.error('[AuthContext] Erro inesperado ao buscar usuários:', err);
+      console.error('[AuthContext] Erro ao buscar usuários:', err);
     }
   };
 
-  const fetchProfile = async (userId: string, currentSession: Session | null) => {
+  const fetchProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -65,22 +62,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (data) {
         setCurrentUser(data);
-      } else if (error) {
-        console.error('[AuthContext] Erro ao buscar perfil:', error);
-        
-        if (currentSession?.user) {
-          setCurrentUser({
-            id: currentSession.user.id,
-            name: currentSession.user.user_metadata?.name || currentSession.user.email?.split('@')[0] || 'Usuário',
-            email: currentSession.user.email || '',
-            avatar_color: currentSession.user.user_metadata?.avatar_color || '#22c55e',
-            is_admin: false,
-            is_active: true
-          });
-        }
       }
     } catch (err) {
-      console.error('[AuthContext] Erro inesperado:', err);
+      console.error('[AuthContext] Erro ao buscar perfil:', err);
     } finally {
       setIsLoading(false);
     }
@@ -88,7 +72,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshProfile = async () => {
     if (user?.id) {
-      await fetchProfile(user.id, session);
+      await fetchProfile(user.id);
+      await fetchUsers();
     }
   };
 
@@ -97,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id, session);
+        fetchProfile(session.user.id);
         fetchUsers();
       } else {
         setIsLoading(false);
@@ -108,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id, session);
+        fetchProfile(session.user.id);
         fetchUsers();
       } else {
         setCurrentUser(null);
