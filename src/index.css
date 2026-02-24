@@ -11,133 +11,134 @@
 @layer base {
   :root {
     /* Background & Surfaces */
-    --background: 0 0% 98%;
-    --foreground: 222 47% 11%;
+    --background: 220 20% 7%;
+    --foreground: 210 20% 92%;
     
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card: 220 20% 10%;
+    --card-foreground: 210 20% 92%;
     
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover: 220 20% 10%;
+    --popover-foreground: 210 20% 92%;
     
-    /* Primary - Esmeralda (Verde financeiro) */
-    --primary: 158 64% 42%;
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 158 64% 52%;
+    /* Primary - Verde neon suave */
+    --primary: 160 60% 45%;
+    --primary-foreground: 220 20% 7%;
+    --primary-glow: 160 70% 55%;
     
-    /* Secondary - Slate suave */
-    --secondary: 210 20% 96%;
-    --secondary-foreground: 222 47% 11%;
+    /* Secondary */
+    --secondary: 220 18% 14%;
+    --secondary-foreground: 210 20% 85%;
     
-    /* Muted - Cinza neutro */
-    --muted: 210 20% 96%;
-    --muted-foreground: 215 16% 47%;
+    /* Muted */
+    --muted: 220 18% 13%;
+    --muted-foreground: 215 15% 50%;
     
-    /* Accent - Azul info */
-    --accent: 217 91% 60%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent - Azul neon suave */
+    --accent: 210 80% 55%;
+    --accent-foreground: 220 20% 7%;
     
     /* Status Colors */
-    --success: 158 64% 42%;
-    --success-foreground: 0 0% 100%;
+    --success: 160 60% 45%;
+    --success-foreground: 220 20% 7%;
     
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
+    --warning: 40 85% 55%;
+    --warning-foreground: 220 20% 7%;
     
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 210 20% 95%;
     
-    --info: 217 91% 60%;
-    --info-foreground: 0 0% 100%;
+    --info: 210 80% 55%;
+    --info-foreground: 220 20% 7%;
     
     /* Finance-specific */
-    --income: 158 64% 42%;
-    --income-foreground: 0 0% 100%;
+    --income: 160 60% 45%;
+    --income-foreground: 220 20% 7%;
     
-    --expense: 0 84% 60%;
-    --expense-foreground: 0 0% 100%;
+    --expense: 0 70% 55%;
+    --expense-foreground: 210 20% 95%;
     
-    --transfer: 217 91% 60%;
-    --transfer-foreground: 0 0% 100%;
+    --transfer: 210 80% 55%;
+    --transfer-foreground: 220 20% 7%;
     
-    --credit: 270 60% 55%;
-    --credit-foreground: 0 0% 100%;
+    --credit: 270 55% 55%;
+    --credit-foreground: 210 20% 95%;
     
     /* UI Elements */
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 158 64% 42%;
+    --border: 220 18% 16%;
+    --input: 220 18% 14%;
+    --ring: 160 60% 45%;
     --radius: 0.75rem;
     
     /* Sidebar */
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 20% 90%;
-    --sidebar-primary: 158 64% 42%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 47% 18%;
-    --sidebar-accent-foreground: 210 20% 90%;
-    --sidebar-border: 222 47% 18%;
-    --sidebar-ring: 158 64% 42%;
+    --sidebar-background: 220 22% 5%;
+    --sidebar-foreground: 210 20% 80%;
+    --sidebar-primary: 160 60% 45%;
+    --sidebar-primary-foreground: 220 20% 7%;
+    --sidebar-accent: 220 18% 11%;
+    --sidebar-accent-foreground: 210 20% 85%;
+    --sidebar-border: 220 18% 12%;
+    --sidebar-ring: 160 60% 45%;
     
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(158 64% 42%), hsl(158 64% 52%));
-    --gradient-accent: linear-gradient(135deg, hsl(217 91% 60%), hsl(217 91% 70%));
-    --gradient-dark: linear-gradient(135deg, hsl(222 47% 11%), hsl(222 47% 18%));
-    --gradient-income: linear-gradient(135deg, hsl(158 64% 42%), hsl(158 80% 55%));
-    --gradient-expense: linear-gradient(135deg, hsl(0 84% 60%), hsl(0 84% 70%));
-    --gradient-credit: linear-gradient(135deg, hsl(270 60% 55%), hsl(270 60% 65%));
+    --gradient-primary: linear-gradient(135deg, hsl(160 60% 40%), hsl(160 70% 50%));
+    --gradient-accent: linear-gradient(135deg, hsl(210 80% 50%), hsl(210 80% 60%));
+    --gradient-dark: linear-gradient(135deg, hsl(220 22% 8%), hsl(220 20% 12%));
+    --gradient-income: linear-gradient(135deg, hsl(160 60% 40%), hsl(160 70% 52%));
+    --gradient-expense: linear-gradient(135deg, hsl(0 70% 50%), hsl(0 70% 60%));
+    --gradient-credit: linear-gradient(135deg, hsl(270 55% 50%), hsl(270 55% 60%));
     
     /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-    --shadow-primary: 0 10px 30px -10px hsl(158 64% 42% / 0.4);
-    --shadow-card: 0 2px 8px 0 rgb(0 0 0 / 0.06);
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.3), 0 8px 10px -6px rgb(0 0 0 / 0.2);
+    --shadow-primary: 0 8px 25px -8px hsl(160 60% 45% / 0.25);
+    --shadow-card: 0 2px 8px 0 rgb(0 0 0 / 0.15);
   }
 
   .dark {
-    --background: 222 47% 8%;
-    --foreground: 210 20% 98%;
+    /* Dark mode is same as default since we're already dark */
+    --background: 220 20% 7%;
+    --foreground: 210 20% 92%;
     
-    --card: 222 47% 11%;
-    --card-foreground: 210 20% 98%;
+    --card: 220 20% 10%;
+    --card-foreground: 210 20% 92%;
     
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 20% 98%;
+    --popover: 220 20% 10%;
+    --popover-foreground: 210 20% 92%;
     
-    --primary: 158 64% 48%;
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 158 64% 58%;
+    --primary: 160 60% 48%;
+    --primary-foreground: 220 20% 7%;
+    --primary-glow: 160 70% 58%;
     
-    --secondary: 222 47% 18%;
-    --secondary-foreground: 210 20% 98%;
+    --secondary: 220 18% 14%;
+    --secondary-foreground: 210 20% 85%;
     
-    --muted: 222 47% 15%;
-    --muted-foreground: 215 16% 65%;
+    --muted: 220 18% 13%;
+    --muted-foreground: 215 15% 55%;
     
-    --accent: 217 91% 65%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 210 80% 58%;
+    --accent-foreground: 220 20% 7%;
     
-    --success: 158 64% 48%;
-    --warning: 38 92% 55%;
-    --destructive: 0 84% 55%;
-    --info: 217 91% 65%;
+    --success: 160 60% 48%;
+    --warning: 40 85% 58%;
+    --destructive: 0 70% 55%;
+    --info: 210 80% 58%;
     
-    --income: 158 64% 48%;
-    --expense: 0 84% 55%;
-    --transfer: 217 91% 65%;
-    --credit: 270 60% 60%;
+    --income: 160 60% 48%;
+    --expense: 0 70% 55%;
+    --transfer: 210 80% 58%;
+    --credit: 270 55% 60%;
     
-    --border: 222 47% 18%;
-    --input: 222 47% 18%;
-    --ring: 158 64% 48%;
+    --border: 220 18% 16%;
+    --input: 220 18% 14%;
+    --ring: 160 60% 48%;
     
-    --sidebar-background: 222 47% 6%;
-    --sidebar-foreground: 210 20% 90%;
-    --sidebar-primary: 158 64% 48%;
-    --sidebar-accent: 222 47% 12%;
-    --sidebar-border: 222 47% 12%;
+    --sidebar-background: 220 22% 5%;
+    --sidebar-foreground: 210 20% 80%;
+    --sidebar-primary: 160 60% 48%;
+    --sidebar-accent: 220 18% 11%;
+    --sidebar-border: 220 18% 12%;
   }
 }
 
@@ -161,16 +162,19 @@
   .finance-card {
     @apply bg-card rounded-xl border shadow-sm transition-all duration-200;
     box-shadow: var(--shadow-card);
+    border-color: hsl(220 18% 16%);
   }
   
   .finance-card:hover {
     box-shadow: var(--shadow-md);
+    border-color: hsl(160 60% 45% / 0.15);
   }
   
   .finance-card-gradient {
-    @apply rounded-xl text-white p-6;
+    @apply rounded-xl p-6;
     background: var(--gradient-primary);
     box-shadow: var(--shadow-primary);
+    color: hsl(220 20% 7%);
   }
   
   .finance-card-dark {
