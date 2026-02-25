@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ import { toast } from '@/hooks/use-toast';
 
 export function CategoriesPage() {
   const { categories, refresh } = useFinance();
+  const { currentUser } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -32,6 +34,11 @@ export function CategoriesPage() {
         return;
       }
 
+      if (!currentUser?.family_id) {
+        toast({ title: 'Erro de autenticação', description: 'Família não encontrada.', variant: 'destructive' });
+        return;
+      }
+
       if (editingCategory) {
         const { error } = await supabase
           .from('categories')
@@ -45,17 +52,8 @@ export function CategoriesPage() {
 
         if (error) throw error;
       } else {
-        const { data: userRes } = await supabase.auth.getUser();
-        const userId = userRes.user?.id;
-
-        const { data: hm } = await supabase
-          .from('household_members')
-          .select('household_id')
-          .eq('user_id', userId)
-          .single();
-
         const { error } = await supabase.from('categories').insert({
-          household_id: hm?.household_id,
+          household_id: currentUser.family_id,
           name,
           icon: categoryForm.icon,
           color: categoryForm.color,
