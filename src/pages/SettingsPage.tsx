@@ -36,7 +36,7 @@ export function SettingsPage() {
   useEffect(() => {
     if (currentUser) {
       setProfileForm({ 
-        name: currentUser.name || currentUser.full_name || '', 
+        name: currentUser.name || '', 
         email: currentUser.email || '', 
         avatarColor: currentUser.avatar_color || AVATAR_COLORS[0] 
       });
