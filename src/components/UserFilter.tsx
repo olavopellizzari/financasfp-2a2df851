@@ -6,16 +6,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Users } from 'lucide-react';
+import { Users, LayoutGrid } from 'lucide-react';
 
 interface UserFilterProps {
   value: string;
   onChange: (value: string) => void;
   showAllOption?: boolean;
+  showTotalOption?: boolean; // Nova prop para mostrar "Todas as Contas"
   className?: string;
 }
 
-export function UserFilter({ value, onChange, showAllOption = true, className }: UserFilterProps) {
+export function UserFilter({ 
+  value, 
+  onChange, 
+  showAllOption = true, 
+  showTotalOption = false,
+  className 
+}: UserFilterProps) {
   const { users } = useAuth();
 
   const activeUsers = users.filter(u => u.is_active !== false);
@@ -24,14 +31,25 @@ export function UserFilter({ value, onChange, showAllOption = true, className }:
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className={className}>
         <div className="flex items-center gap-2">
-          <Users className="h-4 w-4" />
+          {value === 'total' ? <LayoutGrid className="h-4 w-4" /> : <Users className="h-4 w-4" />}
           <SelectValue placeholder="Filtrar usuário" />
         </div>
       </SelectTrigger>
       <SelectContent>
+        {showTotalOption && (
+          <SelectItem value="total">
+            <div className="flex items-center gap-2">
+              <LayoutGrid className="h-4 w-4 text-primary" />
+              <span className="font-bold">Todas as Contas</span>
+            </div>
+          </SelectItem>
+        )}
         {showAllOption && (
           <SelectItem value="all">
-            <span className="font-medium">Todos (Família)</span>
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              <span className="font-medium">Contas da Família</span>
+            </div>
           </SelectItem>
         )}
         {activeUsers.map(user => (

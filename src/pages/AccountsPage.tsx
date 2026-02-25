@@ -38,7 +38,8 @@ import {
   Loader2,
   ShieldCheck,
   ShieldAlert,
-  Building2
+  Building2,
+  LayoutGrid
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -86,7 +87,7 @@ export function AccountsPage() {
   const { allAccounts, createAccount, updateAccount, deleteAccount, getAccountBalance } = useFinance();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
-  const [selectedUserId, setSelectedUserId] = useState<string>('all');
+  const [selectedUserId, setSelectedUserId] = useState<string>('total'); // Padrão agora é "Todas as Contas"
   const [isLoading, setIsLoading] = useState(false);
   
   const [formData, setFormData] = useState<AccountFormData>({
@@ -101,10 +102,13 @@ export function AccountsPage() {
   const activeUsers = users.filter(u => u.is_active !== false);
 
   const filteredAccounts = useMemo(() => {
-    if (selectedUserId === 'all') {
-      return allAccounts.filter(a => a.is_shared === true);
+    if (selectedUserId === 'total') {
+      return allAccounts; // Mostra tudo
     }
-    return allAccounts.filter(a => a.user_id === selectedUserId && a.is_shared !== true);
+    if (selectedUserId === 'all') {
+      return allAccounts.filter(a => a.is_shared === true); // Apenas família
+    }
+    return allAccounts.filter(a => a.user_id === selectedUserId && a.is_shared !== true); // Apenas exclusivas do usuário
   }, [allAccounts, selectedUserId]);
 
   const activeAccounts = filteredAccounts.filter(a => a.active !== false);
@@ -265,7 +269,12 @@ export function AccountsPage() {
           <p className="text-muted-foreground">Gestão de saldos da família e individuais</p>
         </div>
         <div className="flex items-center gap-3">
-          <UserFilter value={selectedUserId} onChange={setSelectedUserId} className="w-[180px]" />
+          <UserFilter 
+            value={selectedUserId} 
+            onChange={setSelectedUserId} 
+            showTotalOption={true} // Ativa a nova opção
+            className="w-[200px]" 
+          />
           <Button onClick={openCreateDialog} className="gradient-primary shadow-primary">
             <Plus className="w-4 h-4 mr-2" /> Nova Conta
           </Button>
@@ -277,12 +286,14 @@ export function AccountsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-primary-foreground/80 text-sm font-medium">
-                {selectedUserId === 'all' ? 'Saldo Consolidado (Família)' : `Saldo de ${users.find(u => u.id === selectedUserId)?.name}`}
+                {selectedUserId === 'total' ? 'Saldo Total Consolidado' : 
+                 selectedUserId === 'all' ? 'Saldo das Contas da Família' : 
+                 `Saldo de ${users.find(u => u.id === selectedUserId)?.name}`}
               </p>
               <p className="text-4xl font-bold text-primary-foreground mt-1">{formatCurrency(totalBalance)}</p>
             </div>
             <div className="p-4 rounded-2xl bg-white/20 shadow-inner">
-              <Wallet className="w-10 h-10 text-white" />
+              {selectedUserId === 'total' ? <LayoutGrid className="w-10 h-10 text-white" /> : <Wallet className="w-10 h-10 text-white" />}
             </div>
           </div>
         </CardContent>
