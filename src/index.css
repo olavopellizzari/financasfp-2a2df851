@@ -12,7 +12,7 @@
   :root {
     /* Background & Surfaces - Preto */
     --background: 0 0% 0%;
-    --foreground: 210 100% 65%;
+    --foreground: 215 50% 58%;
     
     --card: 220 15% 6%;
     --card-foreground: 210 80% 70%;
@@ -20,10 +20,10 @@
     --popover: 220 15% 6%;
     --popover-foreground: 210 80% 70%;
     
-    /* Primary - Azul */
-    --primary: 210 100% 55%;
+    /* Primary - Azul sóbrio */
+    --primary: 215 60% 42%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 210 100% 65%;
+    --primary-glow: 215 55% 50%;
     
     /* Secondary */
     --secondary: 220 15% 10%;
@@ -33,8 +33,8 @@
     --muted: 220 15% 8%;
     --muted-foreground: 210 30% 45%;
     
-    /* Accent - Azul */
-    --accent: 210 100% 55%;
+    /* Accent - Azul sóbrio */
+    --accent: 215 60% 42%;
     --accent-foreground: 0 0% 100%;
     
     /* Status Colors */
@@ -47,7 +47,7 @@
     --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 100%;
     
-    --info: 210 100% 55%;
+    --info: 215 60% 42%;
     --info-foreground: 0 0% 100%;
     
     /* Finance-specific */
