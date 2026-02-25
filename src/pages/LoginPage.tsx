@@ -49,7 +49,6 @@ export function LoginPage() {
     avatarColor: AVATAR_COLORS[0]
   });
 
-  // Redireciona se já estiver logado
   useEffect(() => {
     if (session) {
       navigate('/');
@@ -101,7 +100,6 @@ export function LoginPage() {
           password: formData.password,
         });
         if (error) throw error;
-        // O useEffect acima cuidará do redirecionamento
       }
     } catch (error: any) {
       toast({ 
@@ -115,23 +113,30 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#f8fafc] p-4">
-      <div className="text-center mb-8 animate-fade-in">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#22c55e] shadow-lg mb-4">
-          <Wallet className="w-8 h-8 text-white" />
-        </div>
-        <h1 className="text-3xl font-bold text-[#0f172a]">Finanças</h1>
-        <p className="text-[#64748b] mt-1">Controle total do seu dinheiro</p>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
+      {/* Subtle glow effect */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-[120px]" />
       </div>
 
-      <Card className="w-full max-w-[440px] border-none shadow-xl rounded-[24px] overflow-hidden bg-white">
+      <div className="text-center mb-8 animate-fade-in relative z-10">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 shadow-[0_0_30px_rgba(59,130,246,0.15)] mb-4">
+          <Wallet className="w-8 h-8 text-primary" />
+        </div>
+        <h1 className="text-3xl font-bold text-foreground font-[Outfit]">Finanças</h1>
+        <p className="text-muted-foreground mt-1">Controle total do seu dinheiro</p>
+      </div>
+
+      <Card className="w-full max-w-[440px] border border-border/50 shadow-2xl rounded-[24px] overflow-hidden bg-card relative z-10">
         <CardContent className="p-6">
-          <div className="flex p-1 bg-[#f1f5f9] rounded-xl mb-8">
+          <div className="flex p-1 bg-muted/50 rounded-xl mb-8 border border-border/30">
             <button
               onClick={() => setActiveTab('login')}
               className={cn(
                 "flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all",
-                activeTab === 'login' ? "bg-white text-[#0f172a] shadow-sm" : "text-[#64748b]"
+                activeTab === 'login' 
+                  ? "bg-primary/10 text-primary shadow-sm border border-primary/20" 
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               <LogIn className="w-4 h-4" /> Entrar
@@ -140,7 +145,9 @@ export function LoginPage() {
               onClick={() => setActiveTab('signup')}
               className={cn(
                 "flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all",
-                activeTab === 'signup' ? "bg-white text-[#0f172a] shadow-sm" : "text-[#64748b]"
+                activeTab === 'signup' 
+                  ? "bg-primary/10 text-primary shadow-sm border border-primary/20" 
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               <Plus className="w-4 h-4" /> Criar Conta
@@ -151,32 +158,32 @@ export function LoginPage() {
             {activeTab === 'signup' ? (
               <>
                 <div className="space-y-1.5">
-                  <Label>Nome</Label>
+                  <Label className="text-muted-foreground">Nome</Label>
                   <Input
                     name="name"
                     autoComplete="name"
                     placeholder="Seu nome"
-                    className="h-11 rounded-xl"
+                    className="h-11 rounded-xl bg-muted/30 border-border/50 text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-primary/20"
                     value={formData.name}
                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                     required
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Email</Label>
+                  <Label className="text-muted-foreground">Email</Label>
                   <Input
                     name="email"
                     type="email"
                     autoComplete="email"
                     placeholder="seu@email.com"
-                    className="h-11 rounded-xl"
+                    className="h-11 rounded-xl bg-muted/30 border-border/50 text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-primary/20"
                     value={formData.email}
                     onChange={e => setFormData({ ...formData, email: e.target.value })}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Cor do Avatar</Label>
+                  <Label className="text-muted-foreground">Cor do Avatar</Label>
                   <div className="flex flex-wrap gap-2">
                     {AVATAR_COLORS.map(color => (
                       <button
@@ -185,7 +192,7 @@ export function LoginPage() {
                         onClick={() => setFormData({ ...formData, avatarColor: color })}
                         className={cn(
                           "w-8 h-8 rounded-full transition-all flex items-center justify-center",
-                          formData.avatarColor === color ? "ring-2 ring-offset-2 ring-[#22c55e] scale-110" : ""
+                          formData.avatarColor === color ? "ring-2 ring-offset-2 ring-offset-background ring-primary scale-110" : "opacity-70 hover:opacity-100"
                         )}
                         style={{ backgroundColor: color }}
                       >
@@ -197,7 +204,7 @@ export function LoginPage() {
               </>
             ) : (
               <div className="space-y-4">
-                <Label>Selecione o usuário</Label>
+                <Label className="text-muted-foreground">Selecione o usuário</Label>
                 <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
                   {profiles.map(profile => (
                     <button
@@ -206,15 +213,17 @@ export function LoginPage() {
                       onClick={() => setSelectedProfile(profile)}
                       className={cn(
                         "w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left",
-                        selectedProfile?.id === profile.id ? "border-[#22c55e] bg-[#f0fdf4]" : "border-[#f1f5f9]"
+                        selectedProfile?.id === profile.id 
+                          ? "border-primary/50 bg-primary/5" 
+                          : "border-border/30 hover:border-border/60 bg-muted/20"
                       )}
                     >
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0" style={{ backgroundColor: profile.avatar_color }}>
                         {profile.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-bold text-[#0f172a] truncate">{profile.name}</p>
-                        <p className="text-xs text-[#64748b] truncate">{profile.email}</p>
+                        <p className="font-bold text-foreground truncate">{profile.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{profile.email}</p>
                       </div>
                     </button>
                   ))}
@@ -224,7 +233,7 @@ export function LoginPage() {
                       type="email"
                       autoComplete="username"
                       placeholder="seu@email.com"
-                      className="h-11 rounded-xl"
+                      className="h-11 rounded-xl bg-muted/30 border-border/50 text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-primary/20"
                       value={formData.email}
                       onChange={e => setFormData({ ...formData, email: e.target.value })}
                       required
@@ -235,19 +244,19 @@ export function LoginPage() {
             )}
 
             <div className="space-y-1.5">
-              <Label>Senha</Label>
+              <Label className="text-muted-foreground">Senha</Label>
               <div className="relative">
                 <Input
                   name="password"
                   type={showPassword ? "text" : "password"}
                   autoComplete={activeTab === 'login' ? "current-password" : "new-password"}
                   placeholder="Digite sua senha"
-                  className="h-11 rounded-xl pr-10"
+                  className="h-11 rounded-xl pr-10 bg-muted/30 border-border/50 text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-primary/20"
                   value={formData.password}
                   onChange={e => setFormData({ ...formData, password: e.target.value })}
                   required
                 />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94a3b8]">
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
@@ -255,13 +264,13 @@ export function LoginPage() {
 
             {activeTab === 'signup' && (
               <div className="space-y-1.5">
-                <Label>Confirmar Senha</Label>
+                <Label className="text-muted-foreground">Confirmar Senha</Label>
                 <Input
                   name="confirmPassword"
                   type="password"
                   autoComplete="new-password"
                   placeholder="Repita a senha"
-                  className="h-11 rounded-xl"
+                  className="h-11 rounded-xl bg-muted/30 border-border/50 text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-primary/20"
                   value={formData.confirmPassword}
                   onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })}
                   required
@@ -269,7 +278,11 @@ export function LoginPage() {
               </div>
             )}
 
-            <Button type="submit" className="w-full h-12 bg-[#22c55e] hover:bg-[#16a34a] text-white font-bold rounded-xl shadow-lg" disabled={isLoading}>
+            <Button 
+              type="submit" 
+              className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl shadow-[0_0_20px_rgba(59,130,246,0.2)] hover:shadow-[0_0_30px_rgba(59,130,246,0.3)] transition-all" 
+              disabled={isLoading}
+            >
               {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : (activeTab === 'login' ? 'Entrar' : 'Criar Conta')}
             </Button>
           </form>
