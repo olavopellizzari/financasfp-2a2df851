@@ -44,25 +44,24 @@ export function CategoriesPage() {
 
       setIsLoading(true);
 
+      const payload: any = {
+        name,
+        icon: categoryForm.icon,
+        color: categoryForm.color,
+        kind: categoryForm.kind
+      };
+
       if (editingCategory) {
         const { error } = await supabase
           .from('categories')
-          .update({
-            name,
-            icon: categoryForm.icon,
-            color: categoryForm.color,
-            kind: categoryForm.kind
-          })
+          .update(payload)
           .eq('id', editingCategory.id);
 
         if (error) throw error;
       } else {
         const { error } = await supabase.from('categories').insert({
+          ...payload,
           household_id: currentUser.family_id,
-          name,
-          icon: categoryForm.icon,
-          color: categoryForm.color,
-          kind: categoryForm.kind,
           is_default: false
         });
 
@@ -73,7 +72,14 @@ export function CategoriesPage() {
       await refresh();
       toast({ title: 'Categoria salva com sucesso!' });
     } catch (error: any) {
-      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+      console.error('Erro ao salvar categoria:', error);
+      toast({ 
+        title: 'Erro ao salvar', 
+        description: error.message.includes('column "color"') 
+          ? 'A coluna "color" não existe no banco. Execute o SQL fornecido no chat.' 
+          : error.message, 
+        variant: 'destructive' 
+      });
     } finally {
       setIsLoading(false);
     }
@@ -107,7 +113,14 @@ export function CategoriesPage() {
       await refresh();
       toast({ title: 'Sucesso!', description: `${toInsert.length} novas categorias foram adicionadas.` });
     } catch (error: any) {
-      toast({ title: 'Erro ao carregar padrões', description: error.message, variant: 'destructive' });
+      console.error('Erro ao carregar padrões:', error);
+      toast({ 
+        title: 'Erro ao carregar padrões', 
+        description: error.message.includes('column "color"') 
+          ? 'A coluna "color" não existe no banco. Execute o SQL fornecido no chat.' 
+          : error.message, 
+        variant: 'destructive' 
+      });
     } finally {
       setIsLoading(false);
     }
@@ -190,10 +203,10 @@ export function CategoriesPage() {
               <Card key={cat.id} className="group hover:border-primary/50 transition-all hover:shadow-md">
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-sm" style={{ backgroundColor: `${cat.color}20` }}>{cat.icon}</div>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-sm" style={{ backgroundColor: `${cat.color || '#6366f1'}20` }}>{cat.icon || '📁'}</div>
                     <p className="font-semibold">{cat.name}</p>
                   </div>
-                  <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => { setEditingCategory(cat); setCategoryForm({ name: cat.name, icon: cat.icon, color: cat.color, kind: 'despesa' }); setCategoryDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => { setEditingCategory(cat); setCategoryForm({ name: cat.name, icon: cat.icon || '📁', color: cat.color || '#6366f1', kind: 'despesa' }); setCategoryDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                 </CardContent>
               </Card>
             ))}
@@ -206,10 +219,10 @@ export function CategoriesPage() {
               <Card key={cat.id} className="group hover:border-primary/50 transition-all hover:shadow-md">
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-sm" style={{ backgroundColor: `${cat.color}20` }}>{cat.icon}</div>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-sm" style={{ backgroundColor: `${cat.color || '#6366f1'}20` }}>{cat.icon || '💰'}</div>
                     <p className="font-semibold">{cat.name}</p>
                   </div>
-                  <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => { setEditingCategory(cat); setCategoryForm({ name: cat.name, icon: cat.icon, color: cat.color, kind: 'receita' }); setCategoryDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => { setEditingCategory(cat); setCategoryForm({ name: cat.name, icon: cat.icon || '💰', color: cat.color || '#6366f1', kind: 'receita' }); setCategoryDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                 </CardContent>
               </Card>
             ))}
