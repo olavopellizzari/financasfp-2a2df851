@@ -280,7 +280,7 @@ export function LoginPage() {
 
             <Button 
               type="submit" 
-              className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl shadow-[0_0_20px_rgba(59,130,246,0.2)] hover:shadow-[0_0_30px_rgba(59,130,246,0.3)] transition-all" 
+              className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl shadow-[0_0_15px_rgba(59,130,246,0.15)] hover:shadow-[0_0_35px_rgba(59,130,246,0.4),0_0_60px_rgba(59,130,246,0.15)] transition-all duration-300" 
               disabled={isLoading}
             >
               {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : (activeTab === 'login' ? 'Entrar' : 'Criar Conta')}
