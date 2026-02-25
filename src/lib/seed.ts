@@ -1,59 +1,58 @@
 // Seed data for initial app setup
 import { db, generateId, Category, Tag } from './db';
 
-const DEFAULT_CATEGORIES: Omit<Category, 'id' | 'createdAt'>[] = [
-  // --- RECEITAS (Diferenciadas) ---
-  { name: 'Salário Mensal', icon: '💰', color: '#22c55e', type: 'income', parentId: null, isSystem: true },
-  { name: 'Pró-Labore', icon: '👔', color: '#16a34a', type: 'income', parentId: null, isSystem: true },
-  { name: 'Dividendos & JCP', icon: '📈', color: '#0ea5e9', type: 'income', parentId: null, isSystem: true },
-  { name: 'Rendimentos de FIIs', icon: '🏢', color: '#0284c7', type: 'income', parentId: null, isSystem: true },
-  { name: 'Vendas (E-commerce)', icon: '📦', color: '#f59e0b', type: 'income', parentId: null, isSystem: true },
-  { name: 'Freelance Design/Dev', icon: '💻', color: '#8b5cf6', type: 'income', parentId: null, isSystem: true },
-  { name: 'Restituição de Impostos', icon: '🏛️', color: '#4f46e5', type: 'income', parentId: null, isSystem: true },
-  { name: 'Cashback & Recompensas', icon: '🪙', color: '#fbbf24', type: 'income', parentId: null, isSystem: true },
-  { name: 'Aluguéis Recebidos', icon: '🔑', color: '#10b981', type: 'income', parentId: null, isSystem: true },
-  { name: 'Prêmios e Sorteios', icon: '🏆', color: '#facc15', type: 'income', parentId: null, isSystem: true },
+export const DEFAULT_CATEGORIES: Omit<Category, 'id' | 'createdAt'>[] = [
+  // --- RECEITAS ---
+  { name: 'Salário', icon: '💰', color: '#22c55e', type: 'income', kind: 'receita', isSystem: true },
+  { name: 'Pró-Labore', icon: '👔', color: '#16a34a', type: 'income', kind: 'receita', isSystem: true },
+  { name: 'Dividendos', icon: '📈', color: '#3b82f6', type: 'income', kind: 'receita', isSystem: true },
+  { name: 'Vendas', icon: '📦', color: '#f59e0b', type: 'income', kind: 'receita', isSystem: true },
+  { name: 'Reembolsos', icon: '↩️', color: '#10b981', type: 'income', kind: 'receita', isSystem: true },
+  { name: 'Presentes', icon: '🎁', color: '#ec4899', type: 'income', kind: 'receita', isSystem: true },
+  { name: 'Outras Receitas', icon: '💵', color: '#94a3b8', type: 'income', kind: 'receita', isSystem: true },
 
-  // --- DESPESAS (Categorias Específicas) ---
-  // Moradia & Contas
-  { name: 'Aluguel / Hipoteca', icon: '🏠', color: '#ef4444', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Condomínio & Taxas', icon: '🏢', color: '#f87171', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Energia (Luz)', icon: '⚡', color: '#fbbf24', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Saneamento (Água)', icon: '💧', color: '#60a5fa', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Gás Encanado/Botijão', icon: '🔥', color: '#f97316', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Internet Fibra', icon: '🌐', color: '#818cf8', type: 'expense', parentId: null, isSystem: true },
+  // --- DESPESAS ---
+  // Moradia
+  { name: 'Aluguel / Prestação', icon: '🏠', color: '#ef4444', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Condomínio', icon: '🏢', color: '#f87171', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Energia Elétrica', icon: '⚡', color: '#fbbf24', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Água / Saneamento', icon: '💧', color: '#60a5fa', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Internet / TV', icon: '🌐', color: '#818cf8', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Manutenção Casa', icon: '🔧', color: '#475569', type: 'expense', kind: 'despesa', isSystem: true },
   
   // Alimentação
-  { name: 'Supermercado Mensal', icon: '🛒', color: '#f97316', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Restaurantes & Jantares', icon: '🍽️', color: '#c2410c', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Delivery (iFood/Rappi)', icon: '🛵', color: '#ea580c', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Cafés & Lanches', icon: '☕', color: '#78350f', type: 'expense', parentId: null, isSystem: true },
+  { name: 'Supermercado', icon: '🛒', color: '#f97316', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Restaurantes', icon: '🍽️', color: '#c2410c', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Delivery', icon: '🛵', color: '#ea580c', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Lanches / Café', icon: '☕', color: '#78350f', type: 'expense', kind: 'despesa', isSystem: true },
   
   // Transporte
-  { name: 'Combustível (Gasolina)', icon: '⛽', color: '#b91c1c', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Apps (Uber/99)', icon: '🚗', color: '#1f2937', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Manutenção Mecânica', icon: '🔧', color: '#475569', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Seguro Automotivo', icon: '🛡️', color: '#0ea5e9', type: 'expense', parentId: null, isSystem: true },
+  { name: 'Combustível', icon: '⛽', color: '#b91c1c', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Uber / 99', icon: '🚗', color: '#1f2937', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Manutenção Carro', icon: '🛠️', color: '#64748b', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Seguro / IPVA', icon: '🛡️', color: '#0ea5e9', type: 'expense', kind: 'despesa', isSystem: true },
   
-  // Saúde & Bem-estar
-  { name: 'Farmácia & Remédios', icon: '💊', color: '#ec4899', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Plano de Saúde/Odonto', icon: '🏥', color: '#db2777', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Academia & Crossfit', icon: '💪', color: '#4ade80', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Terapia & Psicologia', icon: '🧠', color: '#8b5cf6', type: 'expense', parentId: null, isSystem: true },
+  // Saúde
+  { name: 'Farmácia', icon: '💊', color: '#ec4899', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Plano de Saúde', icon: '🏥', color: '#db2777', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Médicos / Dentistas', icon: '🩺', color: '#be185d', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Academia / Esportes', icon: '💪', color: '#4ade80', type: 'expense', kind: 'despesa', isSystem: true },
   
   // Lazer & Estilo de Vida
-  { name: 'Streaming (Netflix/HBO)', icon: '📺', color: '#e11d48', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Jogos & Assinaturas PC', icon: '🎮', color: '#8b5cf6', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Viagens & Hospedagem', icon: '✈️', color: '#06b6d4', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Cinema & Eventos', icon: '🍿', color: '#f43f5e', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Beleza (Cabelo/Unha)', icon: '💅', color: '#d946ef', type: 'expense', parentId: null, isSystem: true },
+  { name: 'Streaming', icon: '📺', color: '#e11d48', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Viagens', icon: '✈️', color: '#06b6d4', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Cinema / Eventos', icon: '🍿', color: '#f43f5e', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Beleza / Higiene', icon: '💅', color: '#d946ef', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Vestuário', icon: '👕', color: '#6366f1', type: 'expense', kind: 'despesa', isSystem: true },
   
   // Educação & Outros
-  { name: 'Cursos & Mentorias', icon: '🎓', color: '#3b82f6', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Livros & Kindle', icon: '📖', color: '#1d4ed8', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Pets (Ração/Vet)', icon: '🐾', color: '#b45309', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Presentes & Doações', icon: '🎁', color: '#f43f5e', type: 'expense', parentId: null, isSystem: true },
-  { name: 'Tarifas & Impostos', icon: '💸', color: '#64748b', type: 'expense', parentId: null, isSystem: true },
+  { name: 'Cursos / Educação', icon: '🎓', color: '#3b82f6', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Livros', icon: '📖', color: '#1d4ed8', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Pets', icon: '🐾', color: '#b45309', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Presentes / Doações', icon: '🎁', color: '#f43f5e', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Tarifas Bancárias', icon: '💸', color: '#64748b', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Impostos', icon: '🏛️', color: '#475569', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Outras Despesas', icon: '❓', color: '#94a3b8', type: 'expense', kind: 'despesa', isSystem: true },
 ];
 
 const DEFAULT_TAGS: Omit<Tag, 'id' | 'createdAt'>[] = [
