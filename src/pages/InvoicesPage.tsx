@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 const CARD_COLORS = ['#1e293b', '#ef4444', '#3b82f6', '#22c55e', '#8b5cf6', '#ec4899', '#f97316', '#eab308'];
 
 export function InvoicesPage() {
-  const { cards, transactions, accounts, invoices, refresh, allTransactions, allCards, updateCard, allAccounts } = useFinance();
+  const { cards, transactions, accounts, invoices, refresh, allTransactions, allCards, updateCard, allAccounts, getAccountBalance } = useFinance();
   const { currentUser, isCurrentUserAdmin, users } = useAuth();
   
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
@@ -133,7 +133,7 @@ export function InvoicesPage() {
 
   const handlePayInvoice = (invoice: typeof displayInvoices[0]) => {
     const existingOrNew: Invoice = invoice.existingInvoice || {
-      id: generateId(), card_id: invoice.card.id, userId: currentUser?.id || null,
+      id: generateId(), card_id: invoice.card.id,
       month: invoice.month, closing_date: invoice.closingDate as any, due_date: invoice.dueDate as any,
       total_amount: invoice.total, paid_amount: 0, status: 'closed', paid_from_account_id: null,
       paid_at: null

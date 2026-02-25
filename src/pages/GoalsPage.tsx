@@ -87,8 +87,7 @@ export function GoalsPage() {
         icon: goalForm.icon,
         color: goalForm.color,
         is_completed: false,
-        created_at: editingGoal?.created_at || new Date(),
-        updatedAt: new Date()
+        created_at: editingGoal?.created_at || new Date()
       };
 
       if (editingGoal) {
