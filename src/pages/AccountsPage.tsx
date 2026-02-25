@@ -37,7 +37,8 @@ import {
   User as UserIcon,
   Loader2,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  Building2
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -49,29 +50,39 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-const ACCOUNT_TYPES = [
-  { value: 'checking', label: 'Conta Corrente', icon: Wallet, color: '#3b82f6' },
-  { value: 'savings', label: 'Poupança', icon: PiggyBank, color: '#22c55e' },
-  { value: 'investment', label: 'Investimentos', icon: TrendingUp, color: '#8b5cf6' },
-  { value: 'wallet', label: 'Carteira', icon: Banknote, color: '#f97316' },
+const BANKS = [
+  { id: 'nubank', name: 'NuBank', color: '#8a05be', logo: 'https://logodownload.org/wp-content/uploads/2019/08/nubank-logo-3.png' },
+  { id: 'itau', name: 'Itaú', color: '#ec7000', logo: 'https://logodownload.org/wp-content/uploads/2014/05/itau-logo-7.png' },
+  { id: 'bradesco', name: 'Bradesco', color: '#cc092f', logo: 'https://logodownload.org/wp-content/uploads/2014/05/bradesco-logo-9.png' },
+  { id: 'santander', name: 'Santander', color: '#ec0000', logo: 'https://logodownload.org/wp-content/uploads/2014/05/santander-logo-7.png' },
+  { id: 'bb', name: 'Banco do Brasil', color: '#fcf800', logo: 'https://logodownload.org/wp-content/uploads/2014/05/banco-do-brasil-logo-1.png' },
+  { id: 'caixa', name: 'Caixa Econômica', color: '#005ca9', logo: 'https://logodownload.org/wp-content/uploads/2014/05/caixa-logo-7.png' },
+  { id: 'inter', name: 'Banco Inter', color: '#ff7a00', logo: 'https://logodownload.org/wp-content/uploads/2018/03/banco-inter-logo-5.png' },
+  { id: 'c6', name: 'C6 Bank', color: '#212121', logo: 'https://logodownload.org/wp-content/uploads/2019/09/c6-bank-logo-1.png' },
+  { id: 'sicredi', name: 'Sicredi', color: '#3fb149', logo: 'https://logodownload.org/wp-content/uploads/2017/11/sicredi-logo-1.png' },
+  { id: 'xp', name: 'XP Investimentos', color: '#000000', logo: 'https://logodownload.org/wp-content/uploads/2018/01/xp-investimentos-logo-1.png' },
+  { id: 'btg', name: 'BTG Pactual', color: '#003399', logo: 'https://logodownload.org/wp-content/uploads/2019/09/btg-pactual-logo-1.png' },
+  { id: 'outro', name: 'Outro Banco', color: '#64748b', logo: '' },
 ];
 
-const ACCOUNT_COLORS = [
-  '#3b82f6', '#22c55e', '#8b5cf6', '#f97316', 
-  '#ec4899', '#14b8a6', '#eab308', '#6366f1'
+const ACCOUNT_TYPES = [
+  { value: 'checking', label: 'Conta Corrente', icon: Wallet },
+  { value: 'savings', label: 'Poupança', icon: PiggyBank },
+  { value: 'investment', label: 'Investimentos', icon: TrendingUp },
+  { value: 'wallet', label: 'Carteira', icon: Banknote },
 ];
 
 interface AccountFormData {
   name: string;
+  bank: string;
   type: string;
   balance: string;
-  color: string;
   userId: string;
   isShared: boolean;
 }
 
 export function AccountsPage() {
-  const { currentUser, users, isCurrentUserAdmin } = useAuth();
+  const { currentUser, users } = useAuth();
   const { allAccounts, createAccount, updateAccount, deleteAccount, getAccountBalance } = useFinance();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
@@ -80,30 +91,23 @@ export function AccountsPage() {
   
   const [formData, setFormData] = useState<AccountFormData>({
     name: '',
+    bank: 'nubank',
     type: 'checking',
     balance: '0',
-    color: ACCOUNT_COLORS[0],
     userId: currentUser?.id || '',
     isShared: true,
   });
 
   const activeUsers = users.filter(u => u.is_active !== false);
 
-  // Filtro principal das contas ajustado para exclusividade
   const filteredAccounts = useMemo(() => {
     if (selectedUserId === 'all') {
-      // Se "Família" estiver selecionado, mostra APENAS as contas compartilhadas
       return allAccounts.filter(a => a.is_shared === true);
     }
-    
-    // Se um usuário específico for selecionado, mostra APENAS as contas exclusivas dele
-    return allAccounts.filter(a => 
-      a.user_id === selectedUserId && a.is_shared !== true
-    );
+    return allAccounts.filter(a => a.user_id === selectedUserId && a.is_shared !== true);
   }, [allAccounts, selectedUserId]);
 
   const activeAccounts = filteredAccounts.filter(a => a.active !== false);
-  const archivedAccounts = filteredAccounts.filter(a => a.active === false);
 
   const totalBalance = activeAccounts.reduce((sum, account) => {
     return sum + getAccountBalance(account.id);
@@ -112,9 +116,9 @@ export function AccountsPage() {
   const resetForm = () => {
     setFormData({
       name: '',
+      bank: 'nubank',
       type: 'checking',
       balance: '0',
-      color: ACCOUNT_COLORS[0],
       userId: currentUser?.id || '',
       isShared: true,
     });
@@ -130,9 +134,9 @@ export function AccountsPage() {
     setEditingAccount(account);
     setFormData({
       name: account.name,
+      bank: account.bank || 'outro',
       type: account.account_type === 'corrente' ? 'checking' : account.account_type as any,
       balance: account.opening_balance.toString(),
-      color: (account as any).color || ACCOUNT_COLORS[0],
       userId: account.user_id || currentUser?.id || '',
       isShared: account.is_shared ?? true,
     });
@@ -146,9 +150,9 @@ export function AccountsPage() {
     try {
       const accountData = {
         name: formData.name,
+        bank: formData.bank,
         type: formData.type,
         balance: parseFloat(formData.balance) || 0,
-        color: formData.color,
         userId: formData.isShared ? null : formData.userId,
         isShared: formData.isShared,
       };
@@ -164,11 +168,7 @@ export function AccountsPage() {
       setIsDialogOpen(false);
       resetForm();
     } catch (error: any) {
-      toast({ 
-        title: "Erro ao salvar", 
-        description: error.message || "Ocorreu um erro ao salvar a conta.", 
-        variant: "destructive" 
-      });
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -194,26 +194,21 @@ export function AccountsPage() {
     }
   };
 
-  const getAccountIcon = (type: Account['account_type']) => {
-    const accountType = ACCOUNT_TYPES.find(t => t.value === (type === 'corrente' ? 'checking' : type));
-    return accountType?.icon || Wallet;
-  };
-
   const AccountCard = ({ account }: { account: Account }) => {
-    const Icon = getAccountIcon(account.account_type);
     const balance = getAccountBalance(account.id);
-    const accountColor = (account as any).color || '#3b82f6';
+    const bankInfo = BANKS.find(b => b.id === account.bank) || BANKS.find(b => b.id === 'outro')!;
     
     return (
       <Card key={account.id} className="finance-card group">
         <CardContent className="p-4">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <div 
-                className="p-3 rounded-xl"
-                style={{ backgroundColor: `${accountColor}20` }}
-              >
-                <Icon className="w-5 h-5" style={{ color: accountColor }} />
+              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center overflow-hidden border">
+                {bankInfo.logo ? (
+                  <img src={bankInfo.logo} alt={bankInfo.name} className="w-8 h-8 object-contain" />
+                ) : (
+                  <Building2 className="w-6 h-6 text-muted-foreground" />
+                )}
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -228,9 +223,7 @@ export function AccountsPage() {
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {ACCOUNT_TYPES.find(t => t.value === (account.account_type === 'corrente' ? 'checking' : account.account_type))?.label}
-                </p>
+                <p className="text-xs text-muted-foreground">{bankInfo.name}</p>
               </div>
             </div>
             
@@ -296,7 +289,6 @@ export function AccountsPage() {
       </Card>
 
       <div className="space-y-10">
-        {/* SEÇÃO: CONTAS DA FAMÍLIA */}
         {activeAccounts.some(a => a.is_shared) && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 px-1">
@@ -313,7 +305,6 @@ export function AccountsPage() {
           </div>
         )}
 
-        {/* SEÇÃO: CONTAS EXCLUSIVAS */}
         {activeAccounts.some(a => !a.is_shared) && (
           <div className="space-y-6">
             <div className="flex items-center gap-2 px-1">
@@ -322,7 +313,6 @@ export function AccountsPage() {
               </div>
               <h2 className="text-xl font-bold">Contas Exclusivas</h2>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {activeAccounts.filter(a => !a.is_shared).map(account => (
                 <AccountCard key={account.id} account={account} />
@@ -330,21 +320,13 @@ export function AccountsPage() {
             </div>
           </div>
         )}
-
-        {activeAccounts.length === 0 && (
-          <div className="text-center py-12 bg-muted/20 rounded-2xl border border-dashed">
-            <Wallet className="w-12 h-12 mx-auto text-muted-foreground mb-4 opacity-20" />
-            <p className="text-muted-foreground">Nenhuma conta encontrada para este filtro.</p>
-          </div>
-        )}
       </div>
 
-      {/* DIÁLOGO DE CRIAÇÃO/EDIÇÃO */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-md rounded-[24px]">
           <DialogHeader>
             <DialogTitle>{editingAccount ? 'Ajustar Conta' : 'Nova Conta'}</DialogTitle>
-            <DialogDescription>Configure a visibilidade e os detalhes da conta.</DialogDescription>
+            <DialogDescription>Configure o banco e os detalhes da conta.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-5 py-4">
             <div className="flex items-center justify-between p-4 bg-muted/50 rounded-2xl border border-dashed">
@@ -373,8 +355,31 @@ export function AccountsPage() {
             )}
 
             <div className="space-y-2">
-              <Label>Nome da Conta</Label>
-              <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ex: Nubank, Itaú..." className="rounded-xl h-11" required />
+              <Label>Banco</Label>
+              <Select value={formData.bank} onValueChange={v => setFormData({...formData, bank: v})}>
+                <SelectTrigger className="rounded-xl h-11">
+                  <SelectValue placeholder="Selecione o banco" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BANKS.map(bank => (
+                    <SelectItem key={bank.id} value={bank.id}>
+                      <div className="flex items-center gap-2">
+                        {bank.logo ? (
+                          <img src={bank.logo} alt="" className="w-4 h-4 object-contain" />
+                        ) : (
+                          <Building2 className="w-4 h-4" />
+                        )}
+                        {bank.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Nome da Conta (Apelido)</Label>
+              <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ex: Minha Conta Principal" className="rounded-xl h-11" required />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -388,15 +393,6 @@ export function AccountsPage() {
               <div className="space-y-2">
                 <Label>Saldo Inicial</Label>
                 <Input type="number" step="0.01" value={formData.balance} onChange={e => setFormData({...formData, balance: e.target.value})} className="rounded-xl h-11" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Cor de Identificação</Label>
-              <div className="flex gap-2 flex-wrap">
-                {ACCOUNT_COLORS.map(color => (
-                  <button key={color} type="button" onClick={() => setFormData({...formData, color})} className={cn("w-8 h-8 rounded-full transition-all", formData.color === color ? "ring-2 ring-offset-2 ring-primary scale-110" : "")} style={{ backgroundColor: color }} />
-                ))}
               </div>
             </div>
 

@@ -1,6 +1,6 @@
 // IndexedDB Wrapper with Schema Versioning and Migrations
 export const DB_NAME = 'FinancasDB';
-export const DB_VERSION = 3; // Incrementado para forçar a atualização do schema
+export const DB_VERSION = 3; 
 
 export interface User {
   id: string;
@@ -55,6 +55,7 @@ export interface Account {
   household_id: string;
   user_id?: string;
   name: string;
+  bank?: string; // Novo campo para o banco
   account_type: 'corrente' | 'poupanca' | 'investimento' | 'carteira';
   opening_balance: number;
   opening_date: string;
@@ -194,7 +195,6 @@ class FinancasDB {
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
         
-        // Lista de todas as stores necessárias
         const stores = [
           'cycleSnapshots', 
           'auditLogs', 
