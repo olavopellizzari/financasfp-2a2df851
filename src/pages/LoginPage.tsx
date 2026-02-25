@@ -120,11 +120,11 @@ export function LoginPage() {
       </div>
 
       <div className="text-center mb-8 animate-fade-in relative z-10">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 shadow-[0_0_30px_rgba(59,130,246,0.15)] mb-4">
-          <Wallet className="w-8 h-8 text-primary" />
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[hsl(150,60%,45%)]/10 border border-[hsl(150,60%,45%)]/20 shadow-[0_0_30px_rgba(34,197,94,0.15)] mb-4">
+          <Wallet className="w-8 h-8 text-[hsl(150,60%,45%)]" />
         </div>
-        <h1 className="text-3xl font-bold text-foreground font-[Outfit]">Finanças</h1>
-        <p className="text-muted-foreground mt-1">Controle total do seu dinheiro</p>
+        <h1 className="text-3xl font-bold text-[hsl(150,60%,45%)] font-[Outfit]">Finanças</h1>
+        <p className="text-[hsl(150,60%,45%)]/70 mt-1">Controle total do seu dinheiro</p>
       </div>
 
       <Card className="w-full max-w-[440px] border border-border/50 shadow-2xl rounded-[24px] overflow-hidden bg-card relative z-10">
