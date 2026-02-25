@@ -218,6 +218,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       household_id: currentUser?.family_id,
       user_id: data.userId || currentUser?.id,
       name: data.name,
+      bank: data.bank, // Adicionado campo bank
       account_type: data.type === 'checking' ? 'corrente' : data.type,
       opening_balance: data.balance,
       opening_date: new Date().toISOString().split('T')[0],
@@ -231,6 +232,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const updateAccount = async (id: string, data: any) => {
     const updateData: any = {};
     if (data.name) updateData.name = data.name;
+    if (data.bank) updateData.bank = data.bank; // Adicionado campo bank
     if (data.balance !== undefined) updateData.opening_balance = data.balance;
     if (data.isArchived !== undefined) updateData.active = !data.isArchived;
     if (data.isShared !== undefined) updateData.is_shared = data.isShared;
