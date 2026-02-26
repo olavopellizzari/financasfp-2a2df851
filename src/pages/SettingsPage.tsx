@@ -20,7 +20,7 @@ const AVATAR_COLORS = [
 ];
 
 export function SettingsPage() {
-  const { currentUser, refreshProfile, isCurrentUserAdmin } = useAuth();
+  const { currentUser, refreshProfile, isCurrentUserAdmin, refreshUsers } = useAuth();
   const { allTransactions, refresh } = useFinance();
   const { permission, isStandalone, requestPermission, sendTestNotification } = usePushNotifications();
   
@@ -54,7 +54,7 @@ export function SettingsPage() {
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !currentUser?.id) return;
 
     if (!file.type.startsWith('image/')) {
       toast({ title: 'Erro', description: 'Selecione apenas arquivos de imagem.', variant: 'destructive' });
@@ -69,23 +69,42 @@ export function SettingsPage() {
     setUploadingAvatar(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${currentUser?.id}-${Date.now()}.${fileExt}`;
+      const fileName = `${currentUser.id}-${Date.now()}.${fileExt}`;
       const filePath = `avatars/${fileName}`;
 
+      // 1. Upload para o Storage
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
+      // 2. Obter URL pública
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
 
+      // 3. Atualizar o banco de dados IMEDIATAMENTE
+      const { error: dbError } = await supabase
+        .from('profiles')
+        .update({ 
+          avatar_url: publicUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', currentUser.id);
+
+      if (dbError) throw dbError;
+
       setAvatarPreview(publicUrl);
       setProfileForm(prev => ({ ...prev, avatarUrl: publicUrl }));
-      toast({ title: 'Sucesso!', description: 'Foto de perfil enviada.' });
+      
+      // 4. Atualizar o estado global
+      await refreshProfile();
+      await refreshUsers();
+      
+      toast({ title: 'Sucesso!', description: 'Foto de perfil atualizada.' });
     } catch (error: any) {
+      console.error('Erro no upload:', error);
       toast({ title: 'Erro no upload', description: error.message, variant: 'destructive' });
     } finally {
       setUploadingAvatar(false);
@@ -93,10 +112,32 @@ export function SettingsPage() {
     }
   };
 
-  const removeAvatar = () => {
-    setAvatarPreview(null);
-    setProfileForm(prev => ({ ...prev, avatarUrl: '' }));
-    if (fileInputRef.current) fileInputRef.current.value = '';
+  const removeAvatar = async () => {
+    if (!currentUser?.id) return;
+    
+    setUploadingAvatar(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          avatar_url: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', currentUser.id);
+
+      if (error) throw error;
+
+      setAvatarPreview(null);
+      setProfileForm(prev => ({ ...prev, avatarUrl: '' }));
+      await refreshProfile();
+      await refreshUsers();
+      
+      toast({ title: 'Sucesso!', description: 'Foto de perfil removida.' });
+    } catch (error: any) {
+      toast({ title: 'Erro ao remover', description: error.message, variant: 'destructive' });
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
 
   const handleFixDescriptions = async () => {
@@ -192,7 +233,6 @@ export function SettingsPage() {
         .update({
           name: profileForm.name,
           avatar_color: profileForm.avatarColor,
-          avatar_url: profileForm.avatarUrl || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', currentUser.id);
@@ -200,7 +240,8 @@ export function SettingsPage() {
       if (error) throw error;
 
       await refreshProfile();
-      toast({ title: 'Perfil updated', description: 'Nome, avatar e cor foram salvos.' });
+      await refreshUsers();
+      toast({ title: 'Perfil atualizado', description: 'Nome e cor foram salvos.' });
       setEditProfileOpen(false);
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
@@ -341,7 +382,7 @@ export function SettingsPage() {
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingAvatar}
                 >
-                  {uploadingAvatar ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                  {uploadingAvatar ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="h-4 w-4" />}
                 </Button>
                 {avatarPreview && (
                   <Button
