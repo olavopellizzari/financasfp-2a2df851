@@ -20,7 +20,7 @@ const AVATAR_COLORS = [
 ];
 
 export function SettingsPage() {
-  const { currentUser, refreshProfile } = useAuth();
+  const { currentUser, refreshProfile, isCurrentUserAdmin } = useAuth();
   const { allTransactions, refresh } = useFinance();
   const { permission, isStandalone, requestPermission, sendTestNotification } = usePushNotifications();
   
@@ -35,6 +35,8 @@ export function SettingsPage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dailyAlerts, setDailyAlerts] = useState(false);
+
+  const isAdmin = isCurrentUserAdmin();
 
   useEffect(() => {
     if (currentUser) {
@@ -198,7 +200,7 @@ export function SettingsPage() {
       if (error) throw error;
 
       await refreshProfile();
-      toast({ title: 'Perfil atualizado', description: 'Nome, avatar e cor foram salvos.' });
+      toast({ title: 'Perfil updated', description: 'Nome, avatar e cor foram salvos.' });
       setEditProfileOpen(false);
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
@@ -369,35 +371,39 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><Wrench className="h-5 w-5" /> Manutenção</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5"><Label>Limpar Descrições</Label><p className="text-sm text-muted-foreground">Remove o sufixo "(1/10)" das descrições.</p></div>
-            <Button variant="outline" onClick={handleFixDescriptions} disabled={isCleaning}>{isCleaning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />} Corrigir Descrições</Button>
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5"><Label>Corrigir Datas de Parcelas</Label><p className="text-sm text-muted-foreground">Ajusta a data de cada parcela para o mês correto.</p></div>
-            <Button variant="outline" onClick={handleFixDates} disabled={isFixingDates}>{isFixingDates ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4 mr-2" />} Corrigir Datas</Button>
-          </div>
-        </CardContent>
-      </Card>
+      {isAdmin && (
+        <>
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Wrench className="h-5 w-5" /> Manutenção</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5"><Label>Limpar Descrições</Label><p className="text-sm text-muted-foreground">Remove o sufixo "(1/10)" das descrições.</p></div>
+                <Button variant="outline" onClick={handleFixDescriptions} disabled={isCleaning}>{isCleaning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />} Corrigir Descrições</Button>
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5"><Label>Corrigir Datas de Parcelas</Label><p className="text-sm text-muted-foreground">Ajusta a data de cada parcela para o mês correto.</p></div>
+                <Button variant="outline" onClick={handleFixDates} disabled={isFixingDates}>{isFixingDates ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4 mr-2" />} Corrigir Datas</Button>
+              </div>
+            </CardContent>
+          </Card>
 
-      <Card className="border-destructive/50">
-        <CardHeader><CardTitle className="flex items-center gap-2 text-destructive"><Trash2 className="h-5 w-5" /> Zona de Perigo (Nuvem)</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5"><Label>Resetar Lançamentos</Label><p className="text-sm text-muted-foreground">Apaga apenas o histórico de transações.</p></div>
-            <Button variant="outline" className="text-destructive border-destructive hover:bg-destructive/10" onClick={() => handleResetData(true)} disabled={isDeleting}>{isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Resetar Lançamentos'}</Button>
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5"><Label>Limpar Todos os Dados</Label><p className="text-sm text-muted-foreground">Remove permanentemente tudo da nuvem.</p></div>
-            <Button variant="destructive" onClick={() => handleResetData(false)} disabled={isDeleting}>{isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Limpar Tudo na Nuvem'}</Button>
-          </div>
-        </CardContent>
-      </Card>
+          <Card className="border-destructive/50">
+            <CardHeader><CardTitle className="flex items-center gap-2 text-destructive"><Trash2 className="h-5 w-5" /> Zona de Perigo (Nuvem)</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5"><Label>Resetar Lançamentos</Label><p className="text-sm text-muted-foreground">Apaga apenas o histórico de transações.</p></div>
+                <Button variant="outline" className="text-destructive border-destructive hover:bg-destructive/10" onClick={() => handleResetData(true)} disabled={isDeleting}>{isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Resetar Lançamentos'}</Button>
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5"><Label>Limpar Todos os Dados</Label><p className="text-sm text-muted-foreground">Remove permanentemente tudo da nuvem.</p></div>
+                <Button variant="destructive" onClick={() => handleResetData(false)} disabled={isDeleting}>{isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Limpar Tudo na Nuvem'}</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
         <DialogContent>
