@@ -7,6 +7,7 @@ interface UserProfile {
   name: string;
   email: string;
   avatar_color: string;
+  avatar_url?: string;
   is_admin: boolean;
   is_active?: boolean;
   family_id?: string;
@@ -45,6 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           name: u.f_name || u.name,
           email: u.f_email || u.email,
           avatar_color: u.f_avatar_color || u.avatar_color,
+          avatar_url: u.f_avatar_url || u.avatar_url,
           is_admin: u.f_is_admin || u.is_admin,
           is_active: u.f_is_active ?? u.is_active ?? true
         })));
