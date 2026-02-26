@@ -74,7 +74,7 @@ export function Dashboard() {
   
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [isPrivate, setIsPrivate] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string>('total'); // Padrão: Todas as Contas
+  const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'total');
   
   const selectedMonthStr = useMemo(() => format(selectedMonth, 'yyyy-MM'), [selectedMonth]);
 

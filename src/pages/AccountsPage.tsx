@@ -87,7 +87,7 @@ export function AccountsPage() {
   const { allAccounts, createAccount, updateAccount, deleteAccount, getAccountBalance } = useFinance();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
-  const [selectedUserId, setSelectedUserId] = useState<string>('total'); // Padrão agora é "Todas as Contas"
+  const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'total');
   const [isLoading, setIsLoading] = useState(false);
   
   const [formData, setFormData] = useState<AccountFormData>({

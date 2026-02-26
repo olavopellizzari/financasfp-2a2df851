@@ -46,7 +46,7 @@ export function ReportsPage() {
   
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
-  const [selectedUserId, setSelectedUserId] = useState<string>('all');
+  const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'all');
 
   const isAdmin = isCurrentUserAdmin();
 
