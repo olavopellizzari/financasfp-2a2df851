@@ -70,7 +70,7 @@ import { format, addMonths, addYears, subMonths, isValid, parseISO, startOfDay, 
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const TIPOS_TRANSACAO: { value: TransactionType; label: string; icon: React.ElementType; color: string }[] = [
   { value: 'INCOME', label: 'Receita', icon: ArrowUpRight, color: 'text-income' },
@@ -137,6 +137,7 @@ export function TransactionsPage() {
     createTransaction, updateTransaction, deleteTransaction, getCategoryById, refresh
   } = useFinance();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -254,6 +255,19 @@ export function TransactionsPage() {
       notes: ''
     });
   };
+
+  // Efeito para abrir edição via URL
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    if (editId && allTransactions.length > 0) {
+      const tx = allTransactions.find(t => t.id === editId);
+      if (tx) {
+        handleEdit(tx);
+        // Limpa o parâmetro da URL para não reabrir ao atualizar
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [searchParams, allTransactions]);
 
   useEffect(() => {
     if ((formData.type === 'CREDIT' || formData.type === 'REFUND') && formData.cardId && !editingTransaction) {

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatCurrency, getCurrentMonth, Card as CardType } from '@/lib/db';
+import { formatCurrency, getCurrentMonth, Card as CardType, Transaction } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -19,7 +19,8 @@ import {
   Trash2,
   Info,
   Cpu,
-  Loader2
+  Loader2,
+  ArrowRight
 } from 'lucide-react';
 import { format, parse, addMonths, subMonths, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -52,6 +53,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 const CARD_COLORS = [
   '#1e293b', '#ef4444', '#3b82f6', '#22c55e', 
@@ -59,8 +61,9 @@ const CARD_COLORS = [
 ];
 
 export function CardsPage() {
-  const { allCards, allTransactions, invoices, getCategoryById, createCard, updateCard, deleteCard, allAccounts } = useFinance();
+  const { allCards, allTransactions, invoices, getCategoryById, createCard, updateCard, deleteCard, deleteTransaction, allAccounts } = useFinance();
   const { currentUser, users } = useAuth();
+  const navigate = useNavigate();
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   
   // Estado para o diálogo
@@ -198,6 +201,20 @@ export function CardsPage() {
     }
   };
 
+  const handleEditTransaction = (tx: Transaction) => {
+    navigate(`/transactions?edit=${tx.id}`);
+  };
+
+  const handleDeleteTransaction = async (tx: Transaction) => {
+    if (!confirm('Tem certeza que deseja excluir este lançamento?')) return;
+    try {
+      await deleteTransaction(tx.id);
+      toast({ title: "Lançamento excluído!" });
+    } catch (error: any) {
+      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+    }
+  };
+
   const safeFormatDate = (date: Date | string, formatStr: string) => {
     const d = typeof date === 'string' ? new Date(date) : date;
     if (!isValid(d)) return '';
@@ -324,11 +341,21 @@ export function CardsPage() {
                 </div>
 
                 <div className="pt-4 border-t">
-                  <h4 className="text-sm font-bold mb-4 flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-primary" /> 
-                    Lançamentos de {safeFormatDate(selectedDate, 'MMMM')}
-                  </h4>
-                  <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-sm font-bold flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-primary" /> 
+                      Lançamentos de {safeFormatDate(selectedDate, 'MMMM')}
+                    </h4>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-[10px] font-bold uppercase text-primary hover:bg-primary/5"
+                      onClick={() => navigate('/transactions')}
+                    >
+                      Ver todos <ArrowRight className="w-3 h-3 ml-1" />
+                    </Button>
+                  </div>
+                  <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2">
                     {card.transactions.length > 0 ? (
                       card.transactions.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()).map(tx => {
                         const cat = getCategoryById(tx.categoryId);
@@ -346,9 +373,29 @@ export function CardsPage() {
                                 </p>
                               </div>
                             </div>
-                            <span className={cn("text-sm font-bold", tx.type === 'REFUND' ? 'text-income' : 'text-expense')}>
-                              {tx.type === 'REFUND' ? '+' : '-'} {formatCurrency(tx.amount)}
-                            </span>
+                            <div className="flex items-center gap-3">
+                              <span className={cn("text-sm font-bold", tx.type === 'REFUND' ? 'text-income' : 'text-expense')}>
+                                {tx.type === 'REFUND' ? '+' : '-'} {formatCurrency(tx.amount)}
+                              </span>
+                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                  onClick={() => handleEditTransaction(tx)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                  onClick={() => handleDeleteTransaction(tx)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </div>
                           </div>
                         );
                       })
