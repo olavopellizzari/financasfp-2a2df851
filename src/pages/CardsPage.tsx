@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, Card as CardType, Transaction } from '@/lib/db';
@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { UserFilter } from '@/components/UserFilter';
 import { 
   CreditCard, 
   Plus, 
@@ -20,7 +21,8 @@ import {
   Loader2,
   ArrowRight,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  LayoutGrid
 } from 'lucide-react';
 import { format, parse, addMonths, subMonths, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -67,6 +69,7 @@ export function CardsPage() {
   
   const [selectedMonth, setSelectedMonth] = useState(format(addMonths(new Date(), 1), 'yyyy-MM'));
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'total');
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<CardType | null>(null);
@@ -84,13 +87,26 @@ export function CardsPage() {
     defaultAccountId: ''
   });
 
+  // Sincroniza o filtro quando o usuário carrega
+  useEffect(() => {
+    if (currentUser?.id && selectedUserId === 'total') {
+      setSelectedUserId(currentUser.id);
+    }
+  }, [currentUser?.id]);
+
   const selectedDate = useMemo(() => {
     const d = parse(selectedMonth, 'yyyy-MM', new Date());
     return isValid(d) ? d : new Date();
   }, [selectedMonth]);
 
+  const filteredCards = useMemo(() => {
+    if (selectedUserId === 'total') return allCards;
+    // Filtra cartões pelo dono (user_id)
+    return allCards.filter(card => card.user_id === selectedUserId);
+  }, [allCards, selectedUserId]);
+
   const cardsWithStats = useMemo(() => {
-    return allCards.filter(card => card.user_id === currentUser?.id || (card as any).is_shared).map(card => {
+    return filteredCards.map(card => {
       const currentInvoiceTransactions = allTransactions.filter(t => 
         t.cardId === card.id && 
         t.mesFatura === selectedMonth &&
@@ -125,7 +141,7 @@ export function CardsPage() {
         transactions: currentInvoiceTransactions
       };
     });
-  }, [allCards, allTransactions, invoices, selectedMonth, currentUser]);
+  }, [filteredCards, allTransactions, invoices, selectedMonth]);
 
   const resetForm = () => {
     setEditingCard(null);
@@ -169,7 +185,7 @@ export function CardsPage() {
     try {
       const data = {
         ...formData,
-        userId: currentUser?.id,
+        userId: formData.responsibleUserId || currentUser?.id,
         limit: parseFloat(formData.limit) || 0,
         closingDay: parseInt(formData.closingDay) || 1,
         dueDay: parseInt(formData.dueDay) || 1,
@@ -232,21 +248,31 @@ export function CardsPage() {
           <p className="text-muted-foreground">Clique no cartão para ver detalhes e lançamentos</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center bg-muted rounded-lg p-1">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedMonth(format(subMonths(selectedDate, 1), 'yyyy-MM'))}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm font-bold px-4 min-w-[140px] text-center capitalize">
-              {safeFormatDate(selectedDate, 'MMMM yyyy')}
-            </span>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedMonth(format(addMonths(selectedDate, 1), 'yyyy-MM'))}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+          <UserFilter 
+            value={selectedUserId} 
+            onChange={setSelectedUserId} 
+            showTotalOption={true}
+            className="w-[200px]" 
+          />
           <Button onClick={handleOpenCreate} className="gradient-primary shadow-primary">
             <Plus className="w-4 h-4 mr-2" /> Novo Cartão
           </Button>
         </div>
+      </div>
+
+      <div className="flex items-center justify-center gap-4 bg-muted/30 p-2 rounded-xl border border-dashed">
+        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setSelectedMonth(format(subMonths(selectedDate, 1), 'yyyy-MM'))}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <div className="flex flex-col items-center min-w-[140px]">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase">Fatura de Referência</span>
+          <span className="text-sm font-bold capitalize">
+            {safeFormatDate(selectedDate, 'MMMM yyyy')}
+          </span>
+        </div>
+        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setSelectedMonth(format(addMonths(selectedDate, 1), 'yyyy-MM'))}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
