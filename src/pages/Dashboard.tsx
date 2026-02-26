@@ -74,17 +74,40 @@ export function Dashboard() {
   
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [isPrivate, setIsPrivate] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string>('all');
+  const [selectedUserId, setSelectedUserId] = useState<string>('total'); // Padrão: Todas as Contas
   
   const selectedMonthStr = useMemo(() => format(selectedMonth, 'yyyy-MM'), [selectedMonth]);
 
-  const userFilteredTransactions = useMemo(() => {
-    return allTransactions.filter(t => selectedUserId === 'all' || t.userId === selectedUserId);
-  }, [allTransactions, selectedUserId]);
-
+  // Filtra as contas baseado na lógica da página de Contas
   const filteredAccounts = useMemo(() => {
-    return allAccounts.filter(a => selectedUserId === 'all' || a.user_id === selectedUserId || a.is_shared);
+    if (selectedUserId === 'total') return allAccounts;
+    if (selectedUserId === 'all') return allAccounts.filter(a => a.is_shared === true);
+    return allAccounts.filter(a => a.user_id === selectedUserId && !a.is_shared);
   }, [allAccounts, selectedUserId]);
+
+  // Filtra as transações baseado nas contas filtradas
+  const userFilteredTransactions = useMemo(() => {
+    if (selectedUserId === 'total') return allTransactions;
+
+    const accountIds = new Set(filteredAccounts.map(a => a.id));
+    
+    return allTransactions.filter(t => {
+      // Se a transação tem conta, verifica se a conta está no filtro
+      if (t.accountId) return accountIds.has(t.accountId);
+      
+      // Se for cartão, filtramos pelo dono do cartão (seguindo a lógica de exclusividade)
+      if (t.cardId) {
+        const card = allCards.find(c => c.id === t.cardId);
+        if (!card) return false;
+        if (selectedUserId === 'all') return false; // Cartões geralmente não são "família" no sentido de compartilhados
+        return card.user_id === selectedUserId;
+      }
+
+      // Fallback para o usuário da transação
+      if (selectedUserId === 'all') return false;
+      return t.userId === selectedUserId;
+    });
+  }, [allTransactions, filteredAccounts, allCards, selectedUserId]);
 
   const launchTransactions = useMemo(() => {
     return userFilteredTransactions.filter(t => t.effectiveMonth === selectedMonthStr && t.status !== 'cancelled');
@@ -115,7 +138,6 @@ export function Dashboard() {
       if (tx.installmentGroupId) {
         if (!seenGroups.has(tx.installmentGroupId)) {
           seenGroups.add(tx.installmentGroupId);
-          // Calcula o valor total da compra (parcela * total de parcelas)
           const totalAmount = tx.amount * (tx.totalInstallments || 1);
           result.push({
             ...tx,
@@ -147,14 +169,19 @@ export function Dashboard() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <UserFilter value={selectedUserId} onChange={setSelectedUserId} className="w-[180px]" />
+          <UserFilter 
+            value={selectedUserId} 
+            onChange={setSelectedUserId} 
+            showTotalOption={true}
+            className="w-[200px]" 
+          />
           <Button variant="ghost" size="icon" onClick={() => setIsPrivate(!isPrivate)}>{isPrivate ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}</Button>
           <NotificationsPanel />
           <Button onClick={() => navigate('/transactions')} className="gradient-primary shadow-primary"><Plus className="w-4 h-4 mr-2" /> Novo Lançamento</Button>
         </div>
       </div>
 
-      <QuickWidget selectedUserId={selectedUserId} date={selectedMonth} />
+      <QuickWidget selectedUserId={selectedUserId === 'total' ? 'all' : selectedUserId} date={selectedMonth} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <BalanceCard title="Saldo Atual" amount={totalBalance} icon={<Wallet className="w-5 h-5 text-primary-foreground" />} variant="primary" isPrivate={isPrivate}>
