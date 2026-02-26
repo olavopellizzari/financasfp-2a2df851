@@ -187,10 +187,10 @@ export function TransactionsPage() {
 
   const filteredTransactions = useMemo(() => {
     return allTransactions.filter(tx => {
-      // Lógica de filtro: Se for cartão, olha o mês da fatura. Se for conta, olha o mês efetivo.
-      const txMonth = (tx.type === 'CREDIT' || tx.type === 'REFUND') ? tx.mesFatura : tx.effectiveMonth;
-      const matchesMonth = txMonth === selectedMonthStr;
-      
+      // OCULTA CREDIT E REFUND (Lançamentos de cartão)
+      if (tx.type === 'CREDIT' || tx.type === 'REFUND') return false;
+
+      const matchesMonth = tx.effectiveMonth === selectedMonthStr;
       const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = filterType === 'ALL' || tx.type === filterType;
       const matchesUser = selectedUserId === 'all' || tx.userId === selectedUserId;
@@ -202,11 +202,8 @@ export function TransactionsPage() {
     const income = filteredTransactions.filter(t => t.type === 'INCOME' && t.status !== 'cancelled').reduce((s, t) => s + t.amount, 0);
     const expensesOnly = filteredTransactions.filter(t => t.type === 'EXPENSE' && t.status !== 'cancelled');
     const totalExpenses = expensesOnly.reduce((s, t) => s + t.amount, 0);
-    const creditOnly = filteredTransactions.filter(t => t.type === 'CREDIT' && t.status !== 'cancelled');
-    const totalCredit = creditOnly.reduce((s, t) => s + t.amount, 0);
-    const refundOnly = filteredTransactions.filter(t => t.type === 'REFUND' && t.status !== 'cancelled');
-    const totalRefund = refundOnly.reduce((s, t) => s + t.amount, 0);
-    return { income, totalExpenses, totalCredit: totalCredit - totalRefund, balance: income - totalExpenses - (totalCredit - totalRefund) };
+    
+    return { income, totalExpenses, balance: income - totalExpenses };
   }, [filteredTransactions]);
 
   const handleDescriptionChange = useCallback((desc: string) => {
@@ -259,14 +256,12 @@ export function TransactionsPage() {
     });
   };
 
-  // Efeito para abrir edição via URL
   useEffect(() => {
     const editId = searchParams.get('edit');
     if (editId && allTransactions.length > 0) {
       const tx = allTransactions.find(t => t.id === editId);
       if (tx) {
         handleEdit(tx);
-        // Limpa o parâmetro da URL para não reabrir ao atualizar
         setSearchParams({}, { replace: true });
       }
     }
@@ -382,13 +377,11 @@ export function TransactionsPage() {
     }
 
     if (formData.type === 'TRANSFER') {
-      // Saída da conta origem
       await createTransaction({
         type: 'TRANSFER', amount: totalAmount, description: formData.description || `Transferência para ${allAccounts.find(a => a.id === formData.destinationAccountId)?.name}`,
         purchaseDate: formData.purchaseDate, effectiveDate: formData.purchaseDate, effectiveMonth: format(formData.purchaseDate, 'yyyy-MM'),
         mesFatura: null, status: 'confirmed', isPaid: true, userId: formData.userId, accountId: formData.accountId, cardId: null, categoryId: '', notes: formData.notes, isRecurring: false
       });
-      // Entrada na conta destino (mesmo mês para não sumir do saldo consolidado)
       await createTransaction({
         type: 'INCOME', amount: totalAmount, description: formData.description || `Transferência de ${allAccounts.find(a => a.id === formData.accountId)?.name}`,
         purchaseDate: formData.purchaseDate, effectiveDate: formData.purchaseDate, effectiveMonth: format(formData.purchaseDate, 'yyyy-MM'),
@@ -411,7 +404,6 @@ export function TransactionsPage() {
       let effectiveMonthStr = format(dateForIteration, 'yyyy-MM');
       
       if (formData.type === 'INCOME') {
-        // Receitas contam para o mês seguinte (regra de competência do app)
         effectiveMonthStr = format(addMonths(dateForIteration, 1), 'yyyy-MM');
       } else if ((formData.type === 'CREDIT' || formData.type === 'REFUND') && formData.cardId) {
         const baseCalculatedMonth = calculateMesFatura(formData.purchaseDate, formData.cardId);
@@ -492,7 +484,7 @@ export function TransactionsPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Lançamentos</h1>
-          <p className="text-muted-foreground">Histórico de movimentações financeiras</p>
+          <p className="text-muted-foreground">Histórico de movimentações financeiras (Contas)</p>
         </div>
         <div className="flex items-center gap-3">
           {isAdmin && <UserFilter value={selectedUserId} onChange={setSelectedUserId} className="w-[180px]" />}
@@ -515,11 +507,10 @@ export function TransactionsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-income/10 border-income/20"><CardContent className="p-4"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Receitas</p><ArrowUpRight className="w-4 h-4 text-income" /></div><p className="text-xl font-bold text-income">{formatCurrency(monthStats.income)}</p></CardContent></Card>
-        <Card className="bg-expense/10 border-expense/20"><CardContent className="p-4"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Despesas Totais</p><ArrowDownRight className="w-4 h-4 text-expense" /></div><p className="text-xl font-bold text-expense">{formatCurrency(monthStats.totalExpenses)}</p></CardContent></Card>
-        <Card className="bg-credit/10 border-credit/20"><CardContent className="p-4"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Cartão de Crédito</p><CreditCard className="w-4 h-4 text-credit" /></div><p className="text-xl font-bold text-credit">{formatCurrency(monthStats.totalCredit)}</p></CardContent></Card>
-        <Card className="bg-muted border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Saldo Previsto</p><Wallet className="w-4 h-4 text-muted-foreground" /></div><p className={cn("text-xl font-bold", monthStats.balance >= 0 ? 'text-income' : 'text-expense')}>{formatCurrency(monthStats.balance)}</p></CardContent></Card>
+        <Card className="bg-expense/10 border-expense/20"><CardContent className="p-4"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Despesas</p><ArrowDownRight className="w-4 h-4 text-expense" /></div><p className="text-xl font-bold text-expense">{formatCurrency(monthStats.totalExpenses)}</p></CardContent></Card>
+        <Card className="bg-muted border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Saldo do Mês</p><Wallet className="w-4 h-4 text-muted-foreground" /></div><p className={cn("text-xl font-bold", monthStats.balance >= 0 ? 'text-income' : 'text-expense')}>{formatCurrency(monthStats.balance)}</p></CardContent></Card>
       </div>
 
       <Card className="finance-card">
@@ -532,7 +523,7 @@ export function TransactionsPage() {
             </div>
             <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
               <div className="relative flex-1 min-w-[200px]"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar descrição..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" /></div>
-              <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}><SelectTrigger className="w-[140px]"><Filter className="w-4 h-4 mr-2" /><SelectValue placeholder="Tipo" /></SelectTrigger><SelectContent><SelectItem value="ALL">Todos</SelectItem>{TIPOS_TRANSACAO.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent></Select>
+              <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}><SelectTrigger className="w-[140px]"><Filter className="w-4 h-4 mr-2" /><SelectValue placeholder="Tipo" /></SelectTrigger><SelectContent><SelectItem value="ALL">Todos</SelectItem>{TIPOS_TRANSACAO.filter(t => t.value !== 'CREDIT' && t.value !== 'REFUND').map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent></Select>
             </div>
           </div>
         </CardContent>
@@ -566,8 +557,8 @@ export function TransactionsPage() {
                     <td className="p-4"><Badge variant="outline" className="font-normal">{category?.icon} {category?.name || 'Sem Categoria'}</Badge></td>
                     <td className="p-4"><div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] text-white font-bold" style={{ backgroundColor: txUser?.avatar_color || '#94a3b8' }}>{txUser?.name.charAt(0).toUpperCase() || '?'}</div><span className="text-xs truncate max-w-[80px]">{txUser?.name || 'Sistema'}</span></div></td>
                     <td className="p-4 text-right font-semibold"><span className={typeInfo.color}>{tx.type === 'INCOME' || tx.type === 'REFUND' ? '+' : '-'} {formatCurrency(tx.amount)}</span></td>
-                    <td className="p-4 text-center">{(tx.type === 'CREDIT' || tx.type === 'REFUND') ? <Badge className="bg-credit/10 text-credit">Fatura</Badge> : (<button onClick={() => handleTogglePaid(tx)} className={cn("flex items-center gap-1 mx-auto px-2 py-1 rounded-full text-[10px] font-bold uppercase transition-all", tx.isPaid ? "bg-income/10 text-income hover:bg-income/20" : "bg-warning/10 text-warning hover:bg-warning/20 border border-warning/20")}>{tx.isPaid ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />} {tx.isPaid ? "Pago" : "Pendente"}</button>)}</td>
-                    <td className="p-4 text-right"><div className="flex justify-end gap-1">{(tx.type !== 'CREDIT' && tx.type !== 'REFUND') && <Button size="icon" variant="ghost" onClick={() => handleTogglePaid(tx)} className={cn("h-8 w-8", tx.isPaid ? "text-muted-foreground" : "text-income")}>{tx.isPaid ? <RotateCcw className="w-4 h-4" /> : <Check className="w-4 h-4" />}</Button>}<Button size="icon" variant="ghost" onClick={() => handleEdit(tx)} className="h-8 w-8 text-muted-foreground"><Pencil className="w-4 h-4" /></Button><Button size="icon" variant="ghost" onClick={() => handleDelete(tx)} className="h-8 w-8 text-destructive"><Trash2 className="w-4 h-4" /></Button></div></td>
+                    <td className="p-4 text-center"><button onClick={() => handleTogglePaid(tx)} className={cn("flex items-center gap-1 mx-auto px-2 py-1 rounded-full text-[10px] font-bold uppercase transition-all", tx.isPaid ? "bg-income/10 text-income hover:bg-income/20" : "bg-warning/10 text-warning hover:bg-warning/20 border border-warning/20")}>{tx.isPaid ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />} {tx.isPaid ? "Pago" : "Pendente"}</button></td>
+                    <td className="p-4 text-right"><div className="flex justify-end gap-1"><Button size="icon" variant="ghost" onClick={() => handleTogglePaid(tx)} className={cn("h-8 w-8", tx.isPaid ? "text-muted-foreground" : "text-income")}>{tx.isPaid ? <RotateCcw className="w-4 h-4" /> : <Check className="w-4 h-4" />}</Button><Button size="icon" variant="ghost" onClick={() => handleEdit(tx)} className="h-8 w-8 text-muted-foreground"><Pencil className="w-4 h-4" /></Button><Button size="icon" variant="ghost" onClick={() => handleDelete(tx)} className="h-8 w-8 text-destructive"><Trash2 className="w-4 h-4" /></Button></div></td>
                   </tr>
                 );
               })}

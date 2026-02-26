@@ -8,19 +8,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CreditCard, Calendar, DollarSign, CheckCircle, AlertCircle, Clock, ChevronLeft, ChevronRight, Settings2, Loader2 } from 'lucide-react';
-import { formatCurrency, getCurrentMonth, Invoice, Card as CardType, generateId } from '@/lib/db';
+import { CreditCard, Calendar, DollarSign, CheckCircle, AlertCircle, Clock, ChevronLeft, ChevronRight, Settings2, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { formatCurrency, getCurrentMonth, Invoice, Card as CardType, generateId, Transaction } from '@/lib/db';
 import { toast } from '@/hooks/use-toast';
 import { db } from '@/lib/db';
 import { format, addMonths, subMonths, parse, setDate, isAfter, isValid, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 export function InvoicesPage() {
-  const { cards, transactions, accounts, invoices, refresh, allTransactions, allCards, updateCard, allAccounts, getAccountBalance } = useFinance();
+  const { cards, transactions, accounts, invoices, refresh, allTransactions, allCards, updateCard, allAccounts, getAccountBalance, getCategoryById, deleteTransaction } = useFinance();
   const { currentUser, isCurrentUserAdmin, users } = useAuth();
+  const navigate = useNavigate();
   
-  // Define o mês inicial como o mês seguinte ao atual
   const [selectedMonth, setSelectedMonth] = useState(format(addMonths(new Date(), 1), 'yyyy-MM'));
   const [selectedCardId, setSelectedCardId] = useState<string>('all');
   
@@ -48,10 +49,9 @@ export function InvoicesPage() {
   };
 
   const generatedInvoices = useMemo(() => {
-    const invoiceMap = new Map<string, { cardId: string; userId: string; month: string; total: number; transactions: typeof transactions }>();
+    const invoiceMap = new Map<string, { cardId: string; userId: string; month: string; total: number; transactions: Transaction[] }>();
     const txSource = isAdmin ? allTransactions : transactions;
 
-    // Filtra transações que pertencem à fatura do mês selecionado
     const creditTransactions = txSource.filter(t => 
       t.cardId && 
       (t.type === 'CREDIT' || t.type === 'REFUND') && 
@@ -80,7 +80,7 @@ export function InvoicesPage() {
     const result: Array<{
       id: string; card: CardType; month: string; total: number; paid: number;
       status: 'open' | 'closed' | 'paid' | 'partial'; closingDate: Date; dueDate: Date;
-      transactionCount: number; existingInvoice?: Invoice;
+      transactionCount: number; transactions: Transaction[]; existingInvoice?: Invoice;
     }> = [];
 
     const filteredCards = selectedCardId === 'all' ? cards : cards.filter(c => c.id === selectedCardId);
@@ -91,7 +91,6 @@ export function InvoicesPage() {
       const existing = invoices.find(i => i.card_id === card.id && i.month === selectedMonth);
       
       let closingDate = setDate(monthDate, card.closing_day);
-      
       let dueDate;
       if (card.closing_day < card.due_day) {
         dueDate = setDate(monthDate, card.due_day);
@@ -108,11 +107,12 @@ export function InvoicesPage() {
       else if (paid > 0) status = 'partial';
       else if (isAfter(new Date(), closingDate)) status = 'closed';
 
-      // Mostra todos os cartões, mesmo com total zero
       result.push({
         id: existing?.id || `temp-${card.id}-${selectedMonth}`,
         card, month: selectedMonth, total, paid, status, closingDate, dueDate,
-        transactionCount: generated?.transactions.length || 0, existingInvoice: existing
+        transactionCount: generated?.transactions.length || 0,
+        transactions: generated?.transactions || [],
+        existingInvoice: existing
       });
     });
 
@@ -205,6 +205,12 @@ export function InvoicesPage() {
     }
   };
 
+  const handleDeleteTx = async (id: string) => {
+    if (!confirm('Excluir este lançamento?')) return;
+    await deleteTransaction(id);
+    toast({ title: 'Lançamento excluído' });
+  };
+
   const displayMonthDate = safeParseMonth(selectedMonth);
 
   return (
@@ -237,35 +243,86 @@ export function InvoicesPage() {
         </div>
       </div>
 
-      <div className="grid gap-4">
+      <div className="grid gap-6">
         {displayInvoices.length === 0 ? (
           <Card><CardContent className="py-12 text-center"><CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" /><p className="text-muted-foreground">Nenhum cartão cadastrado.</p></CardContent></Card>
         ) : (
           displayInvoices.map(invoice => (
-            <Card key={invoice.id} className="overflow-hidden">
+            <Card key={invoice.id} className="overflow-hidden border-none shadow-md">
               <div className="flex items-stretch">
                 <div className="w-2" style={{ backgroundColor: invoice.card.color }} />
                 <div className="flex-1 p-6">
-                  <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start justify-between mb-6">
                     <div className="flex items-center gap-3">
                       <div className="p-3 rounded-xl" style={{ backgroundColor: `${invoice.card.color}20` }}><CreditCard className="h-5 w-5" style={{ color: invoice.card.color }} /></div>
-                      <div><h3 className="font-semibold">{invoice.card.name}</h3><p className="text-sm text-muted-foreground">•••• {invoice.card.last_digits} · {invoice.transactionCount} lançamentos</p></div>
+                      <div><h3 className="font-bold text-lg">{invoice.card.name}</h3><p className="text-xs text-muted-foreground uppercase tracking-wider">•••• {invoice.card.last_digits} · {invoice.transactionCount} lançamentos</p></div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button variant="ghost" size="icon" onClick={() => handleOpenConfig(invoice.card)} title="Configurar Cartão">
                         <Settings2 className="h-4 w-4" />
                       </Button>
-                      <Badge variant={invoice.status === 'paid' ? 'default' : 'outline'}>{invoice.status === 'paid' ? 'Paga' : invoice.status === 'closed' ? 'Fechada' : 'Aberta'}</Badge>
+                      <Badge variant={invoice.status === 'paid' ? 'default' : 'outline'} className={cn(invoice.status === 'paid' ? 'bg-income text-white' : '')}>{invoice.status === 'paid' ? 'Paga' : invoice.status === 'closed' ? 'Fechada' : 'Aberta'}</Badge>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                    <div><p className="text-xs text-muted-foreground">Fechamento</p><p className="font-medium">{isValid(invoice.closingDate) ? format(invoice.closingDate, 'dd/MM/yyyy') : '---'}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Vencimento</p><p className="font-medium">{isValid(invoice.dueDate) ? format(invoice.dueDate, 'dd/MM/yyyy') : '---'}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Valor Total</p><p className="font-medium text-lg">{formatCurrency(invoice.total)}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Restante</p><p className={cn("font-medium text-lg", invoice.total - invoice.paid > 0 ? 'text-expense' : 'text-income')}>{formatCurrency(invoice.total - invoice.paid)}</p></div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+                    <div className="space-y-1"><p className="text-[10px] font-bold text-muted-foreground uppercase">Fechamento</p><p className="font-semibold">{isValid(invoice.closingDate) ? format(invoice.closingDate, 'dd/MM/yyyy') : '---'}</p></div>
+                    <div className="space-y-1"><p className="text-[10px] font-bold text-muted-foreground uppercase">Vencimento</p><p className="font-semibold">{isValid(invoice.dueDate) ? format(invoice.dueDate, 'dd/MM/yyyy') : '---'}</p></div>
+                    <div className="space-y-1"><p className="text-[10px] font-bold text-muted-foreground uppercase">Valor Total</p><p className="font-bold text-xl">{formatCurrency(invoice.total)}</p></div>
+                    <div className="space-y-1"><p className="text-[10px] font-bold text-muted-foreground uppercase">Restante</p><p className={cn("font-bold text-xl", invoice.total - invoice.paid > 0 ? 'text-expense' : 'text-income')}>{formatCurrency(invoice.total - invoice.paid)}</p></div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handlePayInvoice(invoice)} disabled={invoice.status === 'paid' || invoice.total === 0}><DollarSign className="h-4 w-4 mr-1" />{invoice.status === 'paid' ? 'Paga' : 'Pagar Fatura'}</Button>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Detalhamento da Fatura</h4>
+                      <Button variant="outline" size="sm" onClick={() => handlePayInvoice(invoice)} disabled={invoice.status === 'paid' || invoice.total === 0} className="h-8"><DollarSign className="h-3.5 w-3.5 mr-1" />{invoice.status === 'paid' ? 'Paga' : 'Pagar Fatura'}</Button>
+                    </div>
+                    
+                    <div className="bg-muted/30 rounded-2xl overflow-hidden">
+                      <div className="max-h-[300px] overflow-y-auto">
+                        {invoice.transactions.length > 0 ? (
+                          <table className="w-full text-xs">
+                            <thead className="bg-muted/50 sticky top-0">
+                              <tr>
+                                <th className="text-left p-3 font-bold uppercase">Data</th>
+                                <th className="text-left p-3 font-bold uppercase">Descrição</th>
+                                <th className="text-left p-3 font-bold uppercase">Categoria</th>
+                                <th className="text-right p-3 font-bold uppercase">Valor</th>
+                                <th className="p-3"></th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/50">
+                              {invoice.transactions.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()).map(tx => {
+                                const cat = getCategoryById(tx.categoryId);
+                                return (
+                                  <tr key={tx.id} className="hover:bg-muted/50 transition-colors group">
+                                    <td className="p-3 whitespace-nowrap">{format(new Date(tx.purchaseDate), 'dd/MM/yy')}</td>
+                                    <td className="p-3">
+                                      <div className="flex flex-col">
+                                        <span className="font-semibold">{tx.description}</span>
+                                        {tx.totalInstallments > 1 && <span className="text-[10px] text-muted-foreground">Parcela {tx.installmentNumber}/{tx.totalInstallments}</span>}
+                                      </div>
+                                    </td>
+                                    <td className="p-3"><Badge variant="outline" className="font-normal text-[10px]">{cat?.icon} {cat?.name}</Badge></td>
+                                    <td className={cn("p-3 text-right font-bold", tx.type === 'REFUND' ? 'text-income' : 'text-expense')}>
+                                      {tx.type === 'REFUND' ? '+' : '-'} {formatCurrency(tx.amount)}
+                                    </td>
+                                    <td className="p-3 text-right">
+                                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigate(`/transactions?edit=${tx.id}`)}><Pencil className="h-3 w-3" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteTx(tx.id)}><Trash2 className="h-3 w-3" /></Button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <div className="p-8 text-center text-muted-foreground">Nenhum lançamento nesta fatura.</div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
