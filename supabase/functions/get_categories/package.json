@@ -1,0 +1,5 @@
+{
+  "name": "get_categories",
+  "version": "1.0.0",
+  "description": "Edge function wrapper for get_categories RPC"
+}
