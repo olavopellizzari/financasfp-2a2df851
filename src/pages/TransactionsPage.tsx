@@ -602,7 +602,6 @@ export function TransactionsPage() {
           <Tabs value={activeTab} onValueChange={(v: any) => { setActiveTab(v); setFormData(prev => ({ ...prev, type: v, isPaid: v === 'INCOME' || v === 'TRANSFER' || v === 'REFUND' })); }}>
             <TabsList className="grid grid-cols-5 w-full">
               {TIPOS_TRANSACAO
-                .filter(t => isCardMode ? (t.value === 'CREDIT' || t.value === 'REFUND') : (t.value !== 'CREDIT' && t.value !== 'REFUND'))
                 .map(t => <TabsTrigger key={t.value} value={t.value} className="gap-1 px-1"><t.icon className="w-3 h-3" />{t.label}</TabsTrigger>)}
             </TabsList>
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">

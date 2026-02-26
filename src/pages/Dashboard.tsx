@@ -24,7 +24,8 @@ import {
   ChevronDown,
   AlertCircle,
   ArrowRight,
-  History
+  History,
+  ArrowDownRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, addMonths, subMonths, startOfYear, endOfYear, eachMonthOfInterval, getYear, isSameMonth, isValid } from 'date-fns';
@@ -33,6 +34,12 @@ import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface BalanceCardProps {
   title: string;
@@ -106,8 +113,8 @@ export function Dashboard() {
       if (t.cardId) {
         const card = allCards.find(c => c.id === t.cardId);
         if (!card) return false;
-        if (selectedUserId === 'all') return false; // Cartões geralmente não são "família" no sentido de compartilhados
-        return card.user_id === selectedUserId;
+        if (selectedUserId === 'all') return (card as any).is_shared === true;
+        return card.user_id === selectedUserId && !(card as any).is_shared;
       }
 
       // Fallback para o usuário da transação
@@ -184,7 +191,22 @@ export function Dashboard() {
           />
           <Button variant="ghost" size="icon" onClick={() => setIsPrivate(!isPrivate)}>{isPrivate ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}</Button>
           <NotificationsPanel />
-          <Button onClick={() => navigate('/transactions')} className="gradient-primary shadow-primary"><Plus className="w-4 h-4 mr-2" /> Novo Lançamento</Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="gradient-primary shadow-primary">
+                <Plus className="w-4 h-4 mr-2" /> Novo Lançamento <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => navigate('/transactions')} className="gap-2 cursor-pointer">
+                <ArrowDownRight className="w-4 h-4 text-expense" /> Lançamento em Conta
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/transactions?type=card')} className="gap-2 cursor-pointer">
+                <CreditCard className="w-4 h-4 text-credit" /> Lançamento em Cartão
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
