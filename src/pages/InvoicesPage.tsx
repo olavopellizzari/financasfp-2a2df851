@@ -21,7 +21,8 @@ export function InvoicesPage() {
   const { cards, transactions, accounts, invoices, refresh, allTransactions, allCards, updateCard, allAccounts, getAccountBalance } = useFinance();
   const { currentUser, isCurrentUserAdmin, users } = useAuth();
   
-  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
+  // Define o mês inicial como o mês seguinte ao atual
+  const [selectedMonth, setSelectedMonth] = useState(format(addMonths(new Date(), 1), 'yyyy-MM'));
   const [selectedCardId, setSelectedCardId] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
   
@@ -94,7 +95,7 @@ export function InvoicesPage() {
       
       let closingDate = setDate(monthDate, card.closing_day);
       
-      // Nova lógica de vencimento:
+      // Lógica de vencimento:
       // Se fechamento < vencimento -> mesmo mês
       // Se fechamento > vencimento -> mês seguinte
       let dueDate;
