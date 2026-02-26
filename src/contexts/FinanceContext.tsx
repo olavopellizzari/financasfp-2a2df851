@@ -80,36 +80,24 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       ]);
 
       if (catData.data) {
-        // Lógica de deduplicação: se houver uma categoria local com o mesmo nome da global,
-        // mantemos apenas a local para que as alterações da família prevaleçam.
         const catMap = new Map<string, any>();
-        
-        // Primeiro processamos as globais
         catData.data.filter(c => !c.household_id).forEach(c => {
           catMap.set(c.name.toLowerCase(), {
             ...c,
             type: c.kind === 'receita' ? 'income' : 'expense'
           });
         });
-
-        // Depois as locais (sobrescrevendo as globais no Map)
         catData.data.filter(c => c.household_id).forEach(c => {
           catMap.set(c.name.toLowerCase(), {
             ...c,
             type: c.kind === 'receita' ? 'income' : 'expense'
           });
         });
-
         setCategories(Array.from(catMap.values()).sort((a, b) => a.name.localeCompare(b.name)));
       }
       
-      if (accData.data) {
-        setAllAccounts(accData.data as Account[]);
-      }
-
-      if (cardData.data) {
-        setAllCards(cardData.data as Card[]);
-      }
+      if (accData.data) setAllAccounts(accData.data as Account[]);
+      if (cardData.data) setAllCards(cardData.data as Card[]);
 
       if (txData.data) {
         const mappedTxs: Transaction[] = txData.data.map(t => ({
@@ -156,13 +144,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const getAccountBalance = (accountId: string) => {
     const account = allAccounts.find(a => a.id === accountId);
     if (!account) return 0;
-
-    const txs = allTransactions.filter(t => 
-      t.accountId === accountId && 
-      t.status === 'confirmed' && 
-      t.isPaid === true
-    );
-
+    const txs = allTransactions.filter(t => t.accountId === accountId && t.status === 'confirmed' && t.isPaid === true);
     return txs.reduce((sum, t) => {
       if (t.type === 'INCOME' || t.type === 'REFUND') return sum + t.amount;
       if (t.type === 'EXPENSE' || t.type === 'TRANSFER') return sum - t.amount;
@@ -178,9 +160,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }, 0);
   };
 
-  const getCategoryById = (categoryId: string) => {
-    return categories.find(c => c.id === categoryId);
-  };
+  const getCategoryById = (categoryId: string) => categories.find(c => c.id === categoryId);
 
   const calculateMesFatura = (purchaseDate: Date, cardId: string) => {
     if (!purchaseDate || !isValid(purchaseDate)) return format(new Date(), 'yyyy-MM');
@@ -222,7 +202,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.isPaid !== undefined) updateData.is_paid = data.isPaid;
     if (data.categoryId !== undefined) updateData.category_id = data.categoryId;
     if (data.status !== undefined) updateData.status = data.status;
-
     const { error } = await supabase.from('transactions').update(updateData).eq('id', id);
     if (error) throw error;
     await fetchData();
@@ -258,7 +237,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.isArchived !== undefined) updateData.active = !data.isArchived;
     if (data.isShared !== undefined) updateData.is_shared = data.isShared;
     if (data.userId !== undefined) updateData.user_id = data.userId;
-
     const { error } = await supabase.from('accounts').update(updateData).eq('id', id);
     if (error) throw error;
     await fetchData();
@@ -272,7 +250,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const createCard = async (data: any) => {
     const { error } = await supabase.from('cards').insert([{
-      user_id: data.userId,
+      user_id: data.isShared ? null : data.userId,
       household_id: currentUser?.family_id,
       name: data.name,
       last_digits: data.lastDigits,
@@ -282,7 +260,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       due_day: data.dueDay,
       color: data.color,
       responsible_user_id: data.responsibleUserId,
-      default_account_id: data.defaultAccountId
+      default_account_id: data.defaultAccountId,
+      is_shared: data.isShared ?? false
     }]);
     if (error) throw error;
     await fetchData();
@@ -299,7 +278,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.color !== undefined) updateData.color = data.color;
     if (data.responsibleUserId !== undefined) updateData.responsible_user_id = data.responsibleUserId;
     if (data.defaultAccountId !== undefined) updateData.default_account_id = data.defaultAccountId;
-
+    if (data.isShared !== undefined) {
+      updateData.is_shared = data.isShared;
+      updateData.user_id = data.isShared ? null : (data.userId || currentUser?.id);
+    }
     const { error } = await supabase.from('cards').update(updateData).eq('id', id);
     if (error) throw error;
     await fetchData();

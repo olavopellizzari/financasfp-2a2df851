@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { UserFilter } from '@/components/UserFilter';
 import { 
   CreditCard, 
@@ -22,7 +23,11 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronUp,
-  LayoutGrid
+  LayoutGrid,
+  Users,
+  User as UserIcon,
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
 import { format, parse, addMonths, subMonths, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -54,6 +59,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -84,10 +90,10 @@ export function CardsPage() {
     dueDay: '20',
     color: CARD_COLORS[0],
     responsibleUserId: currentUser?.id || '',
-    defaultAccountId: ''
+    defaultAccountId: '',
+    isShared: false
   });
 
-  // Sincroniza o filtro quando o usuário carrega
   useEffect(() => {
     if (currentUser?.id && selectedUserId === 'total') {
       setSelectedUserId(currentUser.id);
@@ -101,8 +107,8 @@ export function CardsPage() {
 
   const filteredCards = useMemo(() => {
     if (selectedUserId === 'total') return allCards;
-    // Filtra cartões pelo dono (user_id)
-    return allCards.filter(card => card.user_id === selectedUserId);
+    if (selectedUserId === 'all') return allCards.filter(c => (c as any).is_shared === true);
+    return allCards.filter(c => c.user_id === selectedUserId && !(c as any).is_shared);
   }, [allCards, selectedUserId]);
 
   const cardsWithStats = useMemo(() => {
@@ -154,7 +160,8 @@ export function CardsPage() {
       dueDay: '20',
       color: CARD_COLORS[0],
       responsibleUserId: currentUser?.id || '',
-      defaultAccountId: allAccounts[0]?.id || ''
+      defaultAccountId: allAccounts[0]?.id || '',
+      isShared: false
     });
   };
 
@@ -174,7 +181,8 @@ export function CardsPage() {
       dueDay: card.due_day.toString(),
       color: card.color,
       responsibleUserId: card.responsible_user_id || card.user_id,
-      defaultAccountId: card.default_account_id || ''
+      defaultAccountId: card.default_account_id || '',
+      isShared: (card as any).is_shared ?? false
     });
     setIsDialogOpen(true);
   };
@@ -185,7 +193,7 @@ export function CardsPage() {
     try {
       const data = {
         ...formData,
-        userId: formData.responsibleUserId || currentUser?.id,
+        userId: formData.isShared ? null : (formData.responsibleUserId || currentUser?.id),
         limit: parseFloat(formData.limit) || 0,
         closingDay: parseInt(formData.closingDay) || 1,
         dueDay: parseInt(formData.dueDay) || 1,
@@ -278,10 +286,10 @@ export function CardsPage() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         {cardsWithStats.map(card => {
           const isExpanded = expandedCardId === card.id;
+          const isShared = (card as any).is_shared;
           
           return (
             <div key={card.id} className="space-y-4">
-              {/* Visual do Cartão Físico */}
               <div 
                 onClick={() => toggleExpand(card.id)}
                 className={cn(
@@ -299,7 +307,14 @@ export function CardsPage() {
                 <div className="relative h-full flex flex-col justify-between">
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
-                      <p className="text-xs font-medium opacity-80 uppercase tracking-widest">Nome do Cartão</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-medium opacity-80 uppercase tracking-widest">Nome do Cartão</p>
+                        {isShared && (
+                          <Badge variant="secondary" className="bg-white/20 text-white border-none text-[10px] h-5">
+                            <Users className="w-3 h-3 mr-1" /> Família
+                          </Badge>
+                        )}
+                      </div>
                       <h3 className="text-2xl font-bold tracking-tight">{card.name}</h3>
                     </div>
                     <div className="flex flex-col items-end gap-2">
@@ -340,7 +355,6 @@ export function CardsPage() {
                 </div>
               </div>
 
-              {/* Detalhes e Lançamentos (Expansível) */}
               {isExpanded && (
                 <Card className="border-none shadow-md overflow-hidden animate-scale-in">
                   <CardContent className="p-6 space-y-6">
@@ -453,7 +467,6 @@ export function CardsPage() {
         })}
       </div>
 
-      {/* Diálogo de Criação/Edição */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -461,6 +474,19 @@ export function CardsPage() {
             <DialogDescription>Configure os detalhes do seu cartão de crédito.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 py-4">
+            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-2xl border border-dashed">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-bold flex items-center gap-2">
+                  {formData.isShared ? <ShieldCheck className="w-4 h-4 text-primary" /> : <ShieldAlert className="w-4 h-4 text-orange-500" />}
+                  Cartão da Família?
+                </Label>
+                <p className="text-[10px] text-muted-foreground">
+                  {formData.isShared ? 'Todos os membros podem ver e lançar neste cartão.' : 'Apenas o dono do cartão terá acesso aos dados.'}
+                </p>
+              </div>
+              <Switch checked={formData.isShared} onCheckedChange={v => setFormData({...formData, isShared: v})} />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Nome do Cartão</Label>
@@ -532,17 +558,19 @@ export function CardsPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Usuário Responsável</Label>
-              <Select value={formData.responsibleUserId} onValueChange={v => setFormData({...formData, responsibleUserId: v})}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {users.map(u => (
-                    <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!formData.isShared && (
+              <div className="space-y-2">
+                <Label>Dono do Cartão</Label>
+                <Select value={formData.responsibleUserId} onValueChange={v => setFormData({...formData, responsibleUserId: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {users.map(u => (
+                      <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Conta Padrão para Pagamento</Label>
