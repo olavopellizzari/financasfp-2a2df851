@@ -135,9 +135,7 @@ export function SettingsPage() {
         .from('profiles')
         .update({
           name: profileForm.name,
-          full_name: profileForm.name,
           avatar_color: profileForm.avatarColor,
-          avatar_url: profileForm.avatarColor,
           updated_at: new Date().toISOString()
         })
         .eq('id', currentUser.id);
