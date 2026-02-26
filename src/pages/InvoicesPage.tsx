@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { UserFilter } from '@/components/UserFilter';
 import { CreditCard, Calendar, DollarSign, CheckCircle, AlertCircle, Clock, ChevronLeft, ChevronRight, Settings2, Loader2 } from 'lucide-react';
 import { formatCurrency, getCurrentMonth, Invoice, Card as CardType, generateId } from '@/lib/db';
 import { toast } from '@/hooks/use-toast';
@@ -24,7 +23,6 @@ export function InvoicesPage() {
   // Define o mês inicial como o mês seguinte ao atual
   const [selectedMonth, setSelectedMonth] = useState(format(addMonths(new Date(), 1), 'yyyy-MM'));
   const [selectedCardId, setSelectedCardId] = useState<string>('all');
-  const [selectedUserId, setSelectedUserId] = useState<string>('all');
   
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
@@ -58,8 +56,7 @@ export function InvoicesPage() {
       t.cardId && 
       (t.type === 'CREDIT' || t.type === 'REFUND') && 
       t.status !== 'cancelled' &&
-      t.mesFatura === selectedMonth &&
-      (selectedUserId === 'all' || t.userId === selectedUserId)
+      t.mesFatura === selectedMonth
     );
 
     creditTransactions.forEach(tx => {
@@ -77,7 +74,7 @@ export function InvoicesPage() {
     });
 
     return Array.from(invoiceMap.values());
-  }, [transactions, allTransactions, isAdmin, selectedMonth, selectedUserId]);
+  }, [transactions, allTransactions, isAdmin, selectedMonth]);
 
   const displayInvoices = useMemo(() => {
     const result: Array<{
@@ -95,9 +92,6 @@ export function InvoicesPage() {
       
       let closingDate = setDate(monthDate, card.closing_day);
       
-      // Lógica de vencimento:
-      // Se fechamento < vencimento -> mesmo mês
-      // Se fechamento > vencimento -> mês seguinte
       let dueDate;
       if (card.closing_day < card.due_day) {
         dueDate = setDate(monthDate, card.due_day);
@@ -114,13 +108,12 @@ export function InvoicesPage() {
       else if (paid > 0) status = 'partial';
       else if (isAfter(new Date(), closingDate)) status = 'closed';
 
-      if (total !== 0 || existing) {
-        result.push({
-          id: existing?.id || `temp-${card.id}-${selectedMonth}`,
-          card, month: selectedMonth, total, paid, status, closingDate, dueDate,
-          transactionCount: generated?.transactions.length || 0, existingInvoice: existing
-        });
-      }
+      // Mostra todos os cartões, mesmo com total zero
+      result.push({
+        id: existing?.id || `temp-${card.id}-${selectedMonth}`,
+        card, month: selectedMonth, total, paid, status, closingDate, dueDate,
+        transactionCount: generated?.transactions.length || 0, existingInvoice: existing
+      });
     });
 
     return result;
@@ -230,14 +223,23 @@ export function InvoicesPage() {
           <Button variant="outline" size="icon" onClick={handleNextMonth}><ChevronRight className="h-4 w-4" /></Button>
         </div>
         <div className="flex items-center gap-2">
-          {isAdmin && <UserFilter value={selectedUserId} onChange={setSelectedUserId} className="w-[180px]" />}
-          <Select value={selectedCardId} onValueChange={setSelectedCardId}><SelectTrigger className="w-[180px]"><SelectValue placeholder="Todos os cartões" /></SelectTrigger><SelectContent><SelectItem value="all">Todos os cartões</SelectItem>{(isAdmin ? allCards : cards).filter(c => !c.is_archived).map(card => <SelectItem key={card.id} value={card.id}>{card.name}</SelectItem>)}</SelectContent></Select>
+          <Select value={selectedCardId} onValueChange={setSelectedCardId}>
+            <SelectTrigger className="w-[220px]">
+              <SelectValue placeholder="Todos os cartões" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os cartões</SelectItem>
+              {(isAdmin ? allCards : cards).filter(c => !c.is_archived).map(card => (
+                <SelectItem key={card.id} value={card.id}>{card.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
       <div className="grid gap-4">
         {displayInvoices.length === 0 ? (
-          <Card><CardContent className="py-12 text-center"><CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" /><p className="text-muted-foreground">Nenhuma fatura encontrada para este período</p></CardContent></Card>
+          <Card><CardContent className="py-12 text-center"><CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" /><p className="text-muted-foreground">Nenhum cartão cadastrado.</p></CardContent></Card>
         ) : (
           displayInvoices.map(invoice => (
             <Card key={invoice.id} className="overflow-hidden">
@@ -263,7 +265,7 @@ export function InvoicesPage() {
                     <div><p className="text-xs text-muted-foreground">Restante</p><p className={cn("font-medium text-lg", invoice.total - invoice.paid > 0 ? 'text-expense' : 'text-income')}>{formatCurrency(invoice.total - invoice.paid)}</p></div>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handlePayInvoice(invoice)} disabled={invoice.status === 'paid'}><DollarSign className="h-4 w-4 mr-1" />{invoice.status === 'paid' ? 'Paga' : 'Pagar Fatura'}</Button>
+                    <Button variant="outline" size="sm" onClick={() => handlePayInvoice(invoice)} disabled={invoice.status === 'paid' || invoice.total === 0}><DollarSign className="h-4 w-4 mr-1" />{invoice.status === 'paid' ? 'Paga' : 'Pagar Fatura'}</Button>
                   </div>
                 </div>
               </div>
