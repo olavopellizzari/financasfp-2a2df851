@@ -171,6 +171,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               to="/settings"
               className={`flex items-center justify-center text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent rounded-lg px-3 py-2 flex-1 ${isCollapsed ? 'p-2' : ''}`}
               activeClassName="bg-primary text-white"
+              onClick={() => setIsMobileMenuOpen(false)}
             >
               <Settings className="w-4 h-4" />
               {!isCollapsed && <span className="ml-2">Ajustes</span>}
