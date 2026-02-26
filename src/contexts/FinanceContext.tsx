@@ -182,7 +182,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       purchase_date: format(data.purchaseDate, 'yyyy-MM-dd'),
       effective_date: format(data.effectiveDate || data.purchaseDate, 'yyyy-MM-dd'),
       effective_month: data.effectiveMonth,
-      mes_fatura: data.mesFatura,
+      mes_fatura: data.mes_fatura,
       installment_number: data.installmentNumber,
       total_installments: data.totalInstallments,
       installment_group_id: data.installmentGroupId,
@@ -218,7 +218,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       household_id: currentUser?.family_id,
       user_id: data.userId || currentUser?.id,
       name: data.name,
-      bank: data.bank, // Adicionado campo bank
+      bank: data.bank,
       account_type: data.type === 'checking' ? 'corrente' : data.type,
       opening_balance: data.balance,
       opening_date: new Date().toISOString().split('T')[0],
@@ -232,7 +232,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const updateAccount = async (id: string, data: any) => {
     const updateData: any = {};
     if (data.name) updateData.name = data.name;
-    if (data.bank) updateData.bank = data.bank; // Adicionado campo bank
+    if (data.bank) updateData.bank = data.bank;
     if (data.balance !== undefined) updateData.opening_balance = data.balance;
     if (data.isArchived !== undefined) updateData.active = !data.isArchived;
     if (data.isShared !== undefined) updateData.is_shared = data.isShared;
@@ -273,6 +273,11 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.limit !== undefined) updateData.limit = data.limit;
     if (data.closingDay !== undefined) updateData.closing_day = data.closingDay;
     if (data.dueDay !== undefined) updateData.due_day = data.dueDay;
+    if (data.lastDigits !== undefined) updateData.last_digits = data.lastDigits;
+    if (data.brand !== undefined) updateData.brand = data.brand;
+    if (data.color !== undefined) updateData.color = data.color;
+    if (data.responsibleUserId !== undefined) updateData.responsible_user_id = data.responsibleUserId;
+    if (data.defaultAccountId !== undefined) updateData.default_account_id = data.defaultAccountId;
 
     const { error } = await supabase.from('cards').update(updateData).eq('id', id);
     if (error) throw error;
