@@ -8,11 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Search, Sparkles, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Sparkles, Loader2, Globe, Home } from 'lucide-react';
 import { Category } from '@/lib/db';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { DEFAULT_CATEGORIES } from '@/lib/seed';
+import { Badge } from '@/components/ui/badge';
 
 export function CategoriesPage() {
   const { categories, refresh } = useFinance();
@@ -48,10 +49,15 @@ export function CategoriesPage() {
         name,
         icon: categoryForm.icon,
         color: categoryForm.color,
-        kind: categoryForm.kind
+        kind: categoryForm.kind,
+        household_id: currentUser.family_id
       };
 
-      if (editingCategory) {
+      // Se estivermos editando uma categoria que NÃO pertence à família (global),
+      // criamos uma nova categoria local em vez de atualizar a global.
+      const isGlobal = editingCategory && !(editingCategory as any).household_id;
+
+      if (editingCategory && !isGlobal) {
         const { error } = await supabase
           .from('categories')
           .update(payload)
@@ -59,9 +65,9 @@ export function CategoriesPage() {
 
         if (error) throw error;
       } else {
+        // Novo registro ou Cópia da Global
         const { error } = await supabase.from('categories').insert({
           ...payload,
-          household_id: currentUser.family_id,
           is_default: false
         });
 
@@ -70,57 +76,10 @@ export function CategoriesPage() {
 
       setCategoryDialogOpen(false);
       await refresh();
-      toast({ title: 'Categoria salva com sucesso!' });
+      toast({ title: isGlobal ? 'Categoria personalizada para sua família!' : 'Categoria salva com sucesso!' });
     } catch (error: any) {
       console.error('Erro ao salvar categoria:', error);
-      toast({ 
-        title: 'Erro ao salvar', 
-        description: error.message.includes('column "color"') 
-          ? 'A coluna "color" não existe no banco. Execute o SQL fornecido no chat.' 
-          : error.message, 
-        variant: 'destructive' 
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleLoadDefaults = async () => {
-    if (!currentUser?.family_id) return;
-    
-    setIsLoading(true);
-    try {
-      const existingNames = new Set(categories.map(c => c.name.toLowerCase()));
-      const toInsert = DEFAULT_CATEGORIES
-        .filter(cat => !existingNames.has(cat.name.toLowerCase()))
-        .map(cat => ({
-          household_id: currentUser.family_id,
-          name: cat.name,
-          icon: cat.icon,
-          color: cat.color,
-          kind: cat.kind || (cat.type === 'income' ? 'receita' : 'despesa'),
-          is_default: true
-        }));
-
-      if (toInsert.length === 0) {
-        toast({ title: 'Tudo atualizado', description: 'Você já possui todas as categorias sugeridas.' });
-        return;
-      }
-
-      const { error } = await supabase.from('categories').insert(toInsert);
-      if (error) throw error;
-
-      await refresh();
-      toast({ title: 'Sucesso!', description: `${toInsert.length} novas categorias foram adicionadas.` });
-    } catch (error: any) {
-      console.error('Erro ao carregar padrões:', error);
-      toast({ 
-        title: 'Erro ao carregar padrões', 
-        description: error.message.includes('column "color"') 
-          ? 'A coluna "color" não existe no banco. Execute o SQL fornecido no chat.' 
-          : error.message, 
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -128,7 +87,14 @@ export function CategoriesPage() {
 
   const handleDeleteCategory = async () => {
     if (!editingCategory) return;
-    if (!confirm('Tem certeza que deseja excluir esta categoria?')) return;
+    
+    // Não permitimos excluir categorias globais diretamente
+    if (!(editingCategory as any).household_id) {
+      toast({ title: 'Ação não permitida', description: 'Categorias padrão não podem ser excluídas, apenas personalizadas.', variant: 'destructive' });
+      return;
+    }
+
+    if (!confirm('Tem certeza que deseja excluir esta categoria da sua família?')) return;
     
     setIsLoading(true);
     try {
@@ -151,6 +117,52 @@ export function CategoriesPage() {
   const incomeCats = filteredCategories.filter((c) => c.type === 'income' || c.kind === 'receita');
   const expenseCats = filteredCategories.filter((c) => c.type === 'expense' || c.kind === 'despesa');
 
+  const CategoryCard = ({ cat }: { cat: Category }) => {
+    const isGlobal = !(cat as any).household_id;
+    
+    return (
+      <Card key={cat.id} className="group hover:border-primary/50 transition-all hover:shadow-md relative overflow-hidden">
+        <CardContent className="p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div 
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-sm" 
+              style={{ backgroundColor: `${cat.color || '#6366f1'}20` }}
+            >
+              {cat.icon || '📁'}
+            </div>
+            <div>
+              <p className="font-semibold flex items-center gap-2">
+                {cat.name}
+                {isGlobal ? (
+                  <Globe className="w-3 h-3 text-muted-foreground" title="Padrão do Sistema" />
+                ) : (
+                  <Home className="w-3 h-3 text-primary" title="Personalizada da Família" />
+                )}
+              </p>
+            </div>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="opacity-0 group-hover:opacity-100 transition-opacity" 
+            onClick={() => { 
+              setEditingCategory(cat); 
+              setCategoryForm({ 
+                name: cat.name, 
+                icon: cat.icon || '📁', 
+                color: cat.color || '#6366f1', 
+                kind: cat.kind as any || (cat.type === 'income' ? 'receita' : 'despesa')
+              }); 
+              setCategoryDialogOpen(true); 
+            }}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -159,15 +171,6 @@ export function CategoriesPage() {
           <p className="text-muted-foreground">Organize suas receitas e despesas</p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Button
-            variant="outline"
-            onClick={handleLoadDefaults}
-            disabled={isLoading}
-            className="flex-1 sm:flex-none"
-          >
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2 text-primary" />}
-            Carregar Sugestões
-          </Button>
           <Button
             onClick={() => {
               setEditingCategory(null);
@@ -200,15 +203,7 @@ export function CategoriesPage() {
         <TabsContent value="expenses" className="mt-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {expenseCats.map((cat) => (
-              <Card key={cat.id} className="group hover:border-primary/50 transition-all hover:shadow-md">
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-sm" style={{ backgroundColor: `${cat.color || '#6366f1'}20` }}>{cat.icon || '📁'}</div>
-                    <p className="font-semibold">{cat.name}</p>
-                  </div>
-                  <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => { setEditingCategory(cat); setCategoryForm({ name: cat.name, icon: cat.icon || '📁', color: cat.color || '#6366f1', kind: 'despesa' }); setCategoryDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                </CardContent>
-              </Card>
+              <CategoryCard key={cat.id} cat={cat} />
             ))}
           </div>
         </TabsContent>
@@ -216,15 +211,7 @@ export function CategoriesPage() {
         <TabsContent value="income" className="mt-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {incomeCats.map((cat) => (
-              <Card key={cat.id} className="group hover:border-primary/50 transition-all hover:shadow-md">
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-sm" style={{ backgroundColor: `${cat.color || '#6366f1'}20` }}>{cat.icon || '💰'}</div>
-                    <p className="font-semibold">{cat.name}</p>
-                  </div>
-                  <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => { setEditingCategory(cat); setCategoryForm({ name: cat.name, icon: cat.icon || '💰', color: cat.color || '#6366f1', kind: 'receita' }); setCategoryDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                </CardContent>
-              </Card>
+              <CategoryCard key={cat.id} cat={cat} />
             ))}
           </div>
         </TabsContent>
@@ -232,7 +219,14 @@ export function CategoriesPage() {
 
       <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
         <DialogContent className="rounded-[24px]">
-          <DialogHeader><DialogTitle>{editingCategory ? 'Editar Categoria' : 'Nova Categoria'}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>{editingCategory ? 'Editar Categoria' : 'Nova Categoria'}</DialogTitle>
+            {editingCategory && !(editingCategory as any).household_id && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Esta é uma categoria padrão. Ao salvar, uma cópia será criada para sua família.
+              </p>
+            )}
+          </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2"><Label>Nome</Label><Input value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} className="h-11 rounded-xl" placeholder="Ex: Supermercado" /></div>
             <div className="grid grid-cols-2 gap-4">
@@ -241,7 +235,11 @@ export function CategoriesPage() {
             </div>
           </div>
           <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            {editingCategory && <Button variant="destructive" onClick={handleDeleteCategory} disabled={isLoading} className="sm:mr-auto rounded-xl h-11"><Trash2 className="w-4 h-4 mr-2" /> Excluir</Button>}
+            {editingCategory && (editingCategory as any).household_id && (
+              <Button variant="destructive" onClick={handleDeleteCategory} disabled={isLoading} className="sm:mr-auto rounded-xl h-11">
+                <Trash2 className="w-4 h-4 mr-2" /> Excluir
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setCategoryDialogOpen(false)} className="rounded-xl h-11">Cancelar</Button>
             <Button onClick={handleSaveCategory} disabled={isLoading} className="gradient-primary rounded-xl h-11">
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}

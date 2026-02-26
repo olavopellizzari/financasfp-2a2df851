@@ -65,7 +65,11 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const [catData, accData, cardData, txData, budData, invData, goalData, debtData] = await Promise.all([
-        supabase.from('categories').select('*').order('name'),
+        supabase
+          .from('categories')
+          .select('*')
+          .or(`household_id.eq.${currentUser.family_id},household_id.is.null`)
+          .order('name'),
         supabase.from('accounts').select('*').order('name'),
         supabase.from('cards').select('*').order('name'),
         supabase.from('transactions').select('*').order('purchase_date', { ascending: false }),
@@ -76,10 +80,27 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       ]);
 
       if (catData.data) {
-        setCategories(catData.data.map(c => ({
-          ...c,
-          type: c.kind === 'receita' ? 'income' : 'expense'
-        })));
+        // Lógica de deduplicação: se houver uma categoria local com o mesmo nome da global,
+        // mantemos apenas a local para que as alterações da família prevaleçam.
+        const catMap = new Map<string, any>();
+        
+        // Primeiro processamos as globais
+        catData.data.filter(c => !c.household_id).forEach(c => {
+          catMap.set(c.name.toLowerCase(), {
+            ...c,
+            type: c.kind === 'receita' ? 'income' : 'expense'
+          });
+        });
+
+        // Depois as locais (sobrescrevendo as globais no Map)
+        catData.data.filter(c => c.household_id).forEach(c => {
+          catMap.set(c.name.toLowerCase(), {
+            ...c,
+            type: c.kind === 'receita' ? 'income' : 'expense'
+          });
+        });
+
+        setCategories(Array.from(catMap.values()).sort((a, b) => a.name.localeCompare(b.name)));
       }
       
       if (accData.data) {
