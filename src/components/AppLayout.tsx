@@ -24,8 +24,18 @@ import {
   Users,
   TrendingDown,
   LineChart,
-  User
+  User,
+  UserCircle
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useNavigate } from 'react-router-dom';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -88,6 +98,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isAdmin = isCurrentUserAdmin();
+  const navigate = useNavigate();
 
   const handleLogout = async () => {
     await signOut();
@@ -208,13 +219,35 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
           <div className="flex items-center gap-2">
             <NotificationsPanel />
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold bg-primary overflow-hidden">
-              {currentUser?.avatar_url ? (
-                <img src={currentUser.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : <User className="w-4 h-4" />
-              )}
-            </div>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold bg-primary overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all outline-none">
+                  {currentUser?.avatar_url ? (
+                    <img src={currentUser.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : <User className="w-4 h-4" />
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate('/settings')}>
+                  <UserCircle className="mr-2 h-4 w-4" />
+                  <span>Editar Perfil</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/settings')}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Configurações</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Sair</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
