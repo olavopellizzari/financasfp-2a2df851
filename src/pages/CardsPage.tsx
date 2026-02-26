@@ -351,7 +351,7 @@ export function CardsPage() {
                       variant="ghost" 
                       size="sm" 
                       className="text-[10px] font-bold uppercase text-primary hover:bg-primary/5"
-                      onClick={() => navigate('/transactions')}
+                      onClick={() => navigate(`/transactions?type=card&cardId=${card.id}`)}
                     >
                       Ver todos <ArrowRight className="w-3 h-3 ml-1" />
                     </Button>
@@ -494,7 +494,7 @@ export function CardsPage() {
 
             <div className="space-y-2">
               <Label>Usuário Responsável</Label>
-              <Select value={formData.responsibleUserId} onValueChange={v => setCardFormData({...formData, responsibleUserId: v})}>
+              <Select value={formData.responsibleUserId} onValueChange={v => setFormData({...formData, responsibleUserId: v})}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {users.map(u => (

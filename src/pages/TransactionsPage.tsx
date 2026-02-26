@@ -64,13 +64,14 @@ import {
   Undo2,
   AlertCircle,
   Sparkles,
-  ChevronsUpDown
+  ChevronsUpDown,
+  ArrowLeft
 } from 'lucide-react';
 import { format, addMonths, addYears, subMonths, isValid, parseISO, startOfDay, isAfter, isSameDay, parse } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 
 const TIPOS_TRANSACAO: { value: TransactionType; label: string; icon: React.ElementType; color: string }[] = [
   { value: 'INCOME', label: 'Receita', icon: ArrowUpRight, color: 'text-income' },
@@ -139,6 +140,9 @@ export function TransactionsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
+  const isCardMode = searchParams.get('type') === 'card';
+  const filterCardId = searchParams.get('cardId');
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
@@ -150,21 +154,21 @@ export function TransactionsPage() {
   const [filterType, setFilterType] = useState<TransactionType | 'ALL'>('ALL');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [activeTab, setActiveTab] = useState<TransactionType>('EXPENSE');
+  const [activeTab, setActiveTab] = useState<TransactionType>(isCardMode ? 'CREDIT' : 'EXPENSE');
   
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     userId: currentUser?.id || '',
-    type: 'EXPENSE' as TransactionType,
+    type: (isCardMode ? 'CREDIT' : 'EXPENSE') as TransactionType,
     amount: '',
     description: '',
     purchaseDate: new Date(),
     mesFatura: format(new Date(), 'yyyy-MM'),
     categoryId: '',
     accountId: '',
-    cardId: '',
+    cardId: filterCardId || '',
     installments: '1',
     isPaid: false,
     recurrence: 'none' as 'none' | 'monthly' | 'annual' | 'custom',
@@ -187,8 +191,13 @@ export function TransactionsPage() {
 
   const filteredTransactions = useMemo(() => {
     return allTransactions.filter(tx => {
-      // OCULTA CREDIT E REFUND (Lançamentos de cartão)
-      if (tx.type === 'CREDIT' || tx.type === 'REFUND') return false;
+      // Lógica de filtragem baseada no modo (Cartão vs Conta)
+      if (isCardMode) {
+        if (tx.type !== 'CREDIT' && tx.type !== 'REFUND') return false;
+        if (filterCardId && tx.cardId !== filterCardId) return false;
+      } else {
+        if (tx.type === 'CREDIT' || tx.type === 'REFUND') return false;
+      }
 
       const matchesMonth = tx.effectiveMonth === selectedMonthStr;
       const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -196,14 +205,15 @@ export function TransactionsPage() {
       const matchesUser = selectedUserId === 'all' || tx.userId === selectedUserId;
       return matchesMonth && matchesSearch && matchesType && matchesUser;
     }).sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
-  }, [allTransactions, selectedMonthStr, searchQuery, filterType, selectedUserId]);
+  }, [allTransactions, selectedMonthStr, searchQuery, filterType, selectedUserId, isCardMode, filterCardId]);
 
   const monthStats = useMemo(() => {
     const income = filteredTransactions.filter(t => t.type === 'INCOME' && t.status !== 'cancelled').reduce((s, t) => s + t.amount, 0);
-    const expensesOnly = filteredTransactions.filter(t => t.type === 'EXPENSE' && t.status !== 'cancelled');
+    const expensesOnly = filteredTransactions.filter(t => (t.type === 'EXPENSE' || t.type === 'CREDIT') && t.status !== 'cancelled');
     const totalExpenses = expensesOnly.reduce((s, t) => s + t.amount, 0);
+    const refunds = filteredTransactions.filter(t => t.type === 'REFUND' && t.status !== 'cancelled').reduce((s, t) => s + t.amount, 0);
     
-    return { income, totalExpenses, balance: income - totalExpenses };
+    return { income, totalExpenses: totalExpenses - refunds, balance: income - (totalExpenses - refunds) };
   }, [filteredTransactions]);
 
   const handleDescriptionChange = useCallback((desc: string) => {
@@ -236,18 +246,19 @@ export function TransactionsPage() {
 
   const resetForm = () => {
     setEditingTransaction(null);
+    const defaultType = isCardMode ? 'CREDIT' : activeTab;
     setFormData({
       userId: currentUser?.id || '',
-      type: activeTab,
+      type: defaultType,
       amount: '',
-      description: activeTab === 'TRANSFER' ? 'Transferência entre contas' : '',
+      description: defaultType === 'TRANSFER' ? 'Transferência entre contas' : '',
       purchaseDate: new Date(),
       mesFatura: format(new Date(), 'yyyy-MM'),
       categoryId: '',
       accountId: allAccounts[0]?.id || '',
-      cardId: allCards[0]?.id || '',
+      cardId: filterCardId || allCards[0]?.id || '',
       installments: '1',
-      isPaid: activeTab === 'INCOME' || activeTab === 'TRANSFER' || activeTab === 'REFUND',
+      isPaid: defaultType === 'INCOME' || defaultType === 'TRANSFER' || defaultType === 'REFUND',
       recurrence: 'none',
       recurrenceCount: '12',
       destinationUserId: currentUser?.id || '',
@@ -277,9 +288,14 @@ export function TransactionsPage() {
   }, [formData.purchaseDate, formData.cardId, formData.type, calculateMesFatura, editingTransaction]);
 
   const handleOpenDialog = () => {
-    if (allAccounts.length === 0) {
+    if (!isCardMode && allAccounts.length === 0) {
       toast({ title: "Conta necessária", description: "Crie uma conta antes de lançar transações.", variant: "destructive" });
       navigate('/accounts');
+      return;
+    }
+    if (isCardMode && allCards.length === 0) {
+      toast({ title: "Cartão necessário", description: "Crie um cartão antes de lançar gastos.", variant: "destructive" });
+      navigate('/cards');
       return;
     }
     resetForm();
@@ -482,9 +498,18 @@ export function TransactionsPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Lançamentos</h1>
-          <p className="text-muted-foreground">Histórico de movimentações financeiras (Contas)</p>
+        <div className="flex items-center gap-4">
+          {isCardMode && (
+            <Button variant="ghost" size="icon" asChild className="rounded-full">
+              <Link to="/cards"><ArrowLeft className="h-5 w-5" /></Link>
+            </Button>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold">{isCardMode ? 'Lançamentos de Cartão' : 'Lançamentos'}</h1>
+            <p className="text-muted-foreground">
+              {isCardMode ? 'Histórico detalhado de gastos no crédito' : 'Histórico de movimentações financeiras (Contas)'}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {isAdmin && <UserFilter value={selectedUserId} onChange={setSelectedUserId} className="w-[180px]" />}
@@ -508,9 +533,9 @@ export function TransactionsPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-income/10 border-income/20"><CardContent className="p-4"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Receitas</p><ArrowUpRight className="w-4 h-4 text-income" /></div><p className="text-xl font-bold text-income">{formatCurrency(monthStats.income)}</p></CardContent></Card>
-        <Card className="bg-expense/10 border-expense/20"><CardContent className="p-4"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Despesas</p><ArrowDownRight className="w-4 h-4 text-expense" /></div><p className="text-xl font-bold text-expense">{formatCurrency(monthStats.totalExpenses)}</p></CardContent></Card>
-        <Card className="bg-muted border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Saldo do Mês</p><Wallet className="w-4 h-4 text-muted-foreground" /></div><p className={cn("text-xl font-bold", monthStats.balance >= 0 ? 'text-income' : 'text-expense')}>{formatCurrency(monthStats.balance)}</p></CardContent></Card>
+        <Card className="bg-income/10 border-income/20"><CardContent className="p-4"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">{isCardMode ? 'Estornos' : 'Receitas'}</p><ArrowUpRight className="w-4 h-4 text-income" /></div><p className="text-xl font-bold text-income">{formatCurrency(isCardMode ? monthStats.income : monthStats.income)}</p></CardContent></Card>
+        <Card className="bg-expense/10 border-expense/20"><CardContent className="p-4"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">{isCardMode ? 'Gastos no Cartão' : 'Despesas'}</p><ArrowDownRight className="w-4 h-4 text-expense" /></div><p className="text-xl font-bold text-expense">{formatCurrency(monthStats.totalExpenses)}</p></CardContent></Card>
+        <Card className="bg-muted border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">{isCardMode ? 'Total da Fatura' : 'Saldo do Mês'}</p><Wallet className="w-4 h-4 text-muted-foreground" /></div><p className={cn("text-xl font-bold", monthStats.balance >= 0 ? 'text-income' : 'text-expense')}>{formatCurrency(isCardMode ? monthStats.totalExpenses : monthStats.balance)}</p></CardContent></Card>
       </div>
 
       <Card className="finance-card">
@@ -523,7 +548,7 @@ export function TransactionsPage() {
             </div>
             <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
               <div className="relative flex-1 min-w-[200px]"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar descrição..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" /></div>
-              <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}><SelectTrigger className="w-[140px]"><Filter className="w-4 h-4 mr-2" /><SelectValue placeholder="Tipo" /></SelectTrigger><SelectContent><SelectItem value="ALL">Todos</SelectItem>{TIPOS_TRANSACAO.filter(t => t.value !== 'CREDIT' && t.value !== 'REFUND').map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent></Select>
+              <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}><SelectTrigger className="w-[140px]"><Filter className="w-4 h-4 mr-2" /><SelectValue placeholder="Tipo" /></SelectTrigger><SelectContent><SelectItem value="ALL">Todos</SelectItem>{TIPOS_TRANSACAO.filter(t => isCardMode ? (t.value === 'CREDIT' || t.value === 'REFUND') : (t.value !== 'CREDIT' && t.value !== 'REFUND')).map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent></Select>
             </div>
           </div>
         </CardContent>
@@ -575,7 +600,11 @@ export function TransactionsPage() {
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editingTransaction ? 'Editar Lançamento' : 'Novo Lançamento'}</DialogTitle></DialogHeader>
           <Tabs value={activeTab} onValueChange={(v: any) => { setActiveTab(v); setFormData(prev => ({ ...prev, type: v, isPaid: v === 'INCOME' || v === 'TRANSFER' || v === 'REFUND' })); }}>
-            <TabsList className="grid grid-cols-5 w-full">{TIPOS_TRANSACAO.map(t => <TabsTrigger key={t.value} value={t.value} className="gap-1 px-1"><t.icon className="w-3 h-3" />{t.label}</TabsTrigger>)}</TabsList>
+            <TabsList className="grid grid-cols-5 w-full">
+              {TIPOS_TRANSACAO
+                .filter(t => isCardMode ? (t.value === 'CREDIT' || t.value === 'REFUND') : (t.value !== 'CREDIT' && t.value !== 'REFUND'))
+                .map(t => <TabsTrigger key={t.value} value={t.value} className="gap-1 px-1"><t.icon className="w-3 h-3" />{t.label}</TabsTrigger>)}
+            </TabsList>
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Usuário {activeTab === 'TRANSFER' && 'Origem'}</Label><Select value={formData.userId} onValueChange={v => setFormData({ ...formData, userId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{users.filter(u => u.is_active !== false).map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent></Select></div>
