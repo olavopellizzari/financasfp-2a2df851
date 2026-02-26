@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Wallet, ArrowRight, Loader2, UserPlus, CheckCircle, XCircle } from 'lucide-react';
+import { Wallet, ArrowRight, Loader2, UserPlus, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 export function SetupPage() {
@@ -19,19 +19,44 @@ export function SetupPage() {
   const [initialBalance, setInitialBalance] = useState('0');
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser?.email) {
       checkInvites();
     }
-  }, [currentUser]);
+  }, [currentUser?.email]);
 
   const checkInvites = async () => {
+    if (!currentUser?.email) return;
+    
     try {
-      const { data, error } = await supabase.rpc('get_pending_invites');
-      if (!error && data) {
-        setPendingInvites(data);
+      // Tentativa 1: Buscar diretamente na tabela (mais garantido se a RPC falhar)
+      const { data: directInvites, error: directError } = await supabase
+        .from('household_invites')
+        .select(`
+          id,
+          household_id,
+          status,
+          households (name),
+          profiles!household_invites_created_by_fkey (name)
+        `)
+        .eq('status', 'pending')
+        .ilike('invited_email', currentUser.email.trim().toLowerCase());
+
+      if (!directError && directInvites && directInvites.length > 0) {
+        setPendingInvites(directInvites.map(i => ({
+          invite_id: i.id,
+          invite_family_id: i.household_id,
+          inviter_name: (i as any).profiles?.name || 'Alguém',
+          family_name: (i as any).households?.name
+        })));
+      } else {
+        // Tentativa 2: Usar a RPC como fallback
+        const { data: rpcInvites } = await supabase.rpc('get_pending_invites');
+        if (rpcInvites && rpcInvites.length > 0) {
+          setPendingInvites(rpcInvites);
+        }
       }
     } catch (err) {
-      console.error('Erro ao buscar convites:', err);
+      console.error('[SetupPage] Erro ao buscar convites:', err);
     } finally {
       setIsCheckingInvites(false);
     }
@@ -69,7 +94,6 @@ export function SetupPage() {
     setIsLoading(true);
 
     try {
-      // 1. Criar a Família (Household)
       const { data: household, error: hhError } = await supabase
         .from('households')
         .insert({ name: familyName || 'Minha Família' })
@@ -78,7 +102,6 @@ export function SetupPage() {
 
       if (hhError) throw hhError;
 
-      // 2. Adicionar o usuário como membro ADMIN
       const { error: memberError } = await supabase
         .from('household_members')
         .insert({
@@ -89,7 +112,6 @@ export function SetupPage() {
 
       if (memberError) throw memberError;
 
-      // 3. Vincular o perfil à família
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ 
@@ -101,7 +123,6 @@ export function SetupPage() {
 
       if (profileError) throw profileError;
 
-      // 4. Criar a primeira conta bancária
       const { error: accError } = await supabase
         .from('accounts')
         .insert({
@@ -115,7 +136,6 @@ export function SetupPage() {
 
       if (accError) throw accError;
 
-      // 5. Criar categorias essenciais
       const defaultCategories = [
         { name: 'Salário', kind: 'receita' },
         { name: 'Alimentação', kind: 'despesa' },
@@ -124,7 +144,7 @@ export function SetupPage() {
         { name: 'Transporte', kind: 'despesa' }
       ];
 
-      const { error: catError } = await supabase.from('categories').insert(
+      await supabase.from('categories').insert(
         defaultCategories.map(cat => ({ 
           ...cat, 
           household_id: household.id, 
@@ -132,20 +152,12 @@ export function SetupPage() {
         }))
       );
 
-      if (catError) throw catError;
-
       toast({ title: "Configuração concluída!", description: "Bem-vindo ao seu novo controle financeiro." });
-      
       await refreshProfile();
       setTimeout(() => navigate('/'), 500);
       
     } catch (error: any) {
-      console.error('Erro no setup:', error);
-      toast({ 
-        title: "Erro no setup", 
-        description: error.message || "Verifique os campos e tente novamente.", 
-        variant: "destructive" 
-      });
+      toast({ title: "Erro no setup", description: error.message, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -162,36 +174,47 @@ export function SetupPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
       <div className="w-full max-w-md space-y-6">
-        {pendingInvites.length > 0 && (
-          <Card className="border-2 border-primary/50 shadow-xl rounded-[24px] overflow-hidden animate-scale-in">
+        {pendingInvites.length > 0 ? (
+          <Card className="border-2 border-primary shadow-xl rounded-[24px] overflow-hidden animate-scale-in">
             <CardHeader className="bg-primary/5 pb-4">
               <div className="flex items-center gap-3 text-primary">
                 <UserPlus className="w-6 h-6" />
-                <CardTitle className="text-xl">Você foi convidado!</CardTitle>
+                <CardTitle className="text-xl">Convite Encontrado!</CardTitle>
               </div>
-              <CardDescription>Alguém já te convidou para uma família existente.</CardDescription>
+              <CardDescription>Você foi convidado para participar de uma família.</CardDescription>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
               {pendingInvites.map((invite: any) => (
-                <div key={invite.invite_id} className="flex items-center justify-between p-4 bg-muted rounded-xl border">
+                <div key={invite.invite_id} className="flex flex-col gap-4 p-4 bg-muted rounded-xl border">
                   <div>
-                    <p className="font-bold text-sm">{invite.inviter_name}</p>
-                    <p className="text-xs text-muted-foreground">Convidou você para o grupo</p>
+                    <p className="text-sm text-muted-foreground">Convidado por:</p>
+                    <p className="font-bold text-lg">{invite.inviter_name}</p>
+                    {invite.family_name && (
+                      <p className="text-xs text-primary font-medium mt-1">Grupo: {invite.family_name}</p>
+                    )}
                   </div>
                   <Button 
                     onClick={() => handleAcceptInvite(invite.invite_family_id)} 
                     disabled={isLoading}
-                    className="gradient-primary h-9 px-4 rounded-lg"
+                    className="gradient-primary w-full h-11 rounded-xl font-bold"
                   >
-                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle className="w-4 h-4 mr-2" /> Aceitar</>}
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle className="w-4 h-4 mr-2" /> Aceitar e Entrar Agora</>}
                   </Button>
                 </div>
               ))}
-              <div className="text-center">
-                <p className="text-[10px] text-muted-foreground uppercase font-bold">Ou se preferir, crie a sua própria abaixo</p>
+              <div className="pt-4 border-t text-center">
+                <p className="text-[10px] text-muted-foreground uppercase font-bold mb-2">Ou ignore e crie sua própria família abaixo</p>
               </div>
             </CardContent>
           </Card>
+        ) : (
+          <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 flex items-start gap-3 mb-2">
+            <AlertCircle className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-blue-700">
+              Nenhum convite pendente encontrado para <strong>{currentUser?.email}</strong>. 
+              Se você foi convidado, verifique se o e-mail está correto.
+            </p>
+          </div>
         )}
 
         <Card className="w-full shadow-xl border-none rounded-[24px]">
