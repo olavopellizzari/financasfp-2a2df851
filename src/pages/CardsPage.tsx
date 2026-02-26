@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatCurrency, getCurrentMonth, Card as CardType, Transaction } from '@/lib/db';
+import { formatCurrency, Card as CardType, Transaction } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -64,7 +64,9 @@ export function CardsPage() {
   const { allCards, allTransactions, invoices, getCategoryById, createCard, updateCard, deleteCard, deleteTransaction, allAccounts } = useFinance();
   const { currentUser, users } = useAuth();
   const navigate = useNavigate();
-  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
+  
+  // Define o mês inicial como o mês seguinte ao atual
+  const [selectedMonth, setSelectedMonth] = useState(format(addMonths(new Date(), 1), 'yyyy-MM'));
   
   // Estado para o diálogo
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -492,7 +494,7 @@ export function CardsPage() {
 
             <div className="space-y-2">
               <Label>Usuário Responsável</Label>
-              <Select value={formData.responsibleUserId} onValueChange={v => setFormData({...formData, responsibleUserId: v})}>
+              <Select value={formData.responsibleUserId} onValueChange={v => setCardFormData({...formData, responsibleUserId: v})}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {users.map(u => (
