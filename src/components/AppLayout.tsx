@@ -233,7 +233,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate('/settings')}>
+                <DropdownMenuItem onClick={() => navigate('/settings?mode=profile')}>
                   <UserCircle className="mr-2 h-4 w-4" />
                   <span>Editar Perfil</span>
                 </DropdownMenuItem>

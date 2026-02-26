@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { User, Trash2, Loader2, Sparkles, Wrench, Calendar, Bell, BellRing, Smartphone, CheckCircle2, AlertTriangle, Zap, Camera, Upload, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { addMonths, format } from 'date-fns';
+import { useSearchParams } from 'react-router-dom';
 
 const AVATAR_COLORS = [
   '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899',
@@ -23,6 +24,7 @@ export function SettingsPage() {
   const { currentUser, refreshProfile, isCurrentUserAdmin, refreshUsers } = useAuth();
   const { allTransactions, refresh } = useFinance();
   const { permission, isStandalone, requestPermission, sendTestNotification } = usePushNotifications();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
@@ -52,6 +54,15 @@ export function SettingsPage() {
     }
   }, [currentUser]);
 
+  // Abre o modal de perfil se vier com o parâmetro ?mode=profile
+  useEffect(() => {
+    if (searchParams.get('mode') === 'profile') {
+      setEditProfileOpen(true);
+      // Limpa o parâmetro para não reabrir ao atualizar
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !currentUser?.id) return;
@@ -72,19 +83,16 @@ export function SettingsPage() {
       const fileName = `${currentUser.id}-${Date.now()}.${fileExt}`;
       const filePath = `avatars/${fileName}`;
 
-      // 1. Upload para o Storage
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
-      // 2. Obter URL pública
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
 
-      // 3. Atualizar o banco de dados IMEDIATAMENTE
       const { error: dbError } = await supabase
         .from('profiles')
         .update({ 
@@ -98,7 +106,6 @@ export function SettingsPage() {
       setAvatarPreview(publicUrl);
       setProfileForm(prev => ({ ...prev, avatarUrl: publicUrl }));
       
-      // 4. Atualizar o estado global
       await refreshProfile();
       await refreshUsers();
       
