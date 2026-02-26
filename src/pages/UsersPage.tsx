@@ -233,7 +233,7 @@ export function UsersPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-yellow-50 border-yellow-200">
+        <Card className="bg-yellow-500/10 border-yellow-500/20">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-xl bg-yellow-500 text-white shadow-lg">
@@ -241,12 +241,12 @@ export function UsersPage() {
               </div>
               <div>
                 <p className="text-xs font-bold text-muted-foreground uppercase">Administradores</p>
-                <p className="text-2xl font-bold text-yellow-700">{adminCount}</p>
+                <p className="text-2xl font-bold text-yellow-600">{adminCount}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-green-50 border-green-200">
+        <Card className="bg-green-500/10 border-green-500/20">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-xl bg-green-500 text-white shadow-lg">
@@ -254,7 +254,7 @@ export function UsersPage() {
               </div>
               <div>
                 <p className="text-xs font-bold text-muted-foreground uppercase">Ativos</p>
-                <p className="text-2xl font-bold text-green-700">{familyMembers.filter(m => m.is_active).length}</p>
+                <p className="text-2xl font-bold text-green-600">{familyMembers.filter(m => m.is_active).length}</p>
               </div>
             </div>
           </CardContent>
@@ -262,7 +262,7 @@ export function UsersPage() {
       </div>
 
       {pendingInvites.length > 0 && (
-        <Card className="finance-card border-2 border-yellow-500/50 bg-yellow-50/30">
+        <Card className="finance-card border-2 border-yellow-500/50 bg-yellow-500/5">
           <CardContent className="p-6">
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-yellow-600">
@@ -270,7 +270,7 @@ export function UsersPage() {
                 <p className="font-bold">Você tem convites pendentes!</p>
               </div>
               {pendingInvites.map((invite: any) => (
-                <div key={invite.id} className="flex items-center justify-between p-4 bg-white rounded-xl border shadow-sm">
+                <div key={invite.id} className="flex items-center justify-between p-4 bg-card rounded-xl border shadow-sm">
                   <div>
                     <p className="font-bold">{invite.inviter_name}</p>
                     <p className="text-sm text-muted-foreground">quer que você faça parte da família</p>
@@ -317,11 +317,11 @@ export function UsersPage() {
       </Card>
 
       {showInviteExternal && (
-        <Card className="finance-card border-2 border-blue-500/30 bg-blue-50/30 animate-scale-in">
+        <Card className="finance-card border-2 border-blue-500/30 bg-blue-500/5 animate-scale-in">
           <CardContent className="p-6">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
                   <Mail className="h-6 w-6" />
                 </div>
                 <div>
@@ -341,7 +341,7 @@ export function UsersPage() {
         <Card className="finance-card border-2 border-green-500/30 animate-scale-in">
           <CardContent className="p-6">
             {searchResults.map((user: any) => (
-              <div key={user.id} className="flex items-center justify-between p-4 bg-green-50 rounded-xl">
+              <div key={user.id} className="flex items-center justify-between p-4 bg-green-500/5 rounded-xl">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold overflow-hidden" style={{ backgroundColor: user.avatar_color || '#22c55e' }}>
                     {user.avatar_url ? (
@@ -387,7 +387,7 @@ export function UsersPage() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <h3 className="font-bold text-lg">{user.name || 'Sem nome'}</h3>
-                          {user.is_admin && <Badge className="bg-yellow-100 text-yellow-700 border-none h-5 text-[10px] uppercase font-bold"><Crown className="h-3 w-3 mr-1" /> Admin</Badge>}
+                          {user.is_admin && <Badge className="bg-yellow-500/10 text-yellow-600 border-none h-5 text-[10px] uppercase font-bold"><Crown className="h-3 w-3 mr-1" /> Admin</Badge>}
                           {user.id === currentUser?.id && <Badge variant="outline" className="h-5 text-[10px] uppercase font-bold">Você</Badge>}
                         </div>
                         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
