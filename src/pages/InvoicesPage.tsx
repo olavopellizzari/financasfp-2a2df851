@@ -17,8 +17,6 @@ import { format, addMonths, subMonths, parse, setDate, isAfter, isValid, startOf
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
-const CARD_COLORS = ['#1e293b', '#ef4444', '#3b82f6', '#22c55e', '#8b5cf6', '#ec4899', '#f97316', '#eab308'];
-
 export function InvoicesPage() {
   const { cards, transactions, accounts, invoices, refresh, allTransactions, allCards, updateCard, allAccounts, getAccountBalance } = useFinance();
   const { currentUser, isCurrentUserAdmin, users } = useAuth();
@@ -27,7 +25,6 @@ export function InvoicesPage() {
   const [selectedCardId, setSelectedCardId] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
   
-  // Estados para diálogos
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,14 +52,12 @@ export function InvoicesPage() {
     const invoiceMap = new Map<string, { cardId: string; userId: string; month: string; total: number; transactions: typeof transactions }>();
     const txSource = isAdmin ? allTransactions : transactions;
 
-    const baseDate = safeParseMonth(selectedMonth);
-    const nextMonthStr = format(addMonths(baseDate, 1), 'yyyy-MM');
-
+    // Filtra transações que pertencem à fatura do mês selecionado
     const creditTransactions = txSource.filter(t => 
       t.cardId && 
       (t.type === 'CREDIT' || t.type === 'REFUND') && 
       t.status !== 'cancelled' &&
-      t.effectiveMonth === nextMonthStr &&
+      t.mesFatura === selectedMonth &&
       (selectedUserId === 'all' || t.userId === selectedUserId)
     );
 
@@ -284,7 +279,7 @@ export function InvoicesPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Configurar Cartão: {editingCard?.name}</DialogTitle>
-            <DialogDescription>Ajuste as datas e responsáveis pelo pagamento da fatura.</DialogDescription>
+            <DialogDescription>Ajuste as das e responsáveis pelo pagamento da fatura.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSaveCardConfig} className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">

@@ -90,11 +90,10 @@ export function CardsPage() {
 
   const cardsWithStats = useMemo(() => {
     return allCards.filter(card => card.user_id === currentUser?.id || (card as any).is_shared).map(card => {
-      const nextMonthStr = format(addMonths(selectedDate, 1), 'yyyy-MM');
-      
+      // Filtra transações que pertencem à fatura do mês selecionado
       const currentInvoiceTransactions = allTransactions.filter(t => 
         t.cardId === card.id && 
-        t.effectiveMonth === nextMonthStr &&
+        t.mesFatura === selectedMonth &&
         t.status !== 'cancelled'
       );
 
@@ -126,7 +125,7 @@ export function CardsPage() {
         transactions: currentInvoiceTransactions
       };
     });
-  }, [allCards, allTransactions, invoices, selectedDate, currentUser]);
+  }, [allCards, allTransactions, invoices, selectedMonth, currentUser]);
 
   const resetForm = () => {
     setEditingCard(null);
