@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,6 +47,13 @@ export function ReportsPage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'all');
+
+  // Sincroniza o filtro quando o usuário carrega
+  useEffect(() => {
+    if (currentUser?.id && selectedUserId === 'all') {
+      setSelectedUserId(currentUser.id);
+    }
+  }, [currentUser?.id]);
 
   const isAdmin = isCurrentUserAdmin();
 

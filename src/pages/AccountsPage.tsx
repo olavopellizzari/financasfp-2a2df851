@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, Account } from '@/lib/db';
@@ -90,6 +90,13 @@ export function AccountsPage() {
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'total');
   const [isLoading, setIsLoading] = useState(false);
   
+  // Sincroniza o filtro quando o usuário carrega
+  useEffect(() => {
+    if (currentUser?.id && selectedUserId === 'total') {
+      setSelectedUserId(currentUser.id);
+    }
+  }, [currentUser?.id]);
+
   const [formData, setFormData] = useState<AccountFormData>({
     name: '',
     bank: 'nubank',

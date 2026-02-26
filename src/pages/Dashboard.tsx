@@ -76,6 +76,13 @@ export function Dashboard() {
   const [isPrivate, setIsPrivate] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'total');
   
+  // Sincroniza o filtro quando o usuário carrega
+  useEffect(() => {
+    if (currentUser?.id && selectedUserId === 'total') {
+      setSelectedUserId(currentUser.id);
+    }
+  }, [currentUser?.id]);
+
   const selectedMonthStr = useMemo(() => format(selectedMonth, 'yyyy-MM'), [selectedMonth]);
 
   // Filtra as contas baseado na lógica da página de Contas
