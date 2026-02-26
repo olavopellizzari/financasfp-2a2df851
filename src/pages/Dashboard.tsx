@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatCurrency } from '@/lib/db';
+import { formatCurrency, Transaction } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { UserFilter } from '@/components/UserFilter';
@@ -101,6 +101,40 @@ export function Dashboard() {
     return filteredAccounts.filter(a => a.active !== false).reduce((sum, a) => sum + getAccountBalance(a.id), 0);
   }, [filteredAccounts, getAccountBalance]);
 
+  // Agrupa transações para exibição na lista de "Últimas Transações"
+  const displayTransactions = useMemo(() => {
+    const result: any[] = [];
+    const seenGroups = new Set<string>();
+
+    // Ordena por data de compra (mais recentes primeiro)
+    const sorted = [...userFilteredTransactions].sort((a, b) => 
+      new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()
+    );
+
+    sorted.forEach(tx => {
+      if (tx.installmentGroupId) {
+        if (!seenGroups.has(tx.installmentGroupId)) {
+          seenGroups.add(tx.installmentGroupId);
+          // Calcula o valor total da compra (parcela * total de parcelas)
+          const totalAmount = tx.amount * (tx.totalInstallments || 1);
+          result.push({
+            ...tx,
+            displayAmount: totalAmount,
+            isGrouped: true
+          });
+        }
+      } else {
+        result.push({
+          ...tx,
+          displayAmount: tx.amount,
+          isGrouped: false
+        });
+      }
+    });
+
+    return result;
+  }, [userFilteredTransactions]);
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -146,17 +180,24 @@ export function Dashboard() {
           <CardHeader><CardTitle className="text-lg">Últimas Transações</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {userFilteredTransactions.slice(0, 5).map(tx => (
+              {displayTransactions.slice(0, 5).map(tx => (
                 <div key={tx.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-xl">{getCategoryById(tx.categoryId)?.icon || '💰'}</div>
                     <div>
-                      <p className="text-sm font-medium">{tx.description}</p>
+                      <p className="text-sm font-medium">
+                        {tx.description}
+                        {tx.isGrouped && (
+                          <span className="text-[10px] text-muted-foreground ml-2">
+                            ({tx.totalInstallments}x de {formatCurrency(tx.amount)})
+                          </span>
+                        )}
+                      </p>
                       <p className="text-xs text-muted-foreground">{format(new Date(tx.purchaseDate), 'dd/MM/yyyy')}</p>
                     </div>
                   </div>
                   <span className={cn("font-bold", tx.type === 'INCOME' ? "text-income" : "text-expense")}>
-                    {tx.type === 'INCOME' ? '+' : '-'} {formatCurrency(tx.amount)}
+                    {tx.type === 'INCOME' ? '+' : '-'} {formatCurrency(tx.displayAmount)}
                   </span>
                 </div>
               ))}
