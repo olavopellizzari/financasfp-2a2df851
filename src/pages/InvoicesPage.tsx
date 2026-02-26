@@ -93,7 +93,16 @@ export function InvoicesPage() {
       const existing = invoices.find(i => i.card_id === card.id && i.month === selectedMonth);
       
       let closingDate = setDate(monthDate, card.closing_day);
-      let dueDate = setDate(addMonths(monthDate, 1), card.due_day);
+      
+      // Nova lógica de vencimento:
+      // Se fechamento < vencimento -> mesmo mês
+      // Se fechamento > vencimento -> mês seguinte
+      let dueDate;
+      if (card.closing_day < card.due_day) {
+        dueDate = setDate(monthDate, card.due_day);
+      } else {
+        dueDate = setDate(addMonths(monthDate, 1), card.due_day);
+      }
 
       const total = generated?.total || existing?.total_amount || 0;
       const paid = existing?.paid_amount || 0;
