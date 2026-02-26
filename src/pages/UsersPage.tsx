@@ -22,12 +22,11 @@ import {
   UserMinus,
   Bell,
   CheckCircle,
-  XCircle
+  XCircle,
+  Send
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-
-const AVATAR_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899'];
 
 export function UsersPage() {
   const { currentUser, refreshUsers, refreshProfile } = useAuth();
@@ -40,15 +39,7 @@ export function UsersPage() {
   const [searchEmail, setSearchEmail] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-
-  const [userForm, setUserForm] = useState({
-    name: '',
-    email: '',
-    avatar_color: '#22c55e',
-    avatar_url: '',
-    is_admin: false,
-    is_active: true
-  });
+  const [showInviteExternal, setShowInviteExternal] = useState(false);
 
   const loadData = async () => {
     setIsLoadingMembers(true);
@@ -87,19 +78,21 @@ export function UsersPage() {
   }, []);
 
   const handleSearchUser = async () => {
-    if (!searchEmail || !searchEmail.includes('@')) {
+    const email = searchEmail.toLowerCase().trim();
+    if (!email || !email.includes('@')) {
       toast({ title: "Erro", description: "Digite um e-mail válido", variant: "destructive" });
       return;
     }
 
     setIsSearching(true);
     setSearchResults([]);
+    setShowInviteExternal(false);
     
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .ilike('email', searchEmail.toLowerCase().trim())
+        .ilike('email', email)
         .limit(1);
 
       setIsSearching(false);
@@ -107,11 +100,8 @@ export function UsersPage() {
       if (error) throw error;
 
       if (!data || data.length === 0) {
-        toast({ 
-          title: 'Usuário não encontrado', 
-          description: 'Este e-mail não está cadastrado.', 
-          variant: "destructive"
-        });
+        // Se não encontrar, permite convidar externamente
+        setShowInviteExternal(true);
         return;
       }
 
@@ -133,11 +123,11 @@ export function UsersPage() {
     }
   };
 
-  const handleSendInvite = async (user: any) => {
+  const handleSendInvite = async (email: string) => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.rpc('send_family_invite', {
-        invitee_email: user.email
+        invitee_email: email.toLowerCase().trim()
       });
 
       if (error) throw error;
@@ -150,6 +140,7 @@ export function UsersPage() {
 
       toast({ title: 'Convite enviado!', description: result.message });
       setSearchResults([]);
+      setShowInviteExternal(false);
       setSearchEmail('');
       await loadData();
     } catch (error: any) {
@@ -223,43 +214,7 @@ export function UsersPage() {
 
   const handleEditUser = (user: any) => {
     setEditingUser(user);
-    setUserForm({
-      name: user.name || '',
-      email: user.email,
-      avatar_color: user.avatar_color || '#22c55e',
-      avatar_url: user.avatar_url || '',
-      is_admin: user.is_admin || false,
-      is_active: user.is_active ?? true
-    });
     setDialogOpen(true);
-  };
-
-  const handleSaveUser = async () => {
-    if (!editingUser) return;
-
-    setIsLoading(true);
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          name: userForm.name,
-          avatar_color: userForm.avatar_color,
-          avatar_url: userForm.avatar_url || null,
-          is_admin: userForm.is_admin,
-          is_active: userForm.is_active
-        })
-        .eq('id', editingUser.id);
-
-      if (error) throw error;
-      toast({ title: 'Atualizado!' });
-      setDialogOpen(false);
-      await loadData();
-      await refreshUsers();
-    } catch (error: any) {
-      toast({ title: 'Erro', description: error.message, variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   if (isLoadingMembers) {
@@ -324,42 +279,6 @@ export function UsersPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="finance-card">
-          <CardContent className="pt-6 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-primary/10">
-              <UsersIcon className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total</p>
-              <p className="text-2xl font-bold">{familyMembers.length}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="finance-card">
-          <CardContent className="pt-6 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-green-100">
-              <UserCheck className="h-6 w-6 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Ativos</p>
-              <p className="text-2xl font-bold">{familyMembers.filter(u => u.is_active !== false).length}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="finance-card">
-          <CardContent className="pt-6 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-red-100">
-              <UserX className="h-6 w-6 text-red-600" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Inativos</p>
-              <p className="text-2xl font-bold">{familyMembers.filter(u => u.is_active === false).length}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       <Card className="finance-card border-2 border-primary/20">
         <CardContent className="p-6">
           <div className="space-y-4">
@@ -384,8 +303,29 @@ export function UsersPage() {
         </CardContent>
       </Card>
 
+      {showInviteExternal && (
+        <Card className="finance-card border-2 border-blue-500/30 bg-blue-50/30 animate-scale-in">
+          <CardContent className="p-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                  <Mail className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="font-bold">Usuário não cadastrado</p>
+                  <p className="text-sm text-muted-foreground">Você pode enviar um convite para <strong>{searchEmail}</strong> mesmo assim.</p>
+                </div>
+              </div>
+              <Button onClick={() => handleSendInvite(searchEmail)} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 text-white">
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 mr-2" /> Enviar Convite</>}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {searchResults.length > 0 && (
-        <Card className="finance-card border-2 border-green-500/30">
+        <Card className="finance-card border-2 border-green-500/30 animate-scale-in">
           <CardContent className="p-6">
             {searchResults.map((user: any) => (
               <div key={user.id} className="flex items-center justify-between p-4 bg-green-50 rounded-xl">
@@ -402,7 +342,7 @@ export function UsersPage() {
                     <p className="text-sm text-muted-foreground">{user.email}</p>
                   </div>
                 </div>
-                <Button onClick={() => handleSendInvite(user)} disabled={isLoading} className="gradient-primary">
+                <Button onClick={() => handleSendInvite(user.email)} disabled={isLoading} className="gradient-primary">
                   {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4 mr-2" />}
                   Enviar Convite
                 </Button>
@@ -450,29 +390,6 @@ export function UsersPage() {
           </Card>
         ))}
       </div>
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="rounded-[24px] max-w-md">
-          <DialogHeader><DialogTitle>Editar: {userForm.name}</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2"><Label>Nome</Label><Input value={userForm.name} onChange={(e) => setUserForm({...userForm, name: e.target.value})} className="rounded-xl h-11" /></div>
-            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-dashed">
-              <div className="space-y-0.5"><Label className="font-bold">Administrador</Label><p className="text-[10px] text-muted-foreground">Pode gerenciar membros</p></div>
-              <Switch checked={userForm.is_admin} onCheckedChange={v => setUserForm({...userForm, is_admin: v})} />
-            </div>
-            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-dashed">
-              <div className="space-y-0.5"><Label className="font-bold">Ativo</Label><p className="text-[10px] text-muted-foreground">Pode acessar o sistema</p></div>
-              <Switch checked={userForm.is_active} onCheckedChange={v => setUserForm({...userForm, is_active: v})} />
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDialogOpen(false)} className="flex-1 h-11 rounded-xl">Cancelar</Button>
-            <Button onClick={handleSaveUser} disabled={isLoading} className="flex-1 h-11 rounded-xl gradient-primary">
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
- </Dialog>
     </div>
   );
 }
