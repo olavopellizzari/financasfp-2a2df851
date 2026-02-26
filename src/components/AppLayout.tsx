@@ -151,8 +151,12 @@ export function AppLayout({ children }: AppLayoutProps) {
 
         <div className="p-4 border-t border-sidebar-border">
           <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 bg-primary">
-              {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : <User className="w-5 h-5" />}
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 bg-primary overflow-hidden">
+              {currentUser?.avatar_url ? (
+                <img src={currentUser.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : <User className="w-5 h-5" />
+              )}
             </div>
             {!isCollapsed && (
               <div className="flex-1 min-w-0">
@@ -203,8 +207,12 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
           <div className="flex items-center gap-2">
             <NotificationsPanel />
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold bg-primary">
-              {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold bg-primary overflow-hidden">
+              {currentUser?.avatar_url ? (
+                <img src={currentUser.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : <User className="w-4 h-4" />
+              )}
             </div>
           </div>
         </header>

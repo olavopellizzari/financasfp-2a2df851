@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFinance } from '@/contexts/FinanceContext';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { User, Trash2, Loader2, Sparkles, Wrench, Calendar, Bell, BellRing, Smartphone, CheckCircle2, AlertTriangle, Zap } from 'lucide-react';
+import { User, Trash2, Loader2, Sparkles, Wrench, Calendar, Bell, BellRing, Smartphone, CheckCircle2, AlertTriangle, Zap, Camera, Upload, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { addMonths, format } from 'date-fns';
 
@@ -30,7 +30,10 @@ export function SettingsPage() {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingEmail, setSavingEmail] = useState(false);
-  const [profileForm, setProfileForm] = useState({ name: '', email: '', avatarColor: AVATAR_COLORS[0] });
+  const [profileForm, setProfileForm] = useState({ name: '', email: '', avatarColor: AVATAR_COLORS[0], avatarUrl: '' });
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [dailyAlerts, setDailyAlerts] = useState(false);
 
   useEffect(() => {
@@ -38,10 +41,61 @@ export function SettingsPage() {
       setProfileForm({ 
         name: currentUser.name || '', 
         email: currentUser.email || '', 
-        avatarColor: currentUser.avatar_color || AVATAR_COLORS[0] 
+        avatarColor: currentUser.avatar_color || AVATAR_COLORS[0],
+        avatarUrl: currentUser.avatar_url || ''
       });
+      if (currentUser.avatar_url) {
+        setAvatarPreview(currentUser.avatar_url);
+      }
     }
   }, [currentUser]);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Erro', description: 'Selecione apenas arquivos de imagem.', variant: 'destructive' });
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: 'Erro', description: 'A imagem deve ter no máximo 2MB.', variant: 'destructive' });
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${currentUser?.id}-${Date.now()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      setAvatarPreview(publicUrl);
+      setProfileForm(prev => ({ ...prev, avatarUrl: publicUrl }));
+      toast({ title: 'Sucesso!', description: 'Foto de perfil enviada.' });
+    } catch (error: any) {
+      toast({ title: 'Erro no upload', description: error.message, variant: 'destructive' });
+    } finally {
+      setUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const removeAvatar = () => {
+    setAvatarPreview(null);
+    setProfileForm(prev => ({ ...prev, avatarUrl: '' }));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const handleFixDescriptions = async () => {
     if (!confirm('Isso removerá sufixos como "(1/12)" de todas as descrições de lançamentos antigos. Deseja continuar?')) return;
@@ -136,6 +190,7 @@ export function SettingsPage() {
         .update({
           name: profileForm.name,
           avatar_color: profileForm.avatarColor,
+          avatar_url: profileForm.avatarUrl || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', currentUser.id);
@@ -143,7 +198,7 @@ export function SettingsPage() {
       if (error) throw error;
 
       await refreshProfile();
-      toast({ title: 'Perfil atualizado', description: 'Nome e avatar foram salvos.' });
+      toast({ title: 'Perfil atualizado', description: 'Nome, avatar e cor foram salvos.' });
       setEditProfileOpen(false);
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
@@ -269,8 +324,45 @@ export function SettingsPage() {
         <CardContent className="space-y-4">
           {currentUser && (
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold" style={{ backgroundColor: currentUser.avatar_color }}>{currentUser.name.charAt(0).toUpperCase()}</div>
-              <div className="flex-1"><h3 className="text-xl font-semibold">{currentUser.name}</h3><p className="text-muted-foreground">{currentUser.email}</p></div>
+              <div className="relative">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold overflow-hidden" style={{ backgroundColor: currentUser.avatar_color }}>
+                  {avatarPreview ? (
+                    <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    currentUser.name?.charAt(0).toUpperCase() || '?'
+                  )}
+                </div>
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className="absolute bottom-0 right-0 h-8 w-8 rounded-full shadow-lg"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingAvatar}
+                >
+                  {uploadingAvatar ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                </Button>
+                {avatarPreview && (
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-1 -right-1 h-6 w-6 rounded-full"
+                    onClick={removeAvatar}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-semibold">{currentUser.name}</h3>
+                <p className="text-muted-foreground">{currentUser.email}</p>
+              </div>
               <Button variant="outline" onClick={() => setEditProfileOpen(true)}>Editar Perfil</Button>
             </div>
           )}
@@ -322,7 +414,7 @@ export function SettingsPage() {
             </div>
             
             <div className="space-y-2">
-              <Label>Avatar (cor)</Label>
+              <Label>Avatar (cor de fallback)</Label>
               <div className="flex flex-wrap gap-2">
                 {AVATAR_COLORS.map((c) => (
                   <button

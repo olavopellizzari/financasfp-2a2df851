@@ -45,6 +45,7 @@ export function UsersPage() {
     name: '',
     email: '',
     avatar_color: '#22c55e',
+    avatar_url: '',
     is_admin: false,
     is_active: true
   });
@@ -59,6 +60,7 @@ export function UsersPage() {
           name: m.f_name || m.name,
           email: m.f_email || m.email,
           avatar_color: m.f_avatar_color || m.avatar_color,
+          avatar_url: m.f_avatar_url || m.avatar_url,
           is_admin: m.f_is_admin || m.is_admin,
           is_active: m.f_is_active ?? m.is_active ?? true
         })));
@@ -225,6 +227,7 @@ export function UsersPage() {
       name: user.name || '',
       email: user.email,
       avatar_color: user.avatar_color || '#22c55e',
+      avatar_url: user.avatar_url || '',
       is_admin: user.is_admin || false,
       is_active: user.is_active ?? true
     });
@@ -241,6 +244,7 @@ export function UsersPage() {
         .update({
           name: userForm.name,
           avatar_color: userForm.avatar_color,
+          avatar_url: userForm.avatar_url || null,
           is_admin: userForm.is_admin,
           is_active: userForm.is_active
         })
@@ -386,8 +390,12 @@ export function UsersPage() {
             {searchResults.map((user: any) => (
               <div key={user.id} className="flex items-center justify-between p-4 bg-green-50 rounded-xl">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: user.avatar_color }}>
-                    {user.name?.charAt(0)?.toUpperCase() || user.email.charAt(0).toUpperCase()}
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold overflow-hidden" style={{ backgroundColor: user.avatar_color || '#22c55e' }}>
+                    {user.avatar_url ? (
+                      <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      user.name?.charAt(0)?.toUpperCase() || user.email.charAt(0).toUpperCase()
+                    )}
                   </div>
                   <div>
                     <p className="font-bold">{user.name || 'Sem nome'}</p>
@@ -410,8 +418,12 @@ export function UsersPage() {
             <CardContent className="pt-6">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold" style={{ backgroundColor: user.avatar_color }}>
-                    {user.name?.charAt(0)?.toUpperCase() || '?'}
+                  <div className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold overflow-hidden" style={{ backgroundColor: user.avatar_color || '#22c55e' }}>
+                    {user.avatar_url ? (
+                      <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      user.name?.charAt(0)?.toUpperCase() || '?'
+                    )}
                   </div>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
@@ -443,7 +455,7 @@ export function UsersPage() {
         <DialogContent className="rounded-[24px] max-w-md">
           <DialogHeader><DialogTitle>Editar: {userForm.name}</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2"><Label>Nome</Label><Input value={userForm.name} onChange={e => setUserForm({...userForm, name: e.target.value})} className="rounded-xl h-11" /></div>
+            <div className="space-y-2"><Label>Nome</Label><Input value={userForm.name} onChange={(e) => setUserForm({...userForm, name: e.target.value})} className="rounded-xl h-11" /></div>
             <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-dashed">
               <div className="space-y-0.5"><Label className="font-bold">Administrador</Label><p className="text-[10px] text-muted-foreground">Pode gerenciar membros</p></div>
               <Switch checked={userForm.is_admin} onCheckedChange={v => setUserForm({...userForm, is_admin: v})} />
@@ -460,7 +472,7 @@ export function UsersPage() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+ </Dialog>
     </div>
   );
 }

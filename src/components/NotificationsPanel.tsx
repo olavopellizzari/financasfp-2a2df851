@@ -15,7 +15,8 @@ import {
   AlertTriangle, 
   Calendar,
   Check,
-  Trash2
+  Trash2,
+  User
 } from 'lucide-react';
 import { db, Notification, Debt, Card as CardType, formatCurrency, generateId } from '@/lib/db';
 import { addDays, isBefore, isAfter, differenceInDays, format, setDate, parse } from 'date-fns';
