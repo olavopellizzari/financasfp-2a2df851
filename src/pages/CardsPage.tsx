@@ -2,9 +2,8 @@ import { useState, useMemo } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, Card as CardType, Transaction } from '@/lib/db';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { 
@@ -13,14 +12,15 @@ import {
   Calendar, 
   ChevronLeft, 
   ChevronRight,
-  AlertCircle,
   MoreVertical,
   Pencil,
   Trash2,
   Info,
   Cpu,
   Loader2,
-  ArrowRight
+  ArrowRight,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { format, parse, addMonths, subMonths, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -65,10 +65,9 @@ export function CardsPage() {
   const { currentUser, users } = useAuth();
   const navigate = useNavigate();
   
-  // Define o mês inicial como o mês seguinte ao atual
   const [selectedMonth, setSelectedMonth] = useState(format(addMonths(new Date(), 1), 'yyyy-MM'));
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   
-  // Estado para o diálogo
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<CardType | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -92,7 +91,6 @@ export function CardsPage() {
 
   const cardsWithStats = useMemo(() => {
     return allCards.filter(card => card.user_id === currentUser?.id || (card as any).is_shared).map(card => {
-      // Filtra transações que pertencem à fatura do mês selecionado
       const currentInvoiceTransactions = allTransactions.filter(t => 
         t.cardId === card.id && 
         t.mesFatura === selectedMonth &&
@@ -222,12 +220,16 @@ export function CardsPage() {
     return format(d, formatStr, { locale: ptBR });
   };
 
+  const toggleExpand = (cardId: string) => {
+    setExpandedCardId(expandedCardId === cardId ? null : cardId);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Cartões de Crédito</h1>
-          <p className="text-muted-foreground">Gestão visual de limites e faturas</p>
+          <p className="text-muted-foreground">Clique no cartão para ver detalhes e lançamentos</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center bg-muted rounded-lg p-1">
@@ -248,169 +250,181 @@ export function CardsPage() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        {cardsWithStats.map(card => (
-          <div key={card.id} className="space-y-4">
-            {/* Visual do Cartão Físico */}
-            <div 
-              className="relative h-56 w-full rounded-[24px] p-8 text-white shadow-2xl overflow-hidden transition-all hover:scale-[1.01] group"
-              style={{ 
-                background: `linear-gradient(135deg, ${card.color}, ${card.color}dd)`,
-                boxShadow: `0 20px 40px -15px ${card.color}66`
-              }}
-            >
-              {/* Elementos Decorativos do Cartão */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl" />
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/10 rounded-full -ml-24 -mb-24 blur-2xl" />
-              
-              <div className="relative h-full flex flex-col justify-between">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium opacity-80 uppercase tracking-widest">Nome do Cartão</p>
-                    <h3 className="text-2xl font-bold tracking-tight">{card.name}</h3>
+        {cardsWithStats.map(card => {
+          const isExpanded = expandedCardId === card.id;
+          
+          return (
+            <div key={card.id} className="space-y-4">
+              {/* Visual do Cartão Físico */}
+              <div 
+                onClick={() => toggleExpand(card.id)}
+                className={cn(
+                  "relative h-56 w-full rounded-[24px] p-8 text-white shadow-2xl overflow-hidden transition-all hover:scale-[1.01] group cursor-pointer",
+                  isExpanded && "ring-4 ring-primary/20"
+                )}
+                style={{ 
+                  background: `linear-gradient(135deg, ${card.color}, ${card.color}dd)`,
+                  boxShadow: `0 20px 40px -15px ${card.color}66`
+                }}
+              >
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl" />
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/10 rounded-full -ml-24 -mb-24 blur-2xl" />
+                
+                <div className="relative h-full flex flex-col justify-between">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium opacity-80 uppercase tracking-widest">Nome do Cartão</p>
+                      <h3 className="text-2xl font-bold tracking-tight">{card.name}</h3>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="flex items-center gap-2">
+                        <Cpu className="w-10 h-10 opacity-50 rotate-90" />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full">
+                              <MoreVertical className="h-5 w-5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleOpenEdit(card)}><Pencil className="w-4 h-4 mr-2" /> Editar</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDelete(card.id)} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Excluir</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      {isExpanded ? <ChevronUp className="w-5 h-5 opacity-50" /> : <ChevronDown className="w-5 h-5 opacity-50" />}
+                    </div>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <Cpu className="w-10 h-10 opacity-50 rotate-90" />
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full">
-                          <MoreVertical className="h-5 w-5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleOpenEdit(card)}><Pencil className="w-4 h-4 mr-2" /> Editar</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDelete(card.id)} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Excluir</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
 
-                <div className="flex justify-between items-end">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-bold opacity-70 uppercase tracking-widest">Limite Disponível</p>
-                    <p className="text-3xl font-black tracking-tighter">
-                      {formatCurrency(card.availableLimit)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[16px] font-mono tracking-[4px] opacity-90">
-                      •••• {card.last_digits || '0000'}
-                    </p>
-                    <p className="text-[10px] font-bold opacity-70 uppercase mt-1">
-                      {card.brand || 'Crédito'}
-                    </p>
+                  <div className="flex justify-between items-end">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold opacity-70 uppercase tracking-widest">Limite Disponível</p>
+                      <p className="text-3xl font-black tracking-tighter">
+                        {formatCurrency(card.availableLimit)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[16px] font-mono tracking-[4px] opacity-90">
+                        •••• {card.last_digits || '0000'}
+                      </p>
+                      <p className="text-[10px] font-bold opacity-70 uppercase mt-1">
+                        {card.brand || 'Crédito'}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Detalhes e Lançamentos */}
-            <Card className="border-none shadow-md overflow-hidden">
-              <CardContent className="p-6 space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-muted/50 rounded-2xl">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Fatura {safeFormatDate(selectedDate, 'MMM')}</p>
-                    <p className="text-xl font-bold text-expense">{formatCurrency(card.totalCurrentInvoice)}</p>
-                  </div>
-                  <div className="p-4 bg-muted/50 rounded-2xl">
-                    <div className="flex items-center gap-1 mb-1">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase">Dívida Total</p>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger><Info className="h-3 w-3 text-muted-foreground" /></TooltipTrigger>
-                          <TooltipContent><p className="text-xs">Soma de todas as parcelas futuras</p></TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    <p className="text-xl font-bold text-orange-600">{formatCurrency(card.totalDebt)}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs font-bold">
-                    <span className="text-muted-foreground">Uso do Limite ({formatCurrency(card.limit)})</span>
-                    <span>{card.usedPercentage.toFixed(1)}%</span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className={cn(
-                        "h-full transition-all duration-500",
-                        card.usedPercentage > 90 ? "bg-destructive" : card.usedPercentage > 70 ? "bg-warning" : "bg-primary"
-                      )}
-                      style={{ width: `${card.usedPercentage}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-sm font-bold flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-primary" /> 
-                      Lançamentos de {safeFormatDate(selectedDate, 'MMMM')}
-                    </h4>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-[10px] font-bold uppercase text-primary hover:bg-primary/5"
-                      onClick={() => navigate(`/transactions?type=card&cardId=${card.id}`)}
-                    >
-                      Ver todos <ArrowRight className="w-3 h-3 ml-1" />
-                    </Button>
-                  </div>
-                  <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2">
-                    {card.transactions.length > 0 ? (
-                      card.transactions.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()).map(tx => {
-                        const cat = getCategoryById(tx.categoryId);
-                        return (
-                          <div key={tx.id} className="flex items-center justify-between group p-2 rounded-xl hover:bg-muted/50 transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-lg">
-                                {cat?.icon || '💰'}
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium leading-none">{tx.description}</p>
-                                <p className="text-[10px] text-muted-foreground mt-1">
-                                  {safeFormatDate(tx.purchaseDate, 'dd/MM/yy')}
-                                  {tx.totalInstallments > 1 && ` • ${tx.installmentNumber}/${tx.totalInstallments}`}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className={cn("text-sm font-bold", tx.type === 'REFUND' ? 'text-income' : 'text-expense')}>
-                                {tx.type === 'REFUND' ? '+' : '-'} {formatCurrency(tx.amount)}
-                              </span>
-                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-7 w-7 text-muted-foreground hover:text-primary"
-                                  onClick={() => handleEditTransaction(tx)}
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                  onClick={() => handleDeleteTransaction(tx)}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="py-6 text-center">
-                        <p className="text-xs text-muted-foreground">Nenhum lançamento nesta fatura.</p>
+              {/* Detalhes e Lançamentos (Expansível) */}
+              {isExpanded && (
+                <Card className="border-none shadow-md overflow-hidden animate-scale-in">
+                  <CardContent className="p-6 space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 bg-muted/50 rounded-2xl">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Fatura {safeFormatDate(selectedDate, 'MMM')}</p>
+                        <p className="text-xl font-bold text-expense">{formatCurrency(card.totalCurrentInvoice)}</p>
                       </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        ))}
+                      <div className="p-4 bg-muted/50 rounded-2xl">
+                        <div className="flex items-center gap-1 mb-1">
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase">Dívida Total</p>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger><Info className="h-3 w-3 text-muted-foreground" /></TooltipTrigger>
+                              <TooltipContent><p className="text-xs">Soma de todas as parcelas futuras</p></TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <p className="text-xl font-bold text-orange-600">{formatCurrency(card.totalDebt)}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs font-bold">
+                        <span className="text-muted-foreground">Uso do Limite ({formatCurrency(card.limit)})</span>
+                        <span>{card.usedPercentage.toFixed(1)}%</span>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className={cn(
+                            "h-full transition-all duration-500",
+                            card.usedPercentage > 90 ? "bg-destructive" : card.usedPercentage > 70 ? "bg-warning" : "bg-primary"
+                          )}
+                          style={{ width: `${card.usedPercentage}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-sm font-bold flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-primary" /> 
+                          Lançamentos de {safeFormatDate(selectedDate, 'MMMM')}
+                        </h4>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-[10px] font-bold uppercase text-primary hover:bg-primary/5"
+                          onClick={() => navigate(`/transactions?type=card&cardId=${card.id}`)}
+                        >
+                          Ver todos <ArrowRight className="w-3 h-3 ml-1" />
+                        </Button>
+                      </div>
+                      <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2">
+                        {card.transactions.length > 0 ? (
+                          card.transactions.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()).map(tx => {
+                            const cat = getCategoryById(tx.categoryId);
+                            return (
+                              <div key={tx.id} className="flex items-center justify-between group p-2 rounded-xl hover:bg-muted/50 transition-colors">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-lg">
+                                    {cat?.icon || '💰'}
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium leading-none">{tx.description}</p>
+                                    <p className="text-[10px] text-muted-foreground mt-1">
+                                      {safeFormatDate(tx.purchaseDate, 'dd/MM/yy')}
+                                      {tx.totalInstallments > 1 && ` • ${tx.installmentNumber}/${tx.totalInstallments}`}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className={cn("text-sm font-bold", tx.type === 'REFUND' ? 'text-income' : 'text-expense')}>
+                                    {tx.type === 'REFUND' ? '+' : '-'} {formatCurrency(tx.amount)}
+                                  </span>
+                                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                      onClick={(e) => { e.stopPropagation(); handleEditTransaction(tx); }}
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                      onClick={(e) => { e.stopPropagation(); handleDeleteTransaction(tx); }}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="py-6 text-center">
+                            <p className="text-xs text-muted-foreground">Nenhum lançamento nesta fatura.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Diálogo de Criação/Edição */}
