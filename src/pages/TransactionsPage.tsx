@@ -187,7 +187,10 @@ export function TransactionsPage() {
 
   const filteredTransactions = useMemo(() => {
     return allTransactions.filter(tx => {
-      const matchesMonth = tx.effectiveMonth === selectedMonthStr;
+      // Lógica de filtro: Se for cartão, olha o mês da fatura. Se for conta, olha o mês efetivo.
+      const txMonth = (tx.type === 'CREDIT' || tx.type === 'REFUND') ? tx.mesFatura : tx.effectiveMonth;
+      const matchesMonth = txMonth === selectedMonthStr;
+      
       const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = filterType === 'ALL' || tx.type === filterType;
       const matchesUser = selectedUserId === 'all' || tx.userId === selectedUserId;
