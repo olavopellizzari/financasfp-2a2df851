@@ -26,7 +26,9 @@ import {
   ArrowRight,
   History,
   ArrowDownRight,
-  ArrowUpRight
+  ArrowUpRight,
+  Users,
+  User as UserIcon
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, addMonths, subMonths, startOfYear, endOfYear, eachMonthOfInterval, getYear, isSameMonth, isValid } from 'date-fns';
@@ -76,7 +78,7 @@ function BalanceCard({ title, amount, icon, variant = 'default', isPrivate, chil
 }
 
 export function Dashboard() {
-  const { currentUser } = useAuth();
+  const { currentUser, users } = useAuth();
   const { allAccounts, allCards, allTransactions, categories, getAccountBalance, getCategoryById } = useFinance();
   const navigate = useNavigate();
   
@@ -171,6 +173,47 @@ export function Dashboard() {
     return result.slice(0, 5);
   }, [userFilteredTransactions]);
 
+  // Agrupamento de faturas por dono
+  const invoiceGroups = useMemo(() => {
+    const groups: Record<string, { name: string; color?: string; isShared: boolean; cards: any[] }> = {
+      family: { name: 'Família', isShared: true, cards: [] }
+    };
+
+    allCards.forEach(card => {
+      const isShared = (card as any).is_shared;
+      const ownerId = card.user_id;
+      const owner = users.find(u => u.id === ownerId);
+
+      const cardTxs = allTransactions.filter(t => 
+        t.cardId === card.id && 
+        t.mesFatura === selectedMonthStr && 
+        t.status !== 'cancelled'
+      );
+
+      const total = cardTxs.reduce((sum, t) => t.type === 'REFUND' ? sum - t.amount : sum + t.amount, 0);
+
+      if (total === 0 && cardTxs.length === 0) return;
+
+      const cardData = { ...card, total };
+
+      if (isShared) {
+        groups.family.cards.push(cardData);
+      } else if (ownerId) {
+        if (!groups[ownerId]) {
+          groups[ownerId] = { 
+            name: owner?.name || 'Usuário', 
+            color: owner?.avatar_color, 
+            isShared: false, 
+            cards: [] 
+          };
+        }
+        groups[ownerId].cards.push(cardData);
+      }
+    });
+
+    return Object.values(groups).filter(g => g.cards.length > 0);
+  }, [allCards, allTransactions, selectedMonthStr, users]);
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -232,6 +275,81 @@ export function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Quadro de Faturas do Mês */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <CreditCard className="w-4 h-4" /> Faturas de {format(selectedMonth, 'MMMM', { locale: ptBR })}
+            </CardTitle>
+            <Button variant="ghost" size="sm" className="h-7 text-[10px] uppercase font-bold" onClick={() => navigate('/invoices')}>Ver faturas</Button>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {invoiceGroups.length > 0 ? invoiceGroups.map((group, idx) => (
+                <div key={idx} className="space-y-3">
+                  <div className="flex items-center gap-2 px-1">
+                    {group.isShared ? (
+                      <Users className="w-3 h-3 text-primary" />
+                    ) : (
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: group.color }} />
+                    )}
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
+                      {group.isShared ? 'Cartões da Família' : `Exclusivos: ${group.name}`}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {group.cards.map(card => (
+                      <div 
+                        key={card.id} 
+                        className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-transparent hover:border-border transition-all cursor-pointer group"
+                        onClick={() => navigate(`/transactions?type=card&cardId=${card.id}`)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-sm" style={{ backgroundColor: card.color }}>
+                            <CreditCard className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold">{card.name}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase">•••• {card.last_digits}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-expense">{isPrivate ? '••••' : formatCurrency(card.total)}</p>
+                          <ArrowRight className="w-3 h-3 ml-auto mt-1 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )) : (
+                <div className="col-span-full py-8 text-center">
+                  <p className="text-xs text-muted-foreground">Nenhum gasto no cartão para este mês.</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-lg">Resumo do Mês</CardTitle></CardHeader>
+          <CardContent className="flex flex-col items-center justify-center py-8">
+            <p className={cn("text-3xl font-bold", stats.balance >= 0 ? "text-income" : "text-expense")}>
+              {isPrivate ? '••••••' : formatCurrency(stats.balance)}
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">Saldo previsto para o período</p>
+            <div className="mt-6 w-full space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Receitas</span>
+                <span className="font-bold text-income">{isPrivate ? '••••' : formatCurrency(stats.income)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Despesas</span>
+                <span className="font-bold text-expense">{isPrivate ? '••••' : formatCurrency(stats.expenses)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
@@ -251,7 +369,7 @@ export function Dashboard() {
                     </div>
                   </div>
                   <span className={cn("text-sm font-bold", tx.type === 'INCOME' ? "text-income" : "text-expense")}>
-                    {tx.type === 'INCOME' ? '+' : '-'} {formatCurrency(tx.amount)}
+                    {tx.type === 'INCOME' ? '+' : '-'} {isPrivate ? '••••' : formatCurrency(tx.amount)}
                   </span>
                 </div>
               )) : (
@@ -283,32 +401,12 @@ export function Dashboard() {
                     </div>
                   </div>
                   <span className={cn("text-sm font-bold", tx.type === 'REFUND' ? "text-income" : "text-expense")}>
-                    {tx.type === 'REFUND' ? '+' : '-'} {formatCurrency(tx.displayAmount)}
+                    {tx.type === 'REFUND' ? '+' : '-'} {isPrivate ? '••••' : formatCurrency(tx.displayAmount)}
                   </span>
                 </div>
               )) : (
                 <p className="text-xs text-center text-muted-foreground py-4">Nenhum gasto no cartão.</p>
               )}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader><CardTitle className="text-lg">Resumo do Mês</CardTitle></CardHeader>
-          <CardContent className="flex flex-col items-center justify-center py-8">
-            <p className={cn("text-3xl font-bold", stats.balance >= 0 ? "text-income" : "text-expense")}>
-              {formatCurrency(stats.balance)}
-            </p>
-            <p className="text-sm text-muted-foreground mt-2">Saldo previsto para o período</p>
-            <div className="mt-6 w-full space-y-2">
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Receitas</span>
-                <span className="font-bold text-income">{formatCurrency(stats.income)}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Despesas</span>
-                <span className="font-bold text-expense">{formatCurrency(stats.expenses)}</span>
-              </div>
             </div>
           </CardContent>
         </Card>
