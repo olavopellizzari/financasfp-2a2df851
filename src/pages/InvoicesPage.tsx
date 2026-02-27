@@ -22,7 +22,8 @@ export function InvoicesPage() {
   const { currentUser, isCurrentUserAdmin, users } = useAuth();
   const navigate = useNavigate();
   
-  const [selectedMonth, setSelectedMonth] = useState(format(addMonths(new Date(), 1), 'yyyy-MM'));
+  // Mês padrão agora é o atual
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [selectedCardId, setSelectedCardId] = useState<string>('all');
   
   const [payDialogOpen, setPayDialogOpen] = useState(false);
@@ -84,18 +85,19 @@ export function InvoicesPage() {
     }> = [];
 
     const filteredCards = selectedCardId === 'all' ? cards : cards.filter(c => c.id === selectedCardId);
-    const monthDate = safeParseMonth(selectedMonth);
+    const invoiceMonthDate = safeParseMonth(selectedMonth);
 
     filteredCards.forEach(card => {
       const generated = generatedInvoices.find(g => g.cardId === card.id);
       const existing = invoices.find(i => i.card_id === card.id && i.month === selectedMonth);
       
-      let closingDate = setDate(monthDate, card.closing_day);
-      let dueDate;
-      if (card.closing_day < card.due_day) {
-        dueDate = setDate(monthDate, card.due_day);
-      } else {
-        dueDate = setDate(addMonths(monthDate, 1), card.due_day);
+      // Lógica: A fatura do mês M fecha no dia closing_day do mês M+1
+      let closingDate = setDate(addMonths(invoiceMonthDate, 1), card.closing_day);
+      let dueDate = setDate(addMonths(invoiceMonthDate, 1), card.due_day);
+      
+      // Se o vencimento for antes do fechamento, assume-se que é no mês seguinte ao fechamento (M+2)
+      if (card.due_day < card.closing_day) {
+        dueDate = addMonths(dueDate, 1);
       }
 
       const total = generated?.total || existing?.total_amount || 0;
@@ -225,7 +227,7 @@ export function InvoicesPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="outline" size="icon" onClick={handlePreviousMonth}><ChevronLeft className="h-4 w-4" /></Button>
-          <span className="text-lg font-medium min-w-[150px] text-center capitalize">{format(displayMonthDate, 'MMMM yyyy', { locale: ptBR })}</span>
+          <span className="text-lg font-bold min-w-[150px] text-center capitalize">{format(displayMonthDate, 'MMMM yyyy', { locale: ptBR })}</span>
           <Button variant="outline" size="icon" onClick={handleNextMonth}><ChevronRight className="h-4 w-4" /></Button>
         </div>
         <div className="flex items-center gap-2">

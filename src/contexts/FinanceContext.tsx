@@ -11,7 +11,7 @@ import {
   Debt,
   Invoice
 } from '@/lib/db';
-import { format, addMonths, getDate, isValid, parseISO } from 'date-fns';
+import { format, addMonths, subMonths, getDate, isValid, parseISO } from 'date-fns';
 
 interface FinanceContextType {
   accounts: Account[];
@@ -80,25 +80,19 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       ]);
 
       if (catData.data) {
-        // Mapeia categorias garantindo que as da família sobrescrevam as globais de mesmo nome
         const catMap = new Map<string, any>();
-        
-        // Primeiro as globais
         catData.data.filter(c => !c.household_id).forEach(c => {
           catMap.set(c.name.toLowerCase(), {
             ...c,
             type: c.kind === 'receita' ? 'income' : 'expense'
           });
         });
-        
-        // Depois as da família (sobrescrevem se o nome for igual)
         catData.data.filter(c => c.household_id).forEach(c => {
           catMap.set(c.name.toLowerCase(), {
             ...c,
             type: c.kind === 'receita' ? 'income' : 'expense'
           });
         });
-        
         setCategories(Array.from(catMap.values()).sort((a, b) => a.name.localeCompare(b.name)));
       }
       
@@ -172,8 +166,12 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (!purchaseDate || !isValid(purchaseDate)) return format(new Date(), 'yyyy-MM');
     const card = allCards.find(c => c.id === cardId);
     if (!card) return format(purchaseDate, 'yyyy-MM');
+    
     const day = getDate(purchaseDate);
-    return format(day >= card.closing_day ? addMonths(purchaseDate, 1) : purchaseDate, 'yyyy-MM');
+    // Se o dia da compra for ANTERIOR ao fechamento, pertence à fatura do mês anterior.
+    // Se for IGUAL ou POSTERIOR, pertence à fatura do mês atual (que fecha no mês seguinte).
+    const invoiceDate = day < card.closing_day ? subMonths(purchaseDate, 1) : purchaseDate;
+    return format(invoiceDate, 'yyyy-MM');
   };
 
   const createTransaction = async (data: any) => {
@@ -191,7 +189,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       effective_month: data.effectiveMonth,
       mes_fatura: data.mes_fatura,
       installment_number: data.installmentNumber,
-      total_installments: data.totalInstallments,
+      total_installments: data.total_installments,
       installment_group_id: data.installmentGroupId,
       is_recurring: data.isRecurring,
       is_paid: data.isPaid,

@@ -73,7 +73,8 @@ export function CardsPage() {
   const { currentUser, users } = useAuth();
   const navigate = useNavigate();
   
-  const [selectedMonth, setSelectedMonth] = useState(format(addMonths(new Date(), 1), 'yyyy-MM'));
+  // Mês padrão agora é o atual
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'total');
   
