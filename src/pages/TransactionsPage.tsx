@@ -41,7 +41,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@/Popover";
 import { 
   Plus, 
   Search,
@@ -206,12 +206,39 @@ export function TransactionsPage() {
         if (tx.effectiveMonth !== selectedMonthStr) return false;
       }
 
+      // Filtro de Usuário / Família
+      let matchesUser = true;
+      if (selectedUserId === 'all') {
+        // "Contas da Família" -> Mostra apenas o que é compartilhado (is_shared)
+        if (tx.cardId) {
+          const card = allCards.find(c => c.id === tx.cardId);
+          matchesUser = (card as any)?.is_shared === true;
+        } else if (tx.accountId) {
+          const acc = allAccounts.find(a => a.id === tx.accountId);
+          matchesUser = acc?.is_shared === true;
+        } else {
+          // Se não tem conta nem cartão (ex: lançamento avulso), assume-se que não é da família
+          matchesUser = false;
+        }
+      } else if (selectedUserId !== 'total') {
+        // Usuário específico -> Mostra apenas o que é exclusivo dele (não compartilhado)
+        if (tx.cardId) {
+          const card = allCards.find(c => c.id === tx.cardId);
+          matchesUser = card?.user_id === selectedUserId && !(card as any)?.is_shared;
+        } else if (tx.accountId) {
+          const acc = allAccounts.find(a => a.id === tx.accountId);
+          matchesUser = acc?.user_id === selectedUserId && !acc?.is_shared;
+        } else {
+          matchesUser = tx.userId === selectedUserId;
+        }
+      }
+
       const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = filterType === 'ALL' || tx.type === filterType;
-      const matchesUser = selectedUserId === 'all' || tx.userId === selectedUserId;
+      
       return matchesSearch && matchesType && matchesUser;
     }).sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
-  }, [allTransactions, selectedMonthStr, searchQuery, filterType, selectedUserId, isCardMode, selectedCardId]);
+  }, [allTransactions, selectedMonthStr, searchQuery, filterType, selectedUserId, isCardMode, selectedCardId, allCards, allAccounts]);
 
   const monthStats = useMemo(() => {
     const income = filteredTransactions.filter(t => t.type === 'INCOME' && t.status !== 'cancelled').reduce((s, t) => s + t.amount, 0);
