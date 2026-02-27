@@ -173,13 +173,20 @@ export function Dashboard() {
     return result.slice(0, 5);
   }, [userFilteredTransactions]);
 
-  // Agrupamento de faturas por dono
+  // Agrupamento de faturas por dono, respeitando o filtro selecionado
   const invoiceGroups = useMemo(() => {
     const groups: Record<string, { name: string; color?: string; isShared: boolean; cards: any[] }> = {
       family: { name: 'Família', isShared: true, cards: [] }
     };
 
-    allCards.forEach(card => {
+    // Filtra os cartões de acordo com o filtro de usuário selecionado
+    const cardsToShow = allCards.filter(card => {
+      if (selectedUserId === 'total') return true;
+      if (selectedUserId === 'all') return (card as any).is_shared === true;
+      return card.user_id === selectedUserId && !(card as any).is_shared;
+    });
+
+    cardsToShow.forEach(card => {
       const isShared = (card as any).is_shared;
       const ownerId = card.user_id;
       const owner = users.find(u => u.id === ownerId);
@@ -212,7 +219,7 @@ export function Dashboard() {
     });
 
     return Object.values(groups).filter(g => g.cards.length > 0);
-  }, [allCards, allTransactions, selectedMonthStr, users]);
+  }, [allCards, allTransactions, selectedMonthStr, users, selectedUserId]);
 
   return (
     <div className="space-y-6 animate-fade-in">
