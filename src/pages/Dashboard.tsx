@@ -25,14 +25,15 @@ import {
   AlertCircle,
   ArrowRight,
   History,
-  ArrowDownRight
+  ArrowDownRight,
+  ArrowUpRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, addMonths, subMonths, startOfYear, endOfYear, eachMonthOfInterval, getYear, isSameMonth, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/Alert";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 import {
   DropdownMenu,
@@ -83,7 +84,6 @@ export function Dashboard() {
   const [isPrivate, setIsPrivate] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'total');
   
-  // Sincroniza o filtro quando o usuário carrega
   useEffect(() => {
     if (currentUser?.id && selectedUserId === 'total') {
       setSelectedUserId(currentUser.id);
@@ -92,24 +92,20 @@ export function Dashboard() {
 
   const selectedMonthStr = useMemo(() => format(selectedMonth, 'yyyy-MM'), [selectedMonth]);
 
-  // Filtra as contas baseado na lógica da página de Contas
   const filteredAccounts = useMemo(() => {
     if (selectedUserId === 'total') return allAccounts;
     if (selectedUserId === 'all') return allAccounts.filter(a => a.is_shared === true);
     return allAccounts.filter(a => a.user_id === selectedUserId && !a.is_shared);
   }, [allAccounts, selectedUserId]);
 
-  // Filtra as transações baseado nas contas filtradas
   const userFilteredTransactions = useMemo(() => {
     if (selectedUserId === 'total') return allTransactions;
 
     const accountIds = new Set(filteredAccounts.map(a => a.id));
     
     return allTransactions.filter(t => {
-      // Se a transação tem conta, verifica se a conta está no filtro
       if (t.accountId) return accountIds.has(t.accountId);
       
-      // Se for cartão, filtramos pelo dono do cartão (seguindo a lógica de exclusividade)
       if (t.cardId) {
         const card = allCards.find(c => c.id === t.cardId);
         if (!card) return false;
@@ -117,7 +113,6 @@ export function Dashboard() {
         return card.user_id === selectedUserId && !(card as any).is_shared;
       }
 
-      // Fallback para o usuário da transação
       if (selectedUserId === 'all') return false;
       return t.userId === selectedUserId;
     });
@@ -138,15 +133,20 @@ export function Dashboard() {
     return filteredAccounts.filter(a => a.active !== false).reduce((sum, a) => sum + getAccountBalance(a.id), 0);
   }, [filteredAccounts, getAccountBalance]);
 
-  // Agrupa transações para exibição na lista de "Últimas Transações"
-  const displayTransactions = useMemo(() => {
+  const accountTransactions = useMemo(() => {
+    return userFilteredTransactions
+      .filter(tx => tx.type === 'INCOME' || tx.type === 'EXPENSE' || tx.type === 'TRANSFER')
+      .sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime())
+      .slice(0, 5);
+  }, [userFilteredTransactions]);
+
+  const cardTransactions = useMemo(() => {
     const result: any[] = [];
     const seenGroups = new Set<string>();
 
-    // Ordena por data de compra (mais recentes primeiro)
-    const sorted = [...userFilteredTransactions].sort((a, b) => 
-      new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()
-    );
+    const sorted = userFilteredTransactions
+      .filter(tx => tx.type === 'CREDIT' || tx.type === 'REFUND')
+      .sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
 
     sorted.forEach(tx => {
       if (tx.installmentGroupId) {
@@ -168,7 +168,7 @@ export function Dashboard() {
       }
     });
 
-    return result;
+    return result.slice(0, 5);
   }, [userFilteredTransactions]);
 
   return (
@@ -227,36 +227,68 @@ export function Dashboard() {
           </Popover>
         </BalanceCard>
         <BalanceCard title="Receitas" amount={stats.income} icon={<TrendingUp className="w-5 h-5 text-income" />} variant="income" isPrivate={isPrivate} />
-        <BalanceCard title="Despesas" amount={stats.expenses} icon={<TrendingDown className="w-5 h-5 text-expense" />} variant="expense" isPrivate={isPrivate} />
+        <BalanceCard title="Despesas" amount={stats.expenses} icon={<TrendingDown className="h-5 w-5 text-expense" />} variant="expense" isPrivate={isPrivate} />
         <BalanceCard title="Resultado" amount={stats.balance} icon={<BarChart3 className="w-5 h-5 text-warning" />} variant="pending" isPrivate={isPrivate} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader><CardTitle className="text-lg">Últimas Transações</CardTitle></CardHeader>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <Wallet className="w-4 h-4" /> Últimas em Conta
+            </CardTitle>
+            <Button variant="ghost" size="sm" className="h-7 text-[10px] uppercase font-bold" onClick={() => navigate('/transactions')}>Ver tudo</Button>
+          </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {displayTransactions.slice(0, 5).map(tx => (
-                <div key={tx.id} className="flex items-center justify-between">
+              {accountTransactions.length > 0 ? accountTransactions.map(tx => (
+                <div key={tx.id} className="flex items-center justify-between group">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-xl">{getCategoryById(tx.categoryId)?.icon || '💰'}</div>
-                    <div>
-                      <p className="text-sm font-medium">
-                        {tx.description}
-                        {tx.isGrouped && (
-                          <span className="text-[10px] text-muted-foreground ml-2">
-                            ({tx.totalInstallments}x de {formatCurrency(tx.amount)})
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{format(new Date(tx.purchaseDate), 'dd/MM/yyyy')}</p>
+                    <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-lg">{getCategoryById(tx.categoryId)?.icon || '💰'}</div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate max-w-[120px]">{tx.description}</p>
+                      <p className="text-[10px] text-muted-foreground">{format(new Date(tx.purchaseDate), 'dd/MM/yy')}</p>
                     </div>
                   </div>
-                  <span className={cn("font-bold", tx.type === 'INCOME' ? "text-income" : "text-expense")}>
-                    {tx.type === 'INCOME' ? '+' : '-'} {formatCurrency(tx.displayAmount)}
+                  <span className={cn("text-sm font-bold", tx.type === 'INCOME' ? "text-income" : "text-expense")}>
+                    {tx.type === 'INCOME' ? '+' : '-'} {formatCurrency(tx.amount)}
                   </span>
                 </div>
-              ))}
+              )) : (
+                <p className="text-xs text-center text-muted-foreground py-4">Nenhuma movimentação.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <CreditCard className="w-4 h-4" /> Últimas no Cartão
+            </CardTitle>
+            <Button variant="ghost" size="sm" className="h-7 text-[10px] uppercase font-bold" onClick={() => navigate('/transactions?type=card')}>Ver tudo</Button>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {cardTransactions.length > 0 ? cardTransactions.map(tx => (
+                <div key={tx.id} className="flex items-center justify-between group">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-lg">{getCategoryById(tx.categoryId)?.icon || '💳'}</div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate max-w-[120px]">{tx.description}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {format(new Date(tx.purchaseDate), 'dd/MM/yy')}
+                        {tx.isGrouped && <span className="ml-1 opacity-70">({tx.totalInstallments}x)</span>}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={cn("text-sm font-bold", tx.type === 'REFUND' ? "text-income" : "text-expense")}>
+                    {tx.type === 'REFUND' ? '+' : '-'} {formatCurrency(tx.displayAmount)}
+                  </span>
+                </div>
+              )) : (
+                <p className="text-xs text-center text-muted-foreground py-4">Nenhum gasto no cartão.</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -268,6 +300,16 @@ export function Dashboard() {
               {formatCurrency(stats.balance)}
             </p>
             <p className="text-sm text-muted-foreground mt-2">Saldo previsto para o período</p>
+            <div className="mt-6 w-full space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Receitas</span>
+                <span className="font-bold text-income">{formatCurrency(stats.income)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Despesas</span>
+                <span className="font-bold text-expense">{formatCurrency(stats.expenses)}</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
