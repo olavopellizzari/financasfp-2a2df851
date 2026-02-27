@@ -10,9 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { User, Trash2, Loader2, Sparkles, Wrench, Calendar, Bell, BellRing, Smartphone, CheckCircle2, AlertTriangle, Zap, Camera, Upload, X } from 'lucide-react';
+import { User, Trash2, Loader2, Sparkles, Wrench, Calendar, Bell, BellRing, Smartphone, CheckCircle2, AlertTriangle, Zap, Camera, Upload, X, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { addMonths, format } from 'date-fns';
+import { addMonths, format, parseISO } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
 
 const AVATAR_COLORS = [
@@ -22,13 +22,14 @@ const AVATAR_COLORS = [
 
 export function SettingsPage() {
   const { currentUser, refreshProfile, isCurrentUserAdmin, refreshUsers } = useAuth();
-  const { allTransactions, refresh } = useFinance();
+  const { allTransactions, allCards, calculateMesFatura, refresh } = useFinance();
   const { permission, isStandalone, requestPermission, sendTestNotification } = usePushNotifications();
   const [searchParams, setSearchParams] = useSearchParams();
   
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
   const [isFixingDates, setIsFixingDates] = useState(false);
+  const [isRecalculating, setIsRecalculating] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingEmail, setSavingEmail] = useState(false);
@@ -54,11 +55,9 @@ export function SettingsPage() {
     }
   }, [currentUser]);
 
-  // Abre o modal de perfil se vier com o parâmetro ?mode=profile
   useEffect(() => {
     if (searchParams.get('mode') === 'profile') {
       setEditProfileOpen(true);
-      // Limpa o parâmetro para não reabrir ao atualizar
       setSearchParams({}, { replace: true });
     }
   }, [searchParams, setSearchParams]);
@@ -209,6 +208,36 @@ export function SettingsPage() {
       toast({ title: "Erro na correção", description: error.message, variant: "destructive" });
     } finally {
       setIsFixingDates(false);
+    }
+  };
+
+  const handleRecalculateInvoices = async () => {
+    if (!confirm('Isso atualizará o mês da fatura de todos os seus lançamentos de cartão para a nova regra de fechamento. Deseja continuar?')) return;
+    setIsRecalculating(true);
+    try {
+      const creditTxs = allTransactions.filter(t => t.cardId && (t.type === 'CREDIT' || t.type === 'REFUND'));
+      let updatedCount = 0;
+
+      for (const tx of creditTxs) {
+        const purchaseDate = parseISO(tx.purchaseDate);
+        const newMesFatura = calculateMesFatura(purchaseDate, tx.cardId!);
+        
+        if (tx.mesFatura !== newMesFatura) {
+          const { error } = await supabase
+            .from('transactions')
+            .update({ mes_fatura: newMesFatura })
+            .eq('id', tx.id);
+          
+          if (!error) updatedCount++;
+        }
+      }
+
+      toast({ title: "Recálculo concluído!", description: `${updatedCount} lançamentos foram movidos para os meses corretos.` });
+      await refresh();
+    } catch (error: any) {
+      toast({ title: "Erro no recálculo", description: error.message, variant: "destructive" });
+    } finally {
+      setIsRecalculating(false);
     }
   };
 
@@ -424,6 +453,17 @@ export function SettingsPage() {
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><Wrench className="h-5 w-5" /> Manutenção</CardTitle></CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Recalcular Faturas</Label>
+                  <p className="text-sm text-muted-foreground">Ajusta o mês da fatura de todos os lançamentos de cartão para a nova regra.</p>
+                </div>
+                <Button variant="outline" onClick={handleRecalculateInvoices} disabled={isRecalculating}>
+                  {isRecalculating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />} 
+                  Recalcular Faturas
+                </Button>
+              </div>
+              <Separator />
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5"><Label>Limpar Descrições</Label><p className="text-sm text-muted-foreground">Remove o sufixo "(1/10)" das descrições.</p></div>
                 <Button variant="outline" onClick={handleFixDescriptions} disabled={isCleaning}>{isCleaning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />} Corrigir Descrições</Button>
