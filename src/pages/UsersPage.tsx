@@ -44,7 +44,6 @@ export function UsersPage() {
   const loadData = async () => {
     setIsLoadingMembers(true);
     try {
-      // Busca membros
       const { data: members, error: membersError } = await supabase.rpc('get_family_members');
       if (!membersError && members) {
         setFamilyMembers(members.map((m: any) => ({
@@ -58,7 +57,6 @@ export function UsersPage() {
         })));
       }
       
-      // Busca convites que EU recebi
       const { data: invites, error: invitesError } = await supabase.rpc('get_pending_invites');
       if (!invitesError && invites) {
         setPendingInvites(invites.map((i: any) => ({
@@ -166,6 +164,13 @@ export function UsersPage() {
         return;
       }
 
+      // Garante a entrada na tabela de membros para liberar RLS
+      await supabase.from('household_members').upsert({
+        household_id: familyId,
+        user_id: currentUser?.id,
+        role: 'member'
+      });
+
       toast({ title: 'Bem-vindo à família!', description: result.message });
       await loadData();
       await refreshUsers();
@@ -218,7 +223,6 @@ export function UsersPage() {
         </div>
       </div>
 
-      {/* Resumo de Usuários */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-primary/5 border-primary/20">
           <CardContent className="pt-6">

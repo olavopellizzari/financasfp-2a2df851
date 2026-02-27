@@ -80,19 +80,25 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       ]);
 
       if (catData.data) {
+        // Mapeia categorias garantindo que as da família sobrescrevam as globais de mesmo nome
         const catMap = new Map<string, any>();
+        
+        // Primeiro as globais
         catData.data.filter(c => !c.household_id).forEach(c => {
           catMap.set(c.name.toLowerCase(), {
             ...c,
             type: c.kind === 'receita' ? 'income' : 'expense'
           });
         });
+        
+        // Depois as da família (sobrescrevem se o nome for igual)
         catData.data.filter(c => c.household_id).forEach(c => {
           catMap.set(c.name.toLowerCase(), {
             ...c,
             type: c.kind === 'receita' ? 'income' : 'expense'
           });
         });
+        
         setCategories(Array.from(catMap.values()).sort((a, b) => a.name.localeCompare(b.name)));
       }
       

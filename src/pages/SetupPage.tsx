@@ -28,7 +28,6 @@ export function SetupPage() {
     if (!currentUser?.email) return;
     
     try {
-      // Tentativa 1: Buscar diretamente na tabela (mais garantido se a RPC falhar)
       const { data: directInvites, error: directError } = await supabase
         .from('household_invites')
         .select(`
@@ -49,7 +48,6 @@ export function SetupPage() {
           family_name: (i as any).households?.name
         })));
       } else {
-        // Tentativa 2: Usar a RPC como fallback
         const { data: rpcInvites } = await supabase.rpc('get_pending_invites');
         if (rpcInvites && rpcInvites.length > 0) {
           setPendingInvites(rpcInvites);
@@ -65,6 +63,7 @@ export function SetupPage() {
   const handleAcceptInvite = async (familyId: string) => {
     setIsLoading(true);
     try {
+      // 1. Chama a RPC para atualizar perfil e convite
       const { data, error } = await supabase.rpc('accept_family_invite', {
         invite_family_id: familyId
       });
@@ -76,6 +75,13 @@ export function SetupPage() {
         toast({ title: 'Erro', description: result.error, variant: "destructive" });
         return;
       }
+
+      // 2. Garante a entrada na tabela de membros para liberar RLS
+      await supabase.from('household_members').upsert({
+        household_id: familyId,
+        user_id: currentUser?.id,
+        role: 'member'
+      });
 
       toast({ title: 'Bem-vindo à família!', description: result.message });
       await refreshProfile();
