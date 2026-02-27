@@ -141,7 +141,7 @@ export function TransactionsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   
   const isCardMode = searchParams.get('type') === 'card';
-  const filterCardId = searchParams.get('cardId');
+  const initialCardId = searchParams.get('cardId') || 'all';
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -153,6 +153,7 @@ export function TransactionsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<TransactionType | 'ALL'>('ALL');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
+  const [selectedCardId, setSelectedCardId] = useState<string>(initialCardId);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeTab, setActiveTab] = useState<TransactionType>(isCardMode ? 'CREDIT' : 'EXPENSE');
   
@@ -168,7 +169,7 @@ export function TransactionsPage() {
     mesFatura: format(new Date(), 'yyyy-MM'),
     categoryId: '',
     accountId: '',
-    cardId: filterCardId || '',
+    cardId: initialCardId !== 'all' ? initialCardId : (allCards[0]?.id || ''),
     installments: '1',
     isPaid: false,
     recurrence: 'none' as 'none' | 'monthly' | 'annual' | 'custom',
@@ -194,7 +195,7 @@ export function TransactionsPage() {
       // Lógica de filtragem baseada no modo (Cartão vs Conta)
       if (isCardMode) {
         if (tx.type !== 'CREDIT' && tx.type !== 'REFUND') return false;
-        if (filterCardId && tx.cardId !== filterCardId) return false;
+        if (selectedCardId !== 'all' && tx.cardId !== selectedCardId) return false;
         
         // Para cartões, filtramos pelo mês da fatura
         if (tx.mesFatura !== selectedMonthStr) return false;
@@ -210,7 +211,7 @@ export function TransactionsPage() {
       const matchesUser = selectedUserId === 'all' || tx.userId === selectedUserId;
       return matchesSearch && matchesType && matchesUser;
     }).sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
-  }, [allTransactions, selectedMonthStr, searchQuery, filterType, selectedUserId, isCardMode, filterCardId]);
+  }, [allTransactions, selectedMonthStr, searchQuery, filterType, selectedUserId, isCardMode, selectedCardId]);
 
   const monthStats = useMemo(() => {
     const income = filteredTransactions.filter(t => t.type === 'INCOME' && t.status !== 'cancelled').reduce((s, t) => s + t.amount, 0);
@@ -261,7 +262,7 @@ export function TransactionsPage() {
       mesFatura: format(new Date(), 'yyyy-MM'),
       categoryId: '',
       accountId: allAccounts[0]?.id || '',
-      cardId: filterCardId || allCards[0]?.id || '',
+      cardId: (selectedCardId !== 'all' ? selectedCardId : (allCards[0]?.id || '')),
       installments: '1',
       isPaid: defaultType === 'INCOME' || defaultType === 'TRANSFER' || defaultType === 'REFUND',
       recurrence: 'none',
@@ -552,6 +553,19 @@ export function TransactionsPage() {
               <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}><ChevronRight className="h-4 w-4" /></Button>
             </div>
             <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+              {isCardMode && (
+                <Select value={selectedCardId} onValueChange={setSelectedCardId}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Todos os cartões" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os cartões</SelectItem>
+                    {allCards.filter(c => !c.is_archived).map(card => (
+                      <SelectItem key={card.id} value={card.id}>{card.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               <div className="relative flex-1 min-w-[200px]"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar descrição..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" /></div>
               <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}><SelectTrigger className="w-[140px]"><Filter className="w-4 h-4 mr-2" /><SelectValue placeholder="Tipo" /></SelectTrigger><SelectContent><SelectItem value="ALL">Todos</SelectItem>{TIPOS_TRANSACAO.filter(t => isCardMode ? (t.value === 'CREDIT' || t.value === 'REFUND') : (t.value !== 'CREDIT' && t.value !== 'REFUND')).map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent></Select>
             </div>
