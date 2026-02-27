@@ -41,7 +41,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/Popover";
+} from "@/components/ui/popover";
 import { 
   Plus, 
   Search,
