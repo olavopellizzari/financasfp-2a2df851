@@ -195,15 +195,20 @@ export function TransactionsPage() {
       if (isCardMode) {
         if (tx.type !== 'CREDIT' && tx.type !== 'REFUND') return false;
         if (filterCardId && tx.cardId !== filterCardId) return false;
+        
+        // Para cartões, filtramos pelo mês da fatura
+        if (tx.mesFatura !== selectedMonthStr) return false;
       } else {
         if (tx.type === 'CREDIT' || tx.type === 'REFUND') return false;
+        
+        // Para contas, filtramos pelo mês efetivo
+        if (tx.effectiveMonth !== selectedMonthStr) return false;
       }
 
-      const matchesMonth = tx.effectiveMonth === selectedMonthStr;
       const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = filterType === 'ALL' || tx.type === filterType;
       const matchesUser = selectedUserId === 'all' || tx.userId === selectedUserId;
-      return matchesMonth && matchesSearch && matchesType && matchesUser;
+      return matchesSearch && matchesType && matchesUser;
     }).sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
   }, [allTransactions, selectedMonthStr, searchQuery, filterType, selectedUserId, isCardMode, filterCardId]);
 
@@ -479,7 +484,7 @@ export function TransactionsPage() {
         });
         for (const tx of toUpdate) await updateTransaction(tx.id, pendingUpdates);
       }
-      toast({ title: 'Lançamentos atualizados!' });
+      toast({ title: 'Lançamentos personalizados!' });
       setIsDialogOpen(false);
     }
     setBulkDialogOpen(false);
