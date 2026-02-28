@@ -95,13 +95,13 @@ export function Dashboard() {
   const selectedMonthStr = useMemo(() => format(selectedMonth, 'yyyy-MM'), [selectedMonth]);
 
   const filteredAccounts = useMemo(() => {
-    if (selectedUserId === 'total') return allAccounts;
-    if (selectedUserId === 'all') return allAccounts.filter(a => a.is_shared === true);
-    return allAccounts.filter(a => a.user_id === selectedUserId && !a.is_shared);
+    // Agora 'total' e 'all' mostram todas as contas da família sem distinção de privacidade
+    if (selectedUserId === 'total' || selectedUserId === 'all') return allAccounts;
+    return allAccounts.filter(a => a.user_id === selectedUserId);
   }, [allAccounts, selectedUserId]);
 
   const userFilteredTransactions = useMemo(() => {
-    if (selectedUserId === 'total') return allTransactions;
+    if (selectedUserId === 'total' || selectedUserId === 'all') return allTransactions;
 
     const accountIds = new Set(filteredAccounts.map(a => a.id));
     
@@ -111,11 +111,9 @@ export function Dashboard() {
       if (t.cardId) {
         const card = allCards.find(c => c.id === t.cardId);
         if (!card) return false;
-        if (selectedUserId === 'all') return (card as any).is_shared === true;
-        return card.user_id === selectedUserId && !(card as any).is_shared;
+        return card.user_id === selectedUserId;
       }
 
-      if (selectedUserId === 'all') return false;
       return t.userId === selectedUserId;
     });
   }, [allTransactions, filteredAccounts, allCards, selectedUserId]);
@@ -173,17 +171,14 @@ export function Dashboard() {
     return result.slice(0, 5);
   }, [userFilteredTransactions]);
 
-  // Agrupamento de faturas por dono, respeitando o filtro selecionado
   const invoiceGroups = useMemo(() => {
     const groups: Record<string, { name: string; color?: string; isShared: boolean; cards: any[] }> = {
       family: { name: 'Família', isShared: true, cards: [] }
     };
 
-    // Filtra os cartões de acordo com o filtro de usuário selecionado
     const cardsToShow = allCards.filter(card => {
-      if (selectedUserId === 'total') return true;
-      if (selectedUserId === 'all') return (card as any).is_shared === true;
-      return card.user_id === selectedUserId && !(card as any).is_shared;
+      if (selectedUserId === 'total' || selectedUserId === 'all') return true;
+      return card.user_id === selectedUserId;
     });
 
     cardsToShow.forEach(card => {
@@ -282,7 +277,6 @@ export function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Quadro de Faturas do Mês */}
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">

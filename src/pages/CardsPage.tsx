@@ -73,7 +73,6 @@ export function CardsPage() {
   const { currentUser, users } = useAuth();
   const navigate = useNavigate();
   
-  // Mês padrão agora é o atual
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'total');
@@ -107,9 +106,9 @@ export function CardsPage() {
   }, [selectedMonth]);
 
   const filteredCards = useMemo(() => {
-    if (selectedUserId === 'total') return allCards;
-    if (selectedUserId === 'all') return allCards.filter(c => (c as any).is_shared === true);
-    return allCards.filter(c => c.user_id === selectedUserId && !(c as any).is_shared);
+    // Agora todos podem ver todos os cartões da família
+    if (selectedUserId === 'total' || selectedUserId === 'all') return allCards;
+    return allCards.filter(c => c.user_id === selectedUserId);
   }, [allCards, selectedUserId]);
 
   const cardsWithStats = useMemo(() => {

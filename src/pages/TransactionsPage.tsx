@@ -192,33 +192,24 @@ export function TransactionsPage() {
 
   const filteredTransactions = useMemo(() => {
     return allTransactions.filter(tx => {
-      // Lógica de filtragem baseada no modo (Cartão vs Conta)
       if (isCardMode) {
         if (tx.type !== 'CREDIT' && tx.type !== 'REFUND') return false;
         if (selectedCardId !== 'all' && tx.cardId !== selectedCardId) return false;
-        
-        // Para cartões, filtramos pelo mês da fatura
         if (tx.mesFatura !== selectedMonthStr) return false;
       } else {
         if (tx.type === 'CREDIT' || tx.type === 'REFUND') return false;
-        
-        // Para contas, filtramos pelo mês efetivo
         if (tx.effectiveMonth !== selectedMonthStr) return false;
       }
 
-      // Filtro de Usuário / Família
+      // Filtro de Usuário / Família - Agora todos podem ver tudo
       let matchesUser = true;
-      if (selectedUserId === 'all' || selectedUserId === 'total') {
-        // "Contas da Família" ou "Todas as Contas" -> Mostra TUDO da família
-        matchesUser = true;
-      } else {
-        // Usuário específico -> Mostra apenas o que é exclusivo dele (não compartilhado)
+      if (selectedUserId !== 'all' && selectedUserId !== 'total') {
         if (tx.cardId) {
           const card = allCards.find(c => c.id === tx.cardId);
-          matchesUser = card?.user_id === selectedUserId && !(card as any)?.is_shared;
+          matchesUser = card?.user_id === selectedUserId;
         } else if (tx.accountId) {
           const acc = allAccounts.find(a => a.id === tx.accountId);
-          matchesUser = acc?.user_id === selectedUserId && !acc?.is_shared;
+          matchesUser = acc?.user_id === selectedUserId;
         } else {
           matchesUser = tx.userId === selectedUserId;
         }
@@ -644,9 +635,9 @@ export function TransactionsPage() {
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Usuário {activeTab === 'TRANSFER' && 'Origem'}</Label><Select value={formData.userId} onValueChange={v => setFormData({ ...formData, userId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{users.filter(u => u.is_active !== false).map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent></Select></div>
-                <div className="space-y-2"><Label>{(formData.type === 'CREDIT' || formData.type === 'REFUND') ? 'Cartão' : 'Conta Origem'}</Label>{(formData.type === 'CREDIT' || formData.type === 'REFUND') ? <Select value={formData.cardId} onValueChange={v => setFormData({ ...formData, cardId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{allCards.filter(c => !c.is_archived).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select> : <Select value={formData.accountId} onValueChange={v => setFormData({ ...formData, accountId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{allAccounts.filter(a => a.active && (a.user_id === formData.userId || a.is_shared)).map(a => (<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}</SelectContent></Select>}</div>
+                <div className="space-y-2"><Label>{(formData.type === 'CREDIT' || formData.type === 'REFUND') ? 'Cartão' : 'Conta Origem'}</Label>{(formData.type === 'CREDIT' || formData.type === 'REFUND') ? <Select value={formData.cardId} onValueChange={v => setFormData({ ...formData, cardId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{allCards.filter(c => !c.is_archived).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select> : <Select value={formData.accountId} onValueChange={v => setFormData({ ...formData, accountId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{allAccounts.filter(a => a.active).map(a => (<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}</SelectContent></Select>}</div>
               </div>
-              {activeTab === 'TRANSFER' && (<div className="p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-4"><div className="flex items-center gap-2 text-primary font-bold text-sm"><ArrowRight className="w-4 h-4" /> Destino da Transferência</div><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label>Usuário Destino</Label><Select value={formData.destinationUserId} onValueChange={v => setFormData({ ...formData, destinationUserId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{users.filter(u => u.is_active !== false).map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><Label>Conta Destino</Label><Select value={formData.destinationAccountId} onValueChange={v => setFormData({ ...formData, destinationAccountId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{allAccounts.filter(a => a.active && (a.user_id === formData.destinationUserId || a.is_shared)).map(a => (<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}</SelectContent></Select></div></div></div>)}
+              {activeTab === 'TRANSFER' && (<div className="p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-4"><div className="flex items-center gap-2 text-primary font-bold text-sm"><ArrowRight className="w-4 h-4" /> Destino da Transferência</div><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label>Usuário Destino</Label><Select value={formData.destinationUserId} onValueChange={v => setFormData({ ...formData, destinationUserId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{users.filter(u => u.is_active !== false).map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><Label>Conta Destino</Label><Select value={formData.destinationAccountId} onValueChange={v => setFormData({ ...formData, destinationAccountId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{allAccounts.filter(a => a.active).map(a => (<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}</SelectContent></Select></div></div></div>)}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Data da Compra</Label><Input type="date" value={isValid(formData.purchaseDate) ? format(formData.purchaseDate, 'yyyy-MM-dd') : ''} onChange={e => setFormData({ ...formData, purchaseDate: parseInputDate(e.target.value) })} /></div>
                 <div className="space-y-2"><Label>Valor</Label><Input type="number" step="0.01" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} placeholder="0,00" required /></div>

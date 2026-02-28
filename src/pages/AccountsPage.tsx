@@ -90,7 +90,6 @@ export function AccountsPage() {
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'total');
   const [isLoading, setIsLoading] = useState(false);
   
-  // Sincroniza o filtro quando o usuário carrega
   useEffect(() => {
     if (currentUser?.id && selectedUserId === 'total') {
       setSelectedUserId(currentUser.id);
@@ -109,13 +108,10 @@ export function AccountsPage() {
   const activeUsers = users.filter(u => u.is_active !== false);
 
   const filteredAccounts = useMemo(() => {
-    if (selectedUserId === 'total') {
-      return allAccounts; // Mostra tudo
+    if (selectedUserId === 'total' || selectedUserId === 'all') {
+      return allAccounts;
     }
-    if (selectedUserId === 'all') {
-      return allAccounts.filter(a => a.is_shared === true); // Apenas família
-    }
-    return allAccounts.filter(a => a.user_id === selectedUserId && a.is_shared !== true); // Apenas exclusivas do usuário
+    return allAccounts.filter(a => a.user_id === selectedUserId);
   }, [allAccounts, selectedUserId]);
 
   const activeAccounts = filteredAccounts.filter(a => a.active !== false);
@@ -279,7 +275,7 @@ export function AccountsPage() {
           <UserFilter 
             value={selectedUserId} 
             onChange={setSelectedUserId} 
-            showTotalOption={true} // Ativa a nova opção
+            showTotalOption={true}
             className="w-[200px]" 
           />
           <Button onClick={openCreateDialog} className="gradient-primary shadow-primary">
@@ -293,14 +289,13 @@ export function AccountsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-primary-foreground/80 text-sm font-medium">
-                {selectedUserId === 'total' ? 'Saldo Total Consolidado' : 
-                 selectedUserId === 'all' ? 'Saldo das Contas da Família' : 
+                {selectedUserId === 'total' || selectedUserId === 'all' ? 'Saldo Total Consolidado' : 
                  `Saldo de ${users.find(u => u.id === selectedUserId)?.name}`}
               </p>
               <p className="text-4xl font-bold text-primary-foreground mt-1">{formatCurrency(totalBalance)}</p>
             </div>
             <div className="p-4 rounded-2xl bg-white/20 shadow-inner">
-              {selectedUserId === 'total' ? <LayoutGrid className="w-10 h-10 text-white" /> : <Wallet className="w-10 h-10 text-white" />}
+              {selectedUserId === 'total' || selectedUserId === 'all' ? <LayoutGrid className="w-10 h-10 text-white" /> : <Wallet className="w-10 h-10 text-white" />}
             </div>
           </div>
         </CardContent>
