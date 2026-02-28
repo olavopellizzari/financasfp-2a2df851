@@ -22,8 +22,8 @@ export function InvoicesPage() {
   const { currentUser, isCurrentUserAdmin, users } = useAuth();
   const navigate = useNavigate();
   
-  // Padrão: Mês seguinte (vencimento da fatura atual)
-  const [selectedMonth, setSelectedMonth] = useState(format(addMonths(new Date(), 1), 'yyyy-MM'));
+  // Padrão: Mês atual
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [selectedCardId, setSelectedCardId] = useState<string>('all');
   
   const [payDialogOpen, setPayDialogOpen] = useState(false);
@@ -91,14 +91,9 @@ export function InvoicesPage() {
       const generated = generatedInvoices.find(g => g.cardId === card.id);
       const existing = invoices.find(i => i.card_id === card.id && i.month === selectedMonth);
       
-      // O mês selecionado agora é o mês de VENCIMENTO
-      let dueDate = setDate(invoiceMonthDate, card.due_day);
-      let closingDate = setDate(invoiceMonthDate, card.closing_day);
-      
-      // Se o vencimento for no início do mês e o fechamento no final do mês anterior
-      if (card.due_day < card.closing_day) {
-        closingDate = subMonths(closingDate, 1);
-      }
+      // Datas baseadas no mês da fatura
+      const closingDate = setDate(invoiceMonthDate, card.closing_day);
+      const dueDate = setDate(invoiceMonthDate, card.due_day);
 
       const total = generated?.total || existing?.total_amount || 0;
       const paid = existing?.paid_amount || 0;

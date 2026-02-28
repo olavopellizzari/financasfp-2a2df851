@@ -168,17 +168,15 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (!card) return format(purchaseDate, 'yyyy-MM');
 
     const day = getDate(purchaseDate);
-    let invoiceDate = purchaseDate;
-
-    // Se comprou no dia do fechamento ou depois, o fechamento ocorre no mês seguinte
+    
+    // Se o dia da compra for maior ou igual ao dia de fechamento,
+    // a compra cai na fatura do mês seguinte.
     if (day >= card.closing_day) {
-      invoiceDate = addMonths(invoiceDate, 1);
+      return format(addMonths(purchaseDate, 1), 'yyyy-MM');
     }
     
-    // O mês da fatura (vencimento) é sempre o mês seguinte ao fechamento
-    invoiceDate = addMonths(invoiceDate, 1);
-
-    return format(invoiceDate, 'yyyy-MM');
+    // Caso contrário, cai na fatura do mês atual.
+    return format(purchaseDate, 'yyyy-MM');
   };
 
   const createTransaction = async (data: any) => {
