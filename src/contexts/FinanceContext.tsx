@@ -163,34 +163,29 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const getCategoryById = (categoryId: string) => categories.find(c => c.id === categoryId);
 
   const calculateMesFatura = (purchaseDate: Date, cardId: string) => {
-    const card = allCards.find(c => c.id === cardId);
-    if (!card) return format(purchaseDate, 'yyyy-MM');
-  
-    // Lógica ajustada para usar o mês de vencimento como referência
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth();
-    const currentDay = currentDate.getDate();
-    const dueDay = card.due_day;
-  
-    // Se o dia atual for antes do dia de vencimento, usa o mês atual
-    // Se for depois, usa o próximo mês
-    const referenceMonth = currentDay < dueDay ? currentMonth : currentMonth + 1;
-  
-    // Ajusta para o próximo mês se necessário
-    const adjustedMonth = referenceMonth % 12;
-    const adjustedYear = Math.floor(referenceMonth / 12);
-  
-    return format(new Date(currentDate.getFullYear() + adjustedYear, adjustedMonth, 1), 'yyyy-MM');
-  }
     if (!purchaseDate || !isValid(purchaseDate)) return format(new Date(), 'yyyy-MM');
     const card = allCards.find(c => c.id === cardId);
     if (!card) return format(purchaseDate, 'yyyy-MM');
-    
+
     const day = getDate(purchaseDate);
-    // Se o dia da compra for ANTERIOR ao fechamento, pertence à fatura do mês anterior.
-    // Se for IGUAL ou POSTERIOR, pertence à fatura do mês atual (que fecha no mês seguinte).
-    const invoiceDate = day < card.closing_day ? subMonths(purchaseDate, 1) : purchaseDate;
-    return format(invoiceDate, 'yyyy-MM');
+    
+    // Lógica: O mês de referência é o mês de VENCIMENTO.
+    // Se a compra for feita no dia do fechamento ou depois, ela vai para o próximo vencimento.
+    
+    let referenceDate = purchaseDate;
+    
+    // Se comprou no dia do fechamento ou depois, pula para o próximo ciclo de vencimento
+    if (day >= card.closing_day) {
+      referenceDate = addMonths(purchaseDate, 1);
+    }
+    
+    // Se o dia de vencimento for menor que o dia de fechamento (ex: fecha dia 25, vence dia 5 do mês seguinte)
+    // o vencimento já é naturalmente no mês seguinte ao fechamento.
+    if (card.due_day < card.closing_day) {
+      referenceDate = addMonths(referenceDate, 1);
+    }
+
+    return format(referenceDate, 'yyyy-MM');
   };
 
   const createTransaction = async (data: any) => {
@@ -295,7 +290,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.name) updateData.name = data.name;
     if (data.limit !== undefined) updateData.limit = data.limit;
     if (data.closingDay !== undefined) updateData.closing_day = data.closingDay;
-    if (data.dueDay !== undefined) updateData.due_day = data.dueDay;
+    if (data.due_day !== undefined) updateData.due_day = data.dueDay;
     if (data.lastDigits !== undefined) updateData.last_digits = data.lastDigits;
     if (data.brand !== undefined) updateData.brand = data.brand;
     if (data.color !== undefined) updateData.color = data.color;
