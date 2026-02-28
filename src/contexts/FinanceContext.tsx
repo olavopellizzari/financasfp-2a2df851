@@ -163,6 +163,25 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const getCategoryById = (categoryId: string) => categories.find(c => c.id === categoryId);
 
   const calculateMesFatura = (purchaseDate: Date, cardId: string) => {
+    const card = allCards.find(c => c.id === cardId);
+    if (!card) return format(purchaseDate, 'yyyy-MM');
+  
+    // Lógica ajustada para usar o mês de vencimento como referência
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentDay = currentDate.getDate();
+    const dueDay = card.due_day;
+  
+    // Se o dia atual for antes do dia de vencimento, usa o mês atual
+    // Se for depois, usa o próximo mês
+    const referenceMonth = currentDay < dueDay ? currentMonth : currentMonth + 1;
+  
+    // Ajusta para o próximo mês se necessário
+    const adjustedMonth = referenceMonth % 12;
+    const adjustedYear = Math.floor(referenceMonth / 12);
+  
+    return format(new Date(currentDate.getFullYear() + adjustedYear, adjustedMonth, 1), 'yyyy-MM');
+  }
     if (!purchaseDate || !isValid(purchaseDate)) return format(new Date(), 'yyyy-MM');
     const card = allCards.find(c => c.id === cardId);
     if (!card) return format(purchaseDate, 'yyyy-MM');
