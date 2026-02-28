@@ -201,9 +201,15 @@ export function TransactionsPage() {
         if (tx.effectiveMonth !== selectedMonthStr) return false;
       }
 
-      // Filtro de Usuário / Família - Agora todos podem ver tudo
+      // Filtro de Usuário / Família
       let matchesUser = true;
-      if (selectedUserId !== 'all' && selectedUserId !== 'total') {
+      if (selectedUserId === 'all' || selectedUserId === 'total') {
+        // Na visão de família, mostra apenas o que é compartilhado
+        const account = allAccounts.find(a => a.id === tx.accountId);
+        const card = allCards.find(c => c.id === tx.cardId);
+        matchesUser = (account?.is_shared) || ((card as any)?.is_shared);
+      } else {
+        // Na visão individual, mostra tudo daquele usuário (mesmo exclusivas)
         if (tx.cardId) {
           const card = allCards.find(c => c.id === tx.cardId);
           matchesUser = card?.user_id === selectedUserId;

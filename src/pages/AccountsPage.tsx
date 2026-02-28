@@ -109,7 +109,7 @@ export function AccountsPage() {
 
   const filteredAccounts = useMemo(() => {
     if (selectedUserId === 'total' || selectedUserId === 'all') {
-      return allAccounts;
+      return allAccounts.filter(a => a.is_shared);
     }
     return allAccounts.filter(a => a.user_id === selectedUserId);
   }, [allAccounts, selectedUserId]);

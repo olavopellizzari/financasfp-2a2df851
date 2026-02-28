@@ -95,28 +95,34 @@ export function Dashboard() {
   const selectedMonthStr = useMemo(() => format(selectedMonth, 'yyyy-MM'), [selectedMonth]);
 
   const filteredAccounts = useMemo(() => {
-    // Agora 'total' e 'all' mostram todas as contas da família sem distinção de privacidade
-    if (selectedUserId === 'total' || selectedUserId === 'all') return allAccounts;
+    // Se for 'total' ou 'all', mostra apenas as compartilhadas
+    if (selectedUserId === 'total' || selectedUserId === 'all') {
+      return allAccounts.filter(a => a.is_shared);
+    }
+    // Se for um usuário específico, mostra as contas dele (mesmo as exclusivas)
     return allAccounts.filter(a => a.user_id === selectedUserId);
   }, [allAccounts, selectedUserId]);
 
   const userFilteredTransactions = useMemo(() => {
-    if (selectedUserId === 'total' || selectedUserId === 'all') return allTransactions;
+    if (selectedUserId === 'total' || selectedUserId === 'all') {
+      const sharedAccountIds = new Set(allAccounts.filter(a => a.is_shared).map(a => a.id));
+      const sharedCardIds = new Set(allCards.filter(c => (c as any).is_shared).map(c => c.id));
+      
+      return allTransactions.filter(t => 
+        (t.accountId && sharedAccountIds.has(t.accountId)) || 
+        (t.cardId && sharedCardIds.has(t.cardId))
+      );
+    }
 
-    const accountIds = new Set(filteredAccounts.map(a => a.id));
+    const accountIds = new Set(allAccounts.filter(a => a.user_id === selectedUserId).map(a => a.id));
+    const cardIds = new Set(allCards.filter(c => c.user_id === selectedUserId).map(c => c.id));
     
     return allTransactions.filter(t => {
       if (t.accountId) return accountIds.has(t.accountId);
-      
-      if (t.cardId) {
-        const card = allCards.find(c => c.id === t.cardId);
-        if (!card) return false;
-        return card.user_id === selectedUserId;
-      }
-
+      if (t.cardId) return cardIds.has(t.cardId);
       return t.userId === selectedUserId;
     });
-  }, [allTransactions, filteredAccounts, allCards, selectedUserId]);
+  }, [allTransactions, allAccounts, allCards, selectedUserId]);
 
   const launchTransactions = useMemo(() => {
     return userFilteredTransactions.filter(t => t.effectiveMonth === selectedMonthStr && t.status !== 'cancelled');
@@ -177,7 +183,7 @@ export function Dashboard() {
     };
 
     const cardsToShow = allCards.filter(card => {
-      if (selectedUserId === 'total' || selectedUserId === 'all') return true;
+      if (selectedUserId === 'total' || selectedUserId === 'all') return (card as any).is_shared;
       return card.user_id === selectedUserId;
     });
 
