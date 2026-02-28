@@ -106,10 +106,10 @@ export function CardsPage() {
   }, [selectedMonth]);
 
   const filteredCards = useMemo(() => {
-    if (selectedUserId === 'total' || selectedUserId === 'all') {
-      return allCards.filter(c => (c as any).is_shared);
-    }
-    return allCards.filter(c => c.user_id === selectedUserId);
+    if (selectedUserId === 'total') return allCards;
+    if (selectedUserId === 'all') return allCards.filter(c => (c as any).is_shared);
+    // Usuário específico: apenas os exclusivos dele
+    return allCards.filter(c => c.user_id === selectedUserId && !(c as any).is_shared);
   }, [allCards, selectedUserId]);
 
   const cardsWithStats = useMemo(() => {
@@ -322,8 +322,8 @@ export function CardsPage() {
                       <div className="flex items-center gap-2">
                         <Cpu className="w-10 h-10 opacity-50 rotate-90" />
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full">
                               <MoreVertical className="h-5 w-5" />
                             </Button>
                           </DropdownMenuTrigger>

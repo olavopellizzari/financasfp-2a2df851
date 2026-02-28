@@ -95,31 +95,31 @@ export function Dashboard() {
   const selectedMonthStr = useMemo(() => format(selectedMonth, 'yyyy-MM'), [selectedMonth]);
 
   const filteredAccounts = useMemo(() => {
-    // Se for 'total' ou 'all', mostra apenas as compartilhadas
-    if (selectedUserId === 'total' || selectedUserId === 'all') {
-      return allAccounts.filter(a => a.is_shared);
-    }
-    // Se for um usuário específico, mostra as contas dele (mesmo as exclusivas)
-    return allAccounts.filter(a => a.user_id === selectedUserId);
+    if (selectedUserId === 'total') return allAccounts;
+    if (selectedUserId === 'all') return allAccounts.filter(a => a.is_shared);
+    // Usuário específico: apenas as exclusivas dele
+    return allAccounts.filter(a => a.user_id === selectedUserId && !a.is_shared);
   }, [allAccounts, selectedUserId]);
 
   const userFilteredTransactions = useMemo(() => {
-    if (selectedUserId === 'total' || selectedUserId === 'all') {
+    if (selectedUserId === 'total') return allTransactions;
+
+    if (selectedUserId === 'all') {
       const sharedAccountIds = new Set(allAccounts.filter(a => a.is_shared).map(a => a.id));
       const sharedCardIds = new Set(allCards.filter(c => (c as any).is_shared).map(c => c.id));
-      
       return allTransactions.filter(t => 
         (t.accountId && sharedAccountIds.has(t.accountId)) || 
         (t.cardId && sharedCardIds.has(t.cardId))
       );
     }
 
-    const accountIds = new Set(allAccounts.filter(a => a.user_id === selectedUserId).map(a => a.id));
-    const cardIds = new Set(allCards.filter(c => c.user_id === selectedUserId).map(c => c.id));
+    // Usuário específico: apenas transações de contas/cartões exclusivos dele
+    const exclusiveAccountIds = new Set(allAccounts.filter(a => a.user_id === selectedUserId && !a.is_shared).map(a => a.id));
+    const exclusiveCardIds = new Set(allCards.filter(c => c.user_id === selectedUserId && !(c as any).is_shared).map(c => c.id));
     
     return allTransactions.filter(t => {
-      if (t.accountId) return accountIds.has(t.accountId);
-      if (t.cardId) return cardIds.has(t.cardId);
+      if (t.accountId) return exclusiveAccountIds.has(t.accountId);
+      if (t.cardId) return exclusiveCardIds.has(t.cardId);
       return t.userId === selectedUserId;
     });
   }, [allTransactions, allAccounts, allCards, selectedUserId]);
@@ -183,8 +183,9 @@ export function Dashboard() {
     };
 
     const cardsToShow = allCards.filter(card => {
-      if (selectedUserId === 'total' || selectedUserId === 'all') return (card as any).is_shared;
-      return card.user_id === selectedUserId;
+      if (selectedUserId === 'total') return true;
+      if (selectedUserId === 'all') return (card as any).is_shared;
+      return card.user_id === selectedUserId && !(card as any).is_shared;
     });
 
     cardsToShow.forEach(card => {

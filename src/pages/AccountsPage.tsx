@@ -108,10 +108,10 @@ export function AccountsPage() {
   const activeUsers = users.filter(u => u.is_active !== false);
 
   const filteredAccounts = useMemo(() => {
-    if (selectedUserId === 'total' || selectedUserId === 'all') {
-      return allAccounts.filter(a => a.is_shared);
-    }
-    return allAccounts.filter(a => a.user_id === selectedUserId);
+    if (selectedUserId === 'total') return allAccounts;
+    if (selectedUserId === 'all') return allAccounts.filter(a => a.is_shared);
+    // Usuário específico: apenas as exclusivas dele
+    return allAccounts.filter(a => a.user_id === selectedUserId && !a.is_shared);
   }, [allAccounts, selectedUserId]);
 
   const activeAccounts = filteredAccounts.filter(a => a.active !== false);
@@ -289,8 +289,9 @@ export function AccountsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-primary-foreground/80 text-sm font-medium">
-                {selectedUserId === 'total' || selectedUserId === 'all' ? 'Saldo Total Consolidado' : 
-                 `Saldo de ${users.find(u => u.id === selectedUserId)?.name}`}
+                {selectedUserId === 'total' ? 'Saldo Total Consolidado' : 
+                 selectedUserId === 'all' ? 'Saldo das Contas da Família' :
+                 `Saldo Exclusivo de ${users.find(u => u.id === selectedUserId)?.name}`}
               </p>
               <p className="text-4xl font-bold text-primary-foreground mt-1">{formatCurrency(totalBalance)}</p>
             </div>

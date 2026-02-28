@@ -203,19 +203,20 @@ export function TransactionsPage() {
 
       // Filtro de Usuário / Família
       let matchesUser = true;
-      if (selectedUserId === 'all' || selectedUserId === 'total') {
-        // Na visão de família, mostra apenas o que é compartilhado
+      if (selectedUserId === 'total') {
+        matchesUser = true;
+      } else if (selectedUserId === 'all') {
         const account = allAccounts.find(a => a.id === tx.accountId);
         const card = allCards.find(c => c.id === tx.cardId);
         matchesUser = (account?.is_shared) || ((card as any)?.is_shared);
       } else {
-        // Na visão individual, mostra tudo daquele usuário (mesmo exclusivas)
+        // Usuário específico: apenas transações de contas/cartões exclusivos dele
         if (tx.cardId) {
           const card = allCards.find(c => c.id === tx.cardId);
-          matchesUser = card?.user_id === selectedUserId;
+          matchesUser = card?.user_id === selectedUserId && !(card as any).is_shared;
         } else if (tx.accountId) {
           const acc = allAccounts.find(a => a.id === tx.accountId);
-          matchesUser = acc?.user_id === selectedUserId;
+          matchesUser = acc?.user_id === selectedUserId && !acc.is_shared;
         } else {
           matchesUser = tx.userId === selectedUserId;
         }
