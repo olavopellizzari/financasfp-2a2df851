@@ -134,9 +134,9 @@ export function CategoriesPage() {
               <p className="font-semibold flex items-center gap-2">
                 {cat.name}
                 {isGlobal ? (
-                  <Globe className="w-3 h-3 text-muted-foreground" title="Padrão do Sistema" />
+                  <Globe className="w-3 h-3 text-muted-foreground" aria-label="Padrão do Sistema" />
                 ) : (
-                  <Home className="w-3 h-3 text-primary" title="Personalizada da Família" />
+                  <Home className="w-3 h-3 text-primary" aria-label="Personalizada da Família" />
                 )}
               </p>
             </div>
