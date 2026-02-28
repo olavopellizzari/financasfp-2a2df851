@@ -22,7 +22,8 @@ export function InvoicesPage() {
   const { currentUser, isCurrentUserAdmin, users } = useAuth();
   const navigate = useNavigate();
   
-  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  // Padrão: Mês seguinte (vencimento da fatura atual)
+  const [selectedMonth, setSelectedMonth] = useState(format(addMonths(new Date(), 1), 'yyyy-MM'));
   const [selectedCardId, setSelectedCardId] = useState<string>('all');
   
   const [payDialogOpen, setPayDialogOpen] = useState(false);
