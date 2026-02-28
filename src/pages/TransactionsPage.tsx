@@ -208,19 +208,10 @@ export function TransactionsPage() {
 
       // Filtro de Usuário / Família
       let matchesUser = true;
-      if (selectedUserId === 'all') {
-        // "Contas da Família" -> Mostra apenas o que é compartilhado (is_shared)
-        if (tx.cardId) {
-          const card = allCards.find(c => c.id === tx.cardId);
-          matchesUser = (card as any)?.is_shared === true;
-        } else if (tx.accountId) {
-          const acc = allAccounts.find(a => a.id === tx.accountId);
-          matchesUser = acc?.is_shared === true;
-        } else {
-          // Se não tem conta nem cartão (ex: lançamento avulso), assume-se que não é da família
-          matchesUser = false;
-        }
-      } else if (selectedUserId !== 'total') {
+      if (selectedUserId === 'all' || selectedUserId === 'total') {
+        // "Contas da Família" ou "Todas as Contas" -> Mostra TUDO da família
+        matchesUser = true;
+      } else {
         // Usuário específico -> Mostra apenas o que é exclusivo dele (não compartilhado)
         if (tx.cardId) {
           const card = allCards.find(c => c.id === tx.cardId);
