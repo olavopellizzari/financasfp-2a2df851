@@ -287,7 +287,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       opening_balance: data.balance,
       opening_date: new Date().toISOString().split('T')[0],
       active: true,
-      is_shared: data.isShared ?? true
+      is_shared: data.isShared ?? true,
+      exclude_from_totals: data.excludeFromTotals ?? false // Novo campo
     }]);
     if (error) throw error;
     await fetchData();
@@ -301,8 +302,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.balance !== undefined) updateData.opening_balance = data.balance;
     if (data.isArchived !== undefined) updateData.active = !data.isArchived;
     if (data.isShared !== undefined) updateData.is_shared = data.isShared;
+    if (data.excludeFromTotals !== undefined) updateData.exclude_from_totals = data.excludeFromTotals; // Novo campo
     
-    // Importante: permitir explicitamente o null para tornar compartilhado
     if (data.userId !== undefined) updateData.user_id = data.userId;
     
     const { error } = await supabase
@@ -356,7 +357,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.defaultAccountId !== undefined) updateData.default_account_id = data.defaultAccountId;
     if (data.isShared !== undefined) updateData.is_shared = data.isShared;
     
-    // Importante: permitir explicitamente o null para tornar compartilhado
     if (data.userId !== undefined) updateData.user_id = data.userId;
     
     const { error } = await supabase

@@ -136,7 +136,10 @@ export function Dashboard() {
   }, [launchTransactions]);
 
   const totalBalance = useMemo(() => {
-    return filteredAccounts.filter(a => a.active !== false).reduce((sum, a) => sum + getAccountBalance(a.id), 0);
+    // Filtra contas ativas e que NÃO estão marcadas para exclusão dos totais
+    return filteredAccounts
+      .filter(a => a.active !== false && !a.exclude_from_totals)
+      .reduce((sum, a) => sum + getAccountBalance(a.id), 0);
   }, [filteredAccounts, getAccountBalance]);
 
   const accountTransactions = useMemo(() => {
@@ -271,7 +274,7 @@ export function Dashboard() {
             <PopoverContent className="w-64 p-2">
               {filteredAccounts.map(acc => (
                 <div key={acc.id} className="flex justify-between p-2 text-sm">
-                  <span>{acc.name}</span>
+                  <span className={cn(acc.exclude_from_totals && "text-muted-foreground line-through")}>{acc.name}</span>
                   <span className="font-bold">{formatCurrency(getAccountBalance(acc.id))}</span>
                 </div>
               ))}

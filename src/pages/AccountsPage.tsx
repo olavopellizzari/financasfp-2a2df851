@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { UserFilter } from '@/components/UserFilter';
 import { 
   Dialog,
@@ -39,7 +40,8 @@ import {
   Building2,
   LayoutGrid,
   EyeOff,
-  Lock
+  Lock,
+  Eye
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -81,6 +83,7 @@ interface AccountFormData {
   balance: string;
   userId: string;
   privacyMode: 'shared' | 'exclusive' | 'private';
+  excludeFromTotals: boolean;
 }
 
 export function AccountsPage() {
@@ -104,6 +107,7 @@ export function AccountsPage() {
     balance: '0',
     userId: currentUser?.id || '',
     privacyMode: 'shared',
+    excludeFromTotals: false,
   });
 
   const activeUsers = users.filter(u => u.is_active !== false);
@@ -116,7 +120,9 @@ export function AccountsPage() {
 
   const activeAccounts = filteredAccounts.filter(a => a.active !== false);
 
+  // Calcula o saldo total excluindo as contas marcadas para exclusão
   const totalBalance = activeAccounts.reduce((sum, account) => {
+    if (account.exclude_from_totals) return sum;
     return sum + getAccountBalance(account.id);
   }, 0);
 
@@ -128,6 +134,7 @@ export function AccountsPage() {
       balance: '0',
       userId: currentUser?.id || '',
       privacyMode: 'shared',
+      excludeFromTotals: false,
     });
     setEditingAccount(null);
   };
@@ -151,6 +158,7 @@ export function AccountsPage() {
       balance: account.opening_balance.toString(),
       userId: account.user_id || currentUser?.id || '',
       privacyMode,
+      excludeFromTotals: account.exclude_from_totals || false,
     });
     setIsDialogOpen(true);
   };
@@ -160,7 +168,6 @@ export function AccountsPage() {
     setIsLoading(true);
 
     try {
-      // Validação crucial: se for compartilhado, o userId DEVE ser null para o banco
       const finalUserId = formData.privacyMode === 'shared' ? null : (formData.userId || currentUser?.id);
       const isShared = formData.privacyMode !== 'private';
 
@@ -171,6 +178,7 @@ export function AccountsPage() {
         balance: parseFloat(formData.balance) || 0,
         userId: finalUserId,
         isShared: isShared,
+        excludeFromTotals: formData.excludeFromTotals,
       };
 
       if (editingAccount) {
@@ -215,7 +223,7 @@ export function AccountsPage() {
     const bankInfo = BANKS.find(b => b.id === account.bank) || BANKS.find(b => b.id === 'outro')!;
     
     return (
-      <Card key={account.id} className="finance-card group">
+      <Card key={account.id} className={cn("finance-card group", account.exclude_from_totals && "border-dashed opacity-80")}>
         <CardContent className="p-4">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
@@ -229,17 +237,9 @@ export function AccountsPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-foreground">{account.name}</p>
-                  {!account.is_shared ? (
-                    <Badge variant="secondary" className="text-[10px] h-5 bg-destructive/10 text-destructive border-none">
-                      <Lock className="w-3 h-3 mr-1" /> Privada
-                    </Badge>
-                  ) : account.user_id ? (
-                    <Badge variant="outline" className="text-[10px] h-5">
-                      <UserIcon className="w-3 h-3 mr-1" /> Exclusiva
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="text-[10px] h-5 bg-primary/10 text-primary border-none">
-                      <Users className="w-3 h-3 mr-1" /> Família
+                  {account.exclude_from_totals && (
+                    <Badge variant="outline" className="text-[10px] h-5 border-dashed">
+                      <EyeOff className="w-3 h-3 mr-1" /> Oculto
                     </Badge>
                   )}
                 </div>
@@ -267,10 +267,17 @@ export function AccountsPage() {
             </DropdownMenu>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-4 flex items-center justify-between">
             <p className={cn("text-2xl font-bold", balance < 0 && "text-expense")}>
               {formatCurrency(balance)}
             </p>
+            {!account.is_shared ? (
+              <Lock className="w-4 h-4 text-destructive/50" />
+            ) : account.user_id ? (
+              <UserIcon className="w-4 h-4 text-muted-foreground/50" />
+            ) : (
+              <Users className="w-4 h-4 text-primary/50" />
+            )}
           </div>
         </CardContent>
       </Card>
@@ -307,6 +314,11 @@ export function AccountsPage() {
                  `Saldo de ${users.find(u => u.id === selectedUserId)?.name}`}
               </p>
               <p className="text-4xl font-bold text-primary-foreground mt-1">{formatCurrency(totalBalance)}</p>
+              {activeAccounts.some(a => a.exclude_from_totals) && (
+                <p className="text-[10px] text-primary-foreground/60 mt-2 flex items-center gap-1">
+                  <Info className="w-3 h-3" /> Algumas contas estão excluídas deste total.
+                </p>
+              )}
             </div>
             <div className="p-4 rounded-2xl bg-white/20 shadow-inner">
               {selectedUserId === 'total' || selectedUserId === 'all' ? <LayoutGrid className="w-10 h-10 text-white" /> : <Wallet className="w-10 h-10 text-white" />}
@@ -425,6 +437,19 @@ export function AccountsPage() {
                 </Select>
               </div>
             )}
+
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-xl border border-dashed">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-bold flex items-center gap-2">
+                  <EyeOff className="w-4 h-4 text-muted-foreground" /> Excluir dos Totais
+                </Label>
+                <p className="text-[10px] text-muted-foreground">O saldo desta conta não será somado ao saldo geral do app.</p>
+              </div>
+              <Switch 
+                checked={formData.excludeFromTotals} 
+                onCheckedChange={(v) => setFormData({...formData, excludeFromTotals: v})} 
+              />
+            </div>
 
             <div className="space-y-2">
               <Label>Banco</Label>

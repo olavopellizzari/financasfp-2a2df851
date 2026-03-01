@@ -55,12 +55,13 @@ export interface Account {
   household_id: string;
   user_id?: string;
   name: string;
-  bank?: string; // Novo campo para o banco
+  bank?: string; 
   account_type: 'corrente' | 'poupanca' | 'investimento' | 'carteira';
   opening_balance: number;
   opening_date: string;
   active: boolean;
   is_shared: boolean;
+  exclude_from_totals?: boolean; // Novo campo
   created_at: Date;
 }
 
