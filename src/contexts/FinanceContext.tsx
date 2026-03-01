@@ -11,7 +11,7 @@ import {
   Debt,
   Invoice
 } from '@/lib/db';
-import { format, addMonths, subMonths, getDate, isValid, parseISO } from 'date-fns';
+import { format, addMonths, addYears, getDate, isValid, parseISO } from 'date-fns';
 
 interface FinanceContextType {
   accounts: Account[];
@@ -148,7 +148,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     fetchData();
   }, [fetchData]);
 
-  // Lógica de Privacidade: Filtra o que o usuário atual pode ver
   const filteredAccounts = useMemo(() => {
     return allAccountsRaw.filter(a => a.is_shared || a.user_id === currentUser?.id);
   }, [allAccountsRaw, currentUser?.id]);
@@ -296,11 +295,14 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const updateAccount = async (id: string, data: any) => {
     const updateData: any = {};
-    if (data.name) updateData.name = data.name;
-    if (data.bank) updateData.bank = data.bank;
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.bank !== undefined) updateData.bank = data.bank;
+    if (data.type !== undefined) updateData.account_type = data.type === 'checking' ? 'corrente' : data.type;
     if (data.balance !== undefined) updateData.opening_balance = data.balance;
     if (data.isArchived !== undefined) updateData.active = !data.isArchived;
     if (data.isShared !== undefined) updateData.is_shared = data.isShared;
+    
+    // Importante: permitir explicitamente o null para tornar compartilhado
     if (data.userId !== undefined) updateData.user_id = data.userId;
     
     const { error } = await supabase
@@ -343,16 +345,18 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const updateCard = async (id: string, data: any) => {
     const updateData: any = {};
-    if (data.name) updateData.name = data.name;
+    if (data.name !== undefined) updateData.name = data.name;
     if (data.limit !== undefined) updateData.limit = data.limit;
     if (data.closingDay !== undefined) updateData.closing_day = data.closingDay;
-    if (data.due_day !== undefined) updateData.due_day = data.dueDay;
+    if (data.dueDay !== undefined) updateData.due_day = data.dueDay;
     if (data.lastDigits !== undefined) updateData.last_digits = data.lastDigits;
     if (data.brand !== undefined) updateData.brand = data.brand;
     if (data.color !== undefined) updateData.color = data.color;
     if (data.responsibleUserId !== undefined) updateData.responsible_user_id = data.responsibleUserId;
     if (data.defaultAccountId !== undefined) updateData.default_account_id = data.defaultAccountId;
     if (data.isShared !== undefined) updateData.is_shared = data.isShared;
+    
+    // Importante: permitir explicitamente o null para tornar compartilhado
     if (data.userId !== undefined) updateData.user_id = data.userId;
     
     const { error } = await supabase
