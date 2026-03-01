@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { 
@@ -11,7 +11,8 @@ import {
   Debt,
   Invoice
 } from '@/lib/db';
-import { format, addMonths, addYears, getDate, isValid, parseISO } from 'date-fns';
+import { format, addMonths, getDate, isValid, parseISO } from 'date-fns';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface FinanceContextType {
   accounts: Account[];
@@ -47,128 +48,127 @@ const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const { currentUser, users } = useAuth();
-  const [allAccountsRaw, setAllAccounts] = useState<Account[]>([]);
-  const [allCardsRaw, setAllCards] = useState<Card[]>([]);
-  const [allTransactionsRaw, setAllTransactions] = useState<Transaction[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [allBudgets, setAllBudgets] = useState<Budget[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [debts, setDebts] = useState<Debt[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const familyId = currentUser?.family_id;
+  const familyUserIds = useMemo(() => users.map(u => u.id), [users]);
 
-  const fetchData = useCallback(async () => {
-    if (!currentUser || !currentUser.family_id) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const familyId = currentUser.family_id;
-      const familyUserIds = users.map(u => u.id);
-
-      if (familyUserIds.length === 0) {
-        familyUserIds.push(currentUser.id);
-      }
-
-      const [catData, accData, cardData, txData, budData, invData, goalData, debtData] = await Promise.all([
-        supabase
-          .from('categories')
-          .select('*')
-          .or(`household_id.eq.${familyId},household_id.is.null`)
-          .order('name'),
-        supabase.from('accounts').select('*').eq('household_id', familyId).order('name'),
-        supabase.from('cards').select('*').eq('household_id', familyId).order('name'),
-        supabase.from('transactions').select('*').in('user_id', familyUserIds).order('purchase_date', { ascending: false }),
-        supabase.from('budgets').select('*').in('user_id', familyUserIds),
-        supabase.from('invoices').select('*').in('user_id', familyUserIds),
-        supabase.from('goals').select('*').in('user_id', familyUserIds),
-        supabase.from('debts').select('*').in('user_id', familyUserIds)
-      ]);
-
-      if (catData.data) {
-        const catMap = new Map<string, any>();
-        catData.data.filter(c => !c.household_id).forEach(c => {
-          catMap.set(c.name.toLowerCase(), {
-            ...c,
-            type: c.kind === 'receita' ? 'income' : 'expense'
-          });
-        });
-        catData.data.filter(c => c.household_id).forEach(c => {
-          catMap.set(c.name.toLowerCase(), {
-            ...c,
-            type: c.kind === 'receita' ? 'income' : 'expense'
-          });
-        });
-        setCategories(Array.from(catMap.values()).sort((a, b) => a.name.localeCompare(b.name)));
-      }
+  // Queries individuais com TanStack Query para melhor performance e cache
+  const { data: categories = [], isLoading: loadingCats } = useQuery({
+    queryKey: ['categories', familyId],
+    queryFn: async () => {
+      if (!familyId) return [];
+      const { data } = await supabase
+        .from('categories')
+        .select('*')
+        .or(`household_id.eq.${familyId},household_id.is.null`)
+        .order('name');
       
-      if (accData.data) setAllAccounts(accData.data as Account[]);
-      if (cardData.data) setAllCards(cardData.data as Card[]);
+      const catMap = new Map<string, any>();
+      data?.forEach(c => {
+        catMap.set(c.name.toLowerCase(), { ...c, type: c.kind === 'receita' ? 'income' : 'expense' });
+      });
+      return Array.from(catMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    },
+    enabled: !!familyId
+  });
 
-      if (txData.data) {
-        const mappedTxs: Transaction[] = txData.data.map(t => ({
-          id: t.id,
-          type: t.type,
-          amount: t.amount,
-          description: t.description,
-          purchaseDate: t.purchase_date,
-          effectiveDate: t.effective_date,
-          effectiveMonth: t.effective_month,
-          mesFatura: t.mes_fatura,
-          status: t.status,
-          isPaid: t.is_paid,
-          userId: t.user_id,
-          accountId: t.account_id,
-          cardId: t.card_id,
-          categoryId: t.category_id,
-          installmentGroupId: t.installment_group_id,
-          installmentNumber: t.installment_number,
-          totalInstallments: t.total_installments,
-          notes: t.notes || '',
-          isRecurring: t.is_recurring,
-          createdAt: new Date(t.created_at)
-        }));
-        setAllTransactions(mappedTxs);
-      }
+  const { data: allAccountsRaw = [], isLoading: loadingAccs } = useQuery({
+    queryKey: ['accounts', familyId],
+    queryFn: async () => {
+      const { data } = await supabase.from('accounts').select('*').eq('household_id', familyId).order('name');
+      return (data || []) as Account[];
+    },
+    enabled: !!familyId
+  });
 
-      if (invData.data) setInvoices(invData.data as Invoice[]);
-      if (budData.data) setAllBudgets(budData.data as Budget[]);
-      if (goalData.data) setGoals(goalData.data as Goal[]);
-      if (debtData.data) setDebts(debtData.data as Debt[]);
+  const { data: allCardsRaw = [], isLoading: loadingCards } = useQuery({
+    queryKey: ['cards', familyId],
+    queryFn: async () => {
+      const { data } = await supabase.from('cards').select('*').eq('household_id', familyId).order('name');
+      return (data || []) as Card[];
+    },
+    enabled: !!familyId
+  });
 
-    } catch (error) {
-      console.error('[FinanceContext] Erro ao carregar dados:', error);
-    } finally {
-      setLoading(false);
+  const { data: allTransactionsRaw = [], isLoading: loadingTxs } = useQuery({
+    queryKey: ['transactions', familyUserIds],
+    queryFn: async () => {
+      if (familyUserIds.length === 0) return [];
+      const { data } = await supabase.from('transactions').select('*').in('user_id', familyUserIds).order('purchase_date', { ascending: false });
+      return (data || []).map(t => ({
+        id: t.id, type: t.type, amount: t.amount, description: t.description,
+        purchaseDate: t.purchase_date, effectiveDate: t.effective_date,
+        effectiveMonth: t.effective_month, mesFatura: t.mes_fatura,
+        status: t.status, isPaid: t.is_paid, userId: t.user_id,
+        accountId: t.account_id, cardId: t.card_id, categoryId: t.category_id,
+        installmentGroupId: t.installment_group_id, installmentNumber: t.installment_number,
+        totalInstallments: t.total_installments, notes: t.notes || '',
+        isRecurring: t.is_recurring, createdAt: new Date(t.created_at)
+      })) as Transaction[];
+    },
+    enabled: familyUserIds.length > 0
+  });
+
+  const { data: allBudgets = [] } = useQuery({
+    queryKey: ['budgets', familyUserIds],
+    queryFn: async () => {
+      const { data } = await supabase.from('budgets').select('*').in('user_id', familyUserIds);
+      return (data || []) as Budget[];
+    },
+    enabled: familyUserIds.length > 0
+  });
+
+  const { data: invoices = [] } = useQuery({
+    queryKey: ['invoices', familyUserIds],
+    queryFn: async () => {
+      const { data } = await supabase.from('invoices').select('*').in('user_id', familyUserIds);
+      return (data || []) as Invoice[];
+    },
+    enabled: familyUserIds.length > 0
+  });
+
+  const { data: goals = [] } = useQuery({
+    queryKey: ['goals', familyUserIds],
+    queryFn: async () => {
+      const { data } = await supabase.from('goals').select('*').in('user_id', familyUserIds);
+      return (data || []) as Goal[];
+    },
+    enabled: familyUserIds.length > 0
+  });
+
+  const { data: debts = [] } = useQuery({
+    queryKey: ['debts', familyUserIds],
+    queryFn: async () => {
+      const { data } = await supabase.from('debts').select('*').in('user_id', familyUserIds);
+      return (data || []) as Debt[];
+    },
+    enabled: familyUserIds.length > 0
+  });
+
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['accounts'] });
+    await queryClient.invalidateQueries({ queryKey: ['cards'] });
+    await queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    await queryClient.invalidateQueries({ queryKey: ['categories'] });
+    await queryClient.invalidateQueries({ queryKey: ['budgets'] });
+    await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    await queryClient.invalidateQueries({ queryKey: ['goals'] });
+    await queryClient.invalidateQueries({ queryKey: ['debts'] });
+  };
+
+  const filteredAccounts = useMemo(() => allAccountsRaw.filter(a => a.is_shared || a.user_id === currentUser?.id), [allAccountsRaw, currentUser?.id]);
+  const filteredCards = useMemo(() => allCardsRaw.filter(c => (c as any).is_shared || c.user_id === currentUser?.id), [allCardsRaw, currentUser?.id]);
+  const filteredTransactions = useMemo(() => allTransactionsRaw.filter(t => {
+    if (t.accountId) {
+      const acc = allAccountsRaw.find(a => a.id === t.accountId);
+      if (acc && !acc.is_shared && acc.user_id !== currentUser?.id) return false;
     }
-  }, [currentUser, users]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const filteredAccounts = useMemo(() => {
-    return allAccountsRaw.filter(a => a.is_shared || a.user_id === currentUser?.id);
-  }, [allAccountsRaw, currentUser?.id]);
-
-  const filteredCards = useMemo(() => {
-    return allCardsRaw.filter(c => (c as any).is_shared || c.user_id === currentUser?.id);
-  }, [allCardsRaw, currentUser?.id]);
-
-  const filteredTransactions = useMemo(() => {
-    return allTransactionsRaw.filter(t => {
-      if (t.accountId) {
-        const acc = allAccountsRaw.find(a => a.id === t.accountId);
-        if (acc && !acc.is_shared && acc.user_id !== currentUser?.id) return false;
-      }
-      if (t.cardId) {
-        const card = allCardsRaw.find(c => c.id === t.cardId);
-        if (card && !(card as any).is_shared && card.user_id !== currentUser?.id) return false;
-      }
-      return true;
-    });
-  }, [allTransactionsRaw, allAccountsRaw, allCardsRaw, currentUser?.id]);
+    if (t.cardId) {
+      const card = allCardsRaw.find(c => c.id === t.cardId);
+      if (card && !(card as any).is_shared && card.user_id !== currentUser?.id) return false;
+    }
+    return true;
+  }), [allTransactionsRaw, allAccountsRaw, allCardsRaw, currentUser?.id]);
 
   const getAccountBalance = (accountId: string) => {
     const account = allAccountsRaw.find(a => a.id === accountId);
@@ -183,10 +183,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const getCardBalance = (cardId: string) => {
     const txs = allTransactionsRaw.filter(t => t.cardId === cardId && t.status !== 'cancelled');
-    return txs.reduce((sum, t) => {
-      if (t.type === 'REFUND') return sum - t.amount;
-      return sum + t.amount;
-    }, 0);
+    return txs.reduce((sum, t) => t.type === 'REFUND' ? sum - t.amount : sum + t.amount, 0);
   };
 
   const getCategoryById = (categoryId: string) => categories.find(c => c.id === categoryId);
@@ -195,40 +192,23 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (!purchaseDate || !isValid(purchaseDate)) return format(new Date(), 'yyyy-MM');
     const card = allCardsRaw.find(c => c.id === cardId);
     if (!card) return format(purchaseDate, 'yyyy-MM');
-
     const day = getDate(purchaseDate);
-    
-    if (day >= card.closing_day) {
-      return format(addMonths(purchaseDate, 1), 'yyyy-MM');
-    }
-    
-    return format(purchaseDate, 'yyyy-MM');
+    return day >= card.closing_day ? format(addMonths(purchaseDate, 1), 'yyyy-MM') : format(purchaseDate, 'yyyy-MM');
   };
 
+  // Mutadores
   const createTransaction = async (data: any) => {
     const { error } = await supabase.from('transactions').insert([{
-      user_id: data.userId,
-      household_id: currentUser?.family_id,
-      account_id: data.accountId,
-      card_id: data.cardId,
-      category_id: data.categoryId,
-      amount: data.amount,
-      description: data.description,
-      type: data.type,
-      status: data.status || 'confirmed',
-      purchase_date: format(data.purchaseDate, 'yyyy-MM-dd'),
+      user_id: data.userId, household_id: familyId, account_id: data.accountId, card_id: data.cardId,
+      category_id: data.categoryId, amount: data.amount, description: data.description, type: data.type,
+      status: data.status || 'confirmed', purchase_date: format(data.purchaseDate, 'yyyy-MM-dd'),
       effective_date: format(data.effectiveDate || data.purchaseDate, 'yyyy-MM-dd'),
-      effective_month: data.effectiveMonth,
-      mes_fatura: data.mes_fatura,
-      installment_number: data.installmentNumber,
-      total_installments: data.total_installments,
-      installment_group_id: data.installmentGroupId,
-      is_recurring: data.isRecurring,
-      is_paid: data.isPaid,
-      notes: data.notes
+      effective_month: data.effectiveMonth, mes_fatura: data.mes_fatura,
+      installment_number: data.installmentNumber, total_installments: data.total_installments,
+      installment_group_id: data.installmentGroupId, is_recurring: data.isRecurring, is_paid: data.isPaid, notes: data.notes
     }]);
     if (error) throw error;
-    await fetchData();
+    await refresh();
   };
 
   const updateTransaction = async (id: string, data: any) => {
@@ -244,7 +224,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       const pDate = data.purchaseDate instanceof Date ? data.purchaseDate : parseISO(data.purchaseDate);
       updateData.purchase_date = format(pDate, 'yyyy-MM-dd');
       updateData.effective_date = format(pDate, 'yyyy-MM-dd');
-      
       const currentTx = allTransactionsRaw.find(t => t.id === id);
       if (currentTx) {
         if (currentTx.cardId) {
@@ -257,41 +236,26 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         }
       }
     }
-    
-    const { error } = await supabase
-      .from('transactions')
-      .update(updateData)
-      .eq('id', id);
-
+    const { error } = await supabase.from('transactions').update(updateData).eq('id', id);
     if (error) throw error;
-    await fetchData();
+    await refresh();
   };
 
   const deleteTransaction = async (id: string) => {
-    const { error } = await supabase
-      .from('transactions')
-      .delete()
-      .eq('id', id);
-
+    const { error } = await supabase.from('transactions').delete().eq('id', id);
     if (error) throw error;
-    await fetchData();
+    await refresh();
   };
 
   const createAccount = async (data: any) => {
     const { error } = await supabase.from('accounts').insert([{
-      household_id: currentUser?.family_id,
-      user_id: data.userId || currentUser?.id,
-      name: data.name,
-      bank: data.bank,
-      account_type: data.type === 'checking' ? 'corrente' : data.type,
-      opening_balance: data.balance,
-      opening_date: new Date().toISOString().split('T')[0],
-      active: true,
-      is_shared: data.isShared ?? true,
-      exclude_from_totals: data.excludeFromTotals ?? false // Novo campo
+      household_id: familyId, user_id: data.userId || currentUser?.id, name: data.name, bank: data.bank,
+      account_type: data.type === 'checking' ? 'corrente' : data.type, opening_balance: data.balance,
+      opening_date: new Date().toISOString().split('T')[0], active: true, is_shared: data.isShared ?? true,
+      exclude_from_totals: data.excludeFromTotals ?? false
     }]);
     if (error) throw error;
-    await fetchData();
+    await refresh();
   };
 
   const updateAccount = async (id: string, data: any) => {
@@ -302,46 +266,27 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.balance !== undefined) updateData.opening_balance = data.balance;
     if (data.isArchived !== undefined) updateData.active = !data.isArchived;
     if (data.isShared !== undefined) updateData.is_shared = data.isShared;
-    if (data.excludeFromTotals !== undefined) updateData.exclude_from_totals = data.excludeFromTotals; // Novo campo
-    
+    if (data.excludeFromTotals !== undefined) updateData.exclude_from_totals = data.excludeFromTotals;
     if (data.userId !== undefined) updateData.user_id = data.userId;
-    
-    const { error } = await supabase
-      .from('accounts')
-      .update(updateData)
-      .eq('id', id);
-
+    const { error } = await supabase.from('accounts').update(updateData).eq('id', id);
     if (error) throw error;
-    await fetchData();
+    await refresh();
   };
 
   const deleteAccount = async (id: string) => {
-    const { error } = await supabase
-      .from('accounts')
-      .delete()
-      .eq('id', id);
-
+    const { error } = await supabase.from('accounts').delete().eq('id', id);
     if (error) throw error;
-    await fetchData();
+    await refresh();
   };
 
   const createCard = async (data: any) => {
     const { error } = await supabase.from('cards').insert([{
-      user_id: data.userId || currentUser?.id,
-      household_id: currentUser?.family_id,
-      name: data.name,
-      last_digits: data.lastDigits,
-      brand: data.brand,
-      limit: data.limit,
-      closing_day: data.closingDay,
-      due_day: data.dueDay,
-      color: data.color,
-      responsible_user_id: data.responsibleUserId,
-      default_account_id: data.defaultAccountId,
-      is_shared: data.isShared ?? false
+      user_id: data.userId || currentUser?.id, household_id: familyId, name: data.name, last_digits: data.lastDigits,
+      brand: data.brand, limit: data.limit, closing_day: data.closingDay, due_day: data.dueDay, color: data.color,
+      responsible_user_id: data.responsibleUserId, default_account_id: data.defaultAccountId, is_shared: data.isShared ?? false
     }]);
     if (error) throw error;
-    await fetchData();
+    await refresh();
   };
 
   const updateCard = async (id: string, data: any) => {
@@ -356,38 +301,25 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.responsibleUserId !== undefined) updateData.responsible_user_id = data.responsibleUserId;
     if (data.defaultAccountId !== undefined) updateData.default_account_id = data.defaultAccountId;
     if (data.isShared !== undefined) updateData.is_shared = data.isShared;
-    
     if (data.userId !== undefined) updateData.user_id = data.userId;
-    
-    const { error } = await supabase
-      .from('cards')
-      .update(updateData)
-      .eq('id', id);
-
+    const { error } = await supabase.from('cards').update(updateData).eq('id', id);
     if (error) throw error;
-    await fetchData();
+    await refresh();
   };
 
   const deleteCard = async (id: string) => {
-    const { error } = await supabase
-      .from('cards')
-      .delete()
-      .eq('id', id);
-
+    const { error } = await supabase.from('cards').delete().eq('id', id);
     if (error) throw error;
-    await fetchData();
+    await refresh();
   };
 
   const saveBudget = async (data: any) => {
     const { error } = await supabase.from('budgets').upsert({
-      user_id: data.userId,
-      month: data.month,
-      income: data.income,
-      savings_goal: data.savingsGoal,
-      category_limits: data.categoryLimits
+      user_id: data.userId, month: data.month, income: data.income,
+      savings_goal: data.savingsGoal, category_limits: data.categoryLimits
     });
     if (error) throw error;
-    await fetchData();
+    await refresh();
   };
 
   return (
@@ -395,8 +327,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       accounts: filteredAccounts, allAccounts: allAccountsRaw, 
       cards: filteredCards, allCards: allCardsRaw, 
       transactions: filteredTransactions, allTransactions: allTransactionsRaw, 
-      categories, allBudgets, invoices, goals, debts, loading, refresh: fetchData,
-      getAccountBalance, getCardBalance, getCategoryById,
+      categories, allBudgets, invoices, goals, debts, 
+      loading: loadingCats || loadingAccs || loadingCards || loadingTxs, 
+      refresh, getAccountBalance, getCardBalance, getCategoryById,
       createTransaction, updateTransaction, deleteTransaction,
       createAccount, updateAccount, deleteAccount,
       createCard, updateCard, deleteCard,
