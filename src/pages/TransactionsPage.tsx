@@ -201,7 +201,6 @@ export function TransactionsPage() {
         if (tx.effectiveMonth !== selectedMonthStr) return false;
       }
 
-      // Filtro de Usuário / Família
       let matchesUser = true;
       if (selectedUserId === 'total') {
         matchesUser = true;
@@ -210,7 +209,6 @@ export function TransactionsPage() {
         const card = allCards.find(c => c.id === tx.cardId);
         matchesUser = (account?.is_shared) || ((card as any)?.is_shared);
       } else {
-        // Usuário específico: apenas transações de contas/cartões exclusivos dele
         if (tx.cardId) {
           const card = allCards.find(c => c.id === tx.cardId);
           matchesUser = card?.user_id === selectedUserId && !(card as any).is_shared;
@@ -441,13 +439,15 @@ export function TransactionsPage() {
       let currentMesFatura = null;
       let effectiveMonthStr = format(dateForIteration, 'yyyy-MM');
       
-      if (formData.type === 'INCOME') {
-        effectiveMonthStr = format(addMonths(dateForIteration, 1), 'yyyy-MM');
-      } else if ((formData.type === 'CREDIT' || formData.type === 'REFUND') && formData.cardId) {
-        const baseCalculatedMonth = calculateMesFatura(formData.purchaseDate, formData.cardId);
-        const baseMonthDate = parse(baseCalculatedMonth, 'yyyy-MM', new Date());
-        currentMesFatura = format(addMonths(baseMonthDate, i), 'yyyy-MM');
-        effectiveMonthStr = format(addMonths(baseMonthDate, i + 1), 'yyyy-MM');
+      // REGRAS DE COMPETÊNCIA SOLICITADAS:
+      if (formData.type === 'CREDIT' || formData.type === 'REFUND') {
+        // Cartão: Competência = Mês da Fatura
+        currentMesFatura = calculateMesFatura(dateForIteration, formData.cardId);
+        effectiveMonthStr = currentMesFatura;
+      } else {
+        // Conta: Competência = Mês do Lançamento
+        effectiveMonthStr = format(dateForIteration, 'yyyy-MM');
+        currentMesFatura = null;
       }
       
       await createTransaction({

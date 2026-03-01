@@ -67,7 +67,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       const familyId = currentUser.family_id;
       const familyUserIds = users.map(u => u.id);
 
-      // Se a lista de usuários ainda não carregou, esperamos um pouco
       if (familyUserIds.length === 0) {
         familyUserIds.push(currentUser.id);
       }
@@ -177,6 +176,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
     const day = getDate(purchaseDate);
     
+    // Se o dia da compra for maior ou igual ao dia de fechamento, vai para a fatura do mês seguinte
     if (day >= card.closing_day) {
       return format(addMonths(purchaseDate, 1), 'yyyy-MM');
     }
@@ -187,6 +187,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const createTransaction = async (data: any) => {
     const { error } = await supabase.from('transactions').insert([{
       user_id: data.userId,
+      household_id: currentUser?.family_id,
       account_id: data.accountId,
       card_id: data.cardId,
       category_id: data.categoryId,
