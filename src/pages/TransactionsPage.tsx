@@ -152,7 +152,7 @@ export function TransactionsPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<TransactionType | 'ALL'>('ALL');
-  const [selectedUserId, setSelectedUserId] = useState<string>('all');
+  const [selectedUserId, setSelectedUserId] = useState<string>('total');
   const [selectedCardId, setSelectedCardId] = useState<string>(initialCardId);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeTab, setActiveTab] = useState<TransactionType>(isCardMode ? 'CREDIT' : 'EXPENSE');
@@ -181,7 +181,7 @@ export function TransactionsPage() {
 
   const isAdmin = isCurrentUserAdmin();
   
-  // Filtro de Contas e Cartões disponíveis para o usuário logado
+  // Filtro de Contas e Cartões disponíveis para o usuário logado (para LANÇAMENTO)
   const availableAccounts = useMemo(() => {
     return allAccounts.filter(a => a.active && (a.is_shared || a.user_id === currentUser?.id));
   }, [allAccounts, currentUser?.id]);
@@ -442,7 +442,7 @@ export function TransactionsPage() {
     const groupId = (numInstallments > 1 || isRecurring) ? generateId() : null;
 
     for (let i = 0; i < iterations; i++) {
-      const dateForIteration = formData.recurrence === 'annual' ? addYears(formData.purchaseDate, i) : addMonths(formData.purchaseDate, i);
+      const dateForIteration = formData.recurrence === 'annual' ? addMonths(formData.purchaseDate, i * 12) : addMonths(formData.purchaseDate, i);
       let currentMesFatura = null;
       let effectiveMonthStr = format(dateForIteration, 'yyyy-MM');
       
@@ -538,7 +538,12 @@ export function TransactionsPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {isAdmin && <UserFilter value={selectedUserId} onChange={setSelectedUserId} className="w-[180px]" />}
+          <UserFilter 
+            value={selectedUserId} 
+            onChange={setSelectedUserId} 
+            showTotalOption={true}
+            className="w-[180px]" 
+          />
           <Button onClick={handleOpenDialog} className="gradient-primary shadow-primary">
             <Plus className="w-4 h-4 mr-2" /> Novo Lançamento
           </Button>
