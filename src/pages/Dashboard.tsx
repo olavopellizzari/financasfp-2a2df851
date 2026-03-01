@@ -274,7 +274,25 @@ export function Dashboard() {
         </BalanceCard>
         <BalanceCard title="Receitas (Lançamentos)" amount={stats.income} icon={<TrendingUp className="w-4 h-4 text-income" />} variant="income" isPrivate={isPrivate} />
         <BalanceCard title="Despesas (Lançamentos)" amount={stats.expenses} icon={<TrendingDown className="h-4 w-4 text-expense" />} variant="expense" isPrivate={isPrivate} />
-        <BalanceCard title="Cartão (Lançamentos)" amount={stats.cardExpenses} icon={<CreditCard className="h-4 w-4 text-purple-600" />} variant="credit" isPrivate={isPrivate} />
+        <BalanceCard title="Cartão (Lançamentos)" amount={stats.cardExpenses} icon={<CreditCard className="h-4 w-4 text-purple-600" />} variant="credit" isPrivate={isPrivate}>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-purple-600/60">
+                <ChevronDown className="w-4 h-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-2">
+              {cardActivity.length > 0 ? cardActivity.map((card, idx) => (
+                <div key={idx} className="flex justify-between p-2 text-sm">
+                  <span>{card.name}</span>
+                  <span className="font-bold">{formatCurrency(card.amount)}</span>
+                </div>
+              )) : (
+                <p className="text-xs text-center text-muted-foreground p-2">Nenhum gasto no cartão.</p>
+              )}
+            </PopoverContent>
+          </Popover>
+        </BalanceCard>
         <BalanceCard title="Resultado Lançamentos" amount={stats.balance} icon={<BarChart3 className="w-4 h-4 text-warning" />} variant="pending" isPrivate={isPrivate} />
       </div>
 
