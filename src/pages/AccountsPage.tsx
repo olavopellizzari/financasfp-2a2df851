@@ -41,7 +41,8 @@ import {
   LayoutGrid,
   EyeOff,
   Lock,
-  Eye
+  Eye,
+  Info
 } from 'lucide-react';
 import {
   DropdownMenu,
