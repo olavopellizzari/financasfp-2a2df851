@@ -27,7 +27,9 @@ import {
   Users,
   User as UserIcon,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  EyeOff,
+  Lock
 } from 'lucide-react';
 import { format, parse, addMonths, subMonths, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -62,6 +64,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const CARD_COLORS = [
   '#1e293b', '#ef4444', '#3b82f6', '#22c55e', 
@@ -69,7 +72,7 @@ const CARD_COLORS = [
 ];
 
 export function CardsPage() {
-  const { allCards, allTransactions, invoices, getCategoryById, createCard, updateCard, deleteCard, deleteTransaction, allAccounts } = useFinance();
+  const { cards, allTransactions, invoices, getCategoryById, createCard, updateCard, deleteCard, deleteTransaction, allAccounts } = useFinance();
   const { currentUser, users } = useAuth();
   const navigate = useNavigate();
   
@@ -91,7 +94,7 @@ export function CardsPage() {
     color: CARD_COLORS[0],
     responsibleUserId: currentUser?.id || '',
     defaultAccountId: '',
-    isShared: false
+    privacyMode: 'exclusive' as 'shared' | 'exclusive' | 'private'
   });
 
   useEffect(() => {
@@ -106,11 +109,10 @@ export function CardsPage() {
   }, [selectedMonth]);
 
   const filteredCards = useMemo(() => {
-    if (selectedUserId === 'total') return allCards;
-    if (selectedUserId === 'all') return allCards.filter(c => (c as any).is_shared);
-    // Usuário específico: apenas os exclusivos dele
-    return allCards.filter(c => c.user_id === selectedUserId && !(c as any).is_shared);
-  }, [allCards, selectedUserId]);
+    if (selectedUserId === 'total') return cards;
+    if (selectedUserId === 'all') return cards.filter(c => (c as any).is_shared && !c.user_id);
+    return cards.filter(c => c.user_id === selectedUserId);
+  }, [cards, selectedUserId]);
 
   const cardsWithStats = useMemo(() => {
     return filteredCards.map(card => {
@@ -162,7 +164,7 @@ export function CardsPage() {
       color: CARD_COLORS[0],
       responsibleUserId: currentUser?.id || '',
       defaultAccountId: allAccounts[0]?.id || '',
-      isShared: false
+      privacyMode: 'exclusive'
     });
   };
 
@@ -173,6 +175,11 @@ export function CardsPage() {
 
   const handleOpenEdit = (card: CardType) => {
     setEditingCard(card);
+    
+    let privacyMode: any = 'shared';
+    if (!(card as any).is_shared) privacyMode = 'private';
+    else if (card.user_id) privacyMode = 'exclusive';
+
     setFormData({
       name: card.name,
       lastDigits: card.last_digits || '',
@@ -183,7 +190,7 @@ export function CardsPage() {
       color: card.color,
       responsibleUserId: card.responsible_user_id || card.user_id,
       defaultAccountId: card.default_account_id || '',
-      isShared: (card as any).is_shared ?? false
+      privacyMode
     });
     setIsDialogOpen(true);
   };
@@ -194,10 +201,11 @@ export function CardsPage() {
     try {
       const data = {
         ...formData,
-        userId: formData.isShared ? null : (formData.responsibleUserId || currentUser?.id),
+        userId: formData.privacyMode === 'shared' ? null : (formData.responsibleUserId || currentUser?.id),
         limit: parseFloat(formData.limit) || 0,
         closingDay: parseInt(formData.closingDay) || 1,
         dueDay: parseInt(formData.dueDay) || 1,
+        isShared: formData.privacyMode !== 'private'
       };
 
       if (editingCard) {
@@ -288,6 +296,8 @@ export function CardsPage() {
         {cardsWithStats.map(card => {
           const isExpanded = expandedCardId === card.id;
           const isShared = (card as any).is_shared;
+          const isPrivate = !isShared;
+          const isExclusive = isShared && card.user_id;
           
           return (
             <div key={card.id} className="space-y-4">
@@ -310,7 +320,15 @@ export function CardsPage() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <p className="text-xs font-medium opacity-80 uppercase tracking-widest">Nome do Cartão</p>
-                        {isShared && (
+                        {isPrivate ? (
+                          <Badge variant="secondary" className="bg-black/20 text-white border-none text-[10px] h-5">
+                            <Lock className="w-3 h-3 mr-1" /> Privado
+                          </Badge>
+                        ) : isExclusive ? (
+                          <Badge variant="secondary" className="bg-white/20 text-white border-none text-[10px] h-5">
+                            <ShieldCheck className="w-3 h-3 mr-1" /> Exclusivo
+                          </Badge>
+                        ) : (
                           <Badge variant="secondary" className="bg-white/20 text-white border-none text-[10px] h-5">
                             <Users className="w-3 h-3 mr-1" /> Família
                           </Badge>
@@ -475,17 +493,53 @@ export function CardsPage() {
             <DialogDescription>Configure os detalhes do seu cartão de crédito.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 py-4">
-            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-2xl border border-dashed">
-              <div className="space-y-0.5">
-                <Label className="text-sm font-bold flex items-center gap-2">
-                  {formData.isShared ? <ShieldCheck className="w-4 h-4 text-primary" /> : <ShieldAlert className="w-4 h-4 text-orange-500" />}
-                  Cartão da Família?
-                </Label>
-                <p className="text-[10px] text-muted-foreground">
-                  {formData.isShared ? 'Todos os membros podem ver e lançar neste cartão.' : 'Apenas o dono do cartão terá acesso aos dados.'}
-                </p>
-              </div>
-              <Switch checked={formData.isShared} onCheckedChange={v => setFormData({...formData, isShared: v})} />
+            
+            <div className="space-y-3">
+              <Label className="text-sm font-bold">Privacidade e Acesso</Label>
+              <RadioGroup 
+                value={formData.privacyMode} 
+                onValueChange={(v: any) => setFormData({...formData, privacyMode: v})}
+                className="grid grid-cols-1 gap-2"
+              >
+                <div className={cn(
+                  "flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer",
+                  formData.privacyMode === 'shared' ? "border-primary bg-primary/5" : "border-border hover:border-border/80"
+                )} onClick={() => setFormData({...formData, privacyMode: 'shared'})}>
+                  <RadioGroupItem value="shared" id="shared" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="shared" className="font-bold flex items-center gap-2 cursor-pointer">
+                      <Users className="w-4 h-4 text-primary" /> Compartilhado
+                    </Label>
+                    <p className="text-[10px] text-muted-foreground">Todos os membros da família podem ver e realizar lançamentos.</p>
+                  </div>
+                </div>
+
+                <div className={cn(
+                  "flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer",
+                  formData.privacyMode === 'exclusive' ? "border-orange-500 bg-orange-50" : "border-border hover:border-border/80"
+                )} onClick={() => setFormData({...formData, privacyMode: 'exclusive'})}>
+                  <RadioGroupItem value="exclusive" id="exclusive" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="exclusive" className="font-bold flex items-center gap-2 cursor-pointer">
+                      <ShieldCheck className="w-4 h-4 text-orange-500" /> Exclusivo
+                    </Label>
+                    <p className="text-[10px] text-muted-foreground">Todos podem ver os gastos, mas apenas o dono pode realizar lançamentos.</p>
+                  </div>
+                </div>
+
+                <div className={cn(
+                  "flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer",
+                  formData.privacyMode === 'private' ? "border-destructive bg-destructive/5" : "border-border hover:border-border/80"
+                )} onClick={() => setFormData({...formData, privacyMode: 'private'})}>
+                  <RadioGroupItem value="private" id="private" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="private" className="font-bold flex items-center gap-2 cursor-pointer">
+                      <EyeOff className="w-4 h-4 text-destructive" /> Privado
+                    </Label>
+                    <p className="text-[10px] text-muted-foreground">Totalmente invisível para os outros membros da família.</p>
+                  </div>
+                </div>
+              </RadioGroup>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -559,7 +613,7 @@ export function CardsPage() {
               </div>
             </div>
 
-            {!formData.isShared && (
+            {formData.privacyMode !== 'shared' && (
               <div className="space-y-2">
                 <Label>Dono do Cartão</Label>
                 <Select value={formData.responsibleUserId} onValueChange={v => setFormData({...formData, responsibleUserId: v})}>

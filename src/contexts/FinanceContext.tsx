@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { 
@@ -47,9 +47,9 @@ const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const { currentUser, users } = useAuth();
-  const [allAccounts, setAllAccounts] = useState<Account[]>([]);
-  const [allCards, setAllCards] = useState<Card[]>([]);
-  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
+  const [allAccountsRaw, setAllAccounts] = useState<Account[]>([]);
+  const [allCardsRaw, setAllCards] = useState<Card[]>([]);
+  const [allTransactionsRaw, setAllTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [allBudgets, setAllBudgets] = useState<Budget[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -148,10 +148,33 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     fetchData();
   }, [fetchData]);
 
+  // Lógica de Privacidade: Filtra o que o usuário atual pode ver
+  const filteredAccounts = useMemo(() => {
+    return allAccountsRaw.filter(a => a.is_shared || a.user_id === currentUser?.id);
+  }, [allAccountsRaw, currentUser?.id]);
+
+  const filteredCards = useMemo(() => {
+    return allCardsRaw.filter(c => (c as any).is_shared || c.user_id === currentUser?.id);
+  }, [allCardsRaw, currentUser?.id]);
+
+  const filteredTransactions = useMemo(() => {
+    return allTransactionsRaw.filter(t => {
+      if (t.accountId) {
+        const acc = allAccountsRaw.find(a => a.id === t.accountId);
+        if (acc && !acc.is_shared && acc.user_id !== currentUser?.id) return false;
+      }
+      if (t.cardId) {
+        const card = allCardsRaw.find(c => c.id === t.cardId);
+        if (card && !(card as any).is_shared && card.user_id !== currentUser?.id) return false;
+      }
+      return true;
+    });
+  }, [allTransactionsRaw, allAccountsRaw, allCardsRaw, currentUser?.id]);
+
   const getAccountBalance = (accountId: string) => {
-    const account = allAccounts.find(a => a.id === accountId);
+    const account = allAccountsRaw.find(a => a.id === accountId);
     if (!account) return 0;
-    const txs = allTransactions.filter(t => t.accountId === accountId && t.status === 'confirmed' && t.isPaid === true);
+    const txs = allTransactionsRaw.filter(t => t.accountId === accountId && t.status === 'confirmed' && t.isPaid === true);
     return txs.reduce((sum, t) => {
       if (t.type === 'INCOME' || t.type === 'REFUND') return sum + t.amount;
       if (t.type === 'EXPENSE' || t.type === 'TRANSFER') return sum - t.amount;
@@ -160,7 +183,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const getCardBalance = (cardId: string) => {
-    const txs = allTransactions.filter(t => t.cardId === cardId && t.status !== 'cancelled');
+    const txs = allTransactionsRaw.filter(t => t.cardId === cardId && t.status !== 'cancelled');
     return txs.reduce((sum, t) => {
       if (t.type === 'REFUND') return sum - t.amount;
       return sum + t.amount;
@@ -171,12 +194,11 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const calculateMesFatura = (purchaseDate: Date, cardId: string) => {
     if (!purchaseDate || !isValid(purchaseDate)) return format(new Date(), 'yyyy-MM');
-    const card = allCards.find(c => c.id === cardId);
+    const card = allCardsRaw.find(c => c.id === cardId);
     if (!card) return format(purchaseDate, 'yyyy-MM');
 
     const day = getDate(purchaseDate);
     
-    // Se o dia da compra for maior ou igual ao dia de fechamento, vai para a fatura do mês seguinte
     if (day >= card.closing_day) {
       return format(addMonths(purchaseDate, 1), 'yyyy-MM');
     }
@@ -219,14 +241,12 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.status !== undefined) updateData.status = data.status;
     if (data.userId !== undefined) updateData.user_id = data.userId;
     
-    // Se a data mudar, precisamos recalcular a competência
     if (data.purchaseDate !== undefined) {
       const pDate = data.purchaseDate instanceof Date ? data.purchaseDate : parseISO(data.purchaseDate);
       updateData.purchase_date = format(pDate, 'yyyy-MM-dd');
       updateData.effective_date = format(pDate, 'yyyy-MM-dd');
       
-      // Busca a transação atual para saber se é cartão ou conta
-      const currentTx = allTransactions.find(t => t.id === id);
+      const currentTx = allTransactionsRaw.find(t => t.id === id);
       if (currentTx) {
         if (currentTx.cardId) {
           const mesFatura = calculateMesFatura(pDate, currentTx.cardId);
@@ -304,7 +324,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const createCard = async (data: any) => {
     const { error } = await supabase.from('cards').insert([{
-      user_id: data.isShared ? null : data.userId,
+      user_id: data.userId || currentUser?.id,
       household_id: currentUser?.family_id,
       name: data.name,
       last_digits: data.lastDigits,
@@ -332,10 +352,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.color !== undefined) updateData.color = data.color;
     if (data.responsibleUserId !== undefined) updateData.responsible_user_id = data.responsibleUserId;
     if (data.defaultAccountId !== undefined) updateData.default_account_id = data.defaultAccountId;
-    if (data.isShared !== undefined) {
-      updateData.is_shared = data.isShared;
-      updateData.user_id = data.isShared ? null : (data.userId || currentUser?.id);
-    }
+    if (data.isShared !== undefined) updateData.is_shared = data.isShared;
+    if (data.userId !== undefined) updateData.user_id = data.userId;
     
     const { error } = await supabase
       .from('cards')
@@ -370,7 +388,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <FinanceContext.Provider value={{ 
-      accounts: allAccounts, allAccounts, cards: allCards, allCards, transactions: allTransactions, allTransactions, 
+      accounts: filteredAccounts, allAccounts: allAccountsRaw, 
+      cards: filteredCards, allCards: allCardsRaw, 
+      transactions: filteredTransactions, allTransactions: allTransactionsRaw, 
       categories, allBudgets, invoices, goals, debts, loading, refresh: fetchData,
       getAccountBalance, getCardBalance, getCategoryById,
       createTransaction, updateTransaction, deleteTransaction,

@@ -39,7 +39,9 @@ import {
   ShieldCheck,
   ShieldAlert,
   Building2,
-  LayoutGrid
+  LayoutGrid,
+  EyeOff,
+  Lock
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -50,6 +52,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const BANKS = [
   { id: 'nubank', name: 'NuBank', color: '#8a05be', logo: 'https://logodownload.org/wp-content/uploads/2019/08/nubank-logo-3.png' },
@@ -79,12 +82,12 @@ interface AccountFormData {
   type: string;
   balance: string;
   userId: string;
-  isShared: boolean;
+  privacyMode: 'shared' | 'exclusive' | 'private';
 }
 
 export function AccountsPage() {
   const { currentUser, users } = useAuth();
-  const { allAccounts, createAccount, updateAccount, deleteAccount, getAccountBalance } = useFinance();
+  const { accounts, createAccount, updateAccount, deleteAccount, getAccountBalance } = useFinance();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'total');
@@ -102,17 +105,16 @@ export function AccountsPage() {
     type: 'checking',
     balance: '0',
     userId: currentUser?.id || '',
-    isShared: true,
+    privacyMode: 'shared',
   });
 
   const activeUsers = users.filter(u => u.is_active !== false);
 
   const filteredAccounts = useMemo(() => {
-    if (selectedUserId === 'total') return allAccounts;
-    if (selectedUserId === 'all') return allAccounts.filter(a => a.is_shared);
-    // Usuário específico: apenas as exclusivas dele
-    return allAccounts.filter(a => a.user_id === selectedUserId && !a.is_shared);
-  }, [allAccounts, selectedUserId]);
+    if (selectedUserId === 'total') return accounts;
+    if (selectedUserId === 'all') return accounts.filter(a => a.is_shared && !a.user_id);
+    return accounts.filter(a => a.user_id === selectedUserId);
+  }, [accounts, selectedUserId]);
 
   const activeAccounts = filteredAccounts.filter(a => a.active !== false);
 
@@ -127,7 +129,7 @@ export function AccountsPage() {
       type: 'checking',
       balance: '0',
       userId: currentUser?.id || '',
-      isShared: true,
+      privacyMode: 'shared',
     });
     setEditingAccount(null);
   };
@@ -139,13 +141,18 @@ export function AccountsPage() {
 
   const openEditDialog = (account: Account) => {
     setEditingAccount(account);
+    
+    let privacyMode: any = 'shared';
+    if (!account.is_shared) privacyMode = 'private';
+    else if (account.user_id) privacyMode = 'exclusive';
+
     setFormData({
       name: account.name,
       bank: account.bank || 'outro',
       type: account.account_type === 'corrente' ? 'checking' : account.account_type as any,
       balance: account.opening_balance.toString(),
       userId: account.user_id || currentUser?.id || '',
-      isShared: account.is_shared ?? true,
+      privacyMode,
     });
     setIsDialogOpen(true);
   };
@@ -160,8 +167,8 @@ export function AccountsPage() {
         bank: formData.bank,
         type: formData.type,
         balance: parseFloat(formData.balance) || 0,
-        userId: formData.isShared ? null : formData.userId,
-        isShared: formData.isShared,
+        userId: formData.privacyMode === 'shared' ? null : formData.userId,
+        isShared: formData.privacyMode !== 'private',
       };
 
       if (editingAccount) {
@@ -220,13 +227,17 @@ export function AccountsPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-foreground">{account.name}</p>
-                  {account.is_shared ? (
-                    <Badge variant="secondary" className="text-[10px] h-5 bg-primary/10 text-primary border-none">
-                      <Users className="w-3 h-3 mr-1" /> Família
+                  {!account.is_shared ? (
+                    <Badge variant="secondary" className="text-[10px] h-5 bg-destructive/10 text-destructive border-none">
+                      <Lock className="w-3 h-3 mr-1" /> Privada
                     </Badge>
-                  ) : (
+                  ) : account.user_id ? (
                     <Badge variant="outline" className="text-[10px] h-5">
                       <UserIcon className="w-3 h-3 mr-1" /> Exclusiva
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-[10px] h-5 bg-primary/10 text-primary border-none">
+                      <Users className="w-3 h-3 mr-1" /> Família
                     </Badge>
                   )}
                 </div>
@@ -291,7 +302,7 @@ export function AccountsPage() {
               <p className="text-primary-foreground/80 text-sm font-medium">
                 {selectedUserId === 'total' ? 'Saldo Total Consolidado' : 
                  selectedUserId === 'all' ? 'Saldo das Contas da Família' :
-                 `Saldo Exclusivo de ${users.find(u => u.id === selectedUserId)?.name}`}
+                 `Saldo de ${users.find(u => u.id === selectedUserId)?.name}`}
               </p>
               <p className="text-4xl font-bold text-primary-foreground mt-1">{formatCurrency(totalBalance)}</p>
             </div>
@@ -303,7 +314,7 @@ export function AccountsPage() {
       </Card>
 
       <div className="space-y-10">
-        {activeAccounts.some(a => a.is_shared) && (
+        {activeAccounts.some(a => a.is_shared && !a.user_id) && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 px-1">
               <div className="p-1.5 bg-primary/10 rounded-lg">
@@ -312,23 +323,23 @@ export function AccountsPage() {
               <h2 className="text-xl font-bold">Contas da Família</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {activeAccounts.filter(a => a.is_shared).map(account => (
+              {activeAccounts.filter(a => a.is_shared && !a.user_id).map(account => (
                 <AccountCard key={account.id} account={account} />
               ))}
             </div>
           </div>
         )}
 
-        {activeAccounts.some(a => !a.is_shared) && (
+        {activeAccounts.some(a => a.user_id) && (
           <div className="space-y-6">
             <div className="flex items-center gap-2 px-1">
               <div className="p-1.5 bg-orange-100 rounded-lg">
                 <UserIcon className="w-5 h-5 text-orange-600" />
               </div>
-              <h2 className="text-xl font-bold">Contas Exclusivas</h2>
+              <h2 className="text-xl font-bold">Contas Individuais</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {activeAccounts.filter(a => !a.is_shared).map(account => (
+              {activeAccounts.filter(a => a.user_id).map(account => (
                 <AccountCard key={account.id} account={account} />
               ))}
             </div>
@@ -343,20 +354,56 @@ export function AccountsPage() {
             <DialogDescription>Configure o banco e os detalhes da conta.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-5 py-4">
-            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-2xl border border-dashed">
-              <div className="space-y-0.5">
-                <Label className="text-sm font-bold flex items-center gap-2">
-                  {formData.isShared ? <ShieldCheck className="w-4 h-4 text-primary" /> : <ShieldAlert className="w-4 h-4 text-orange-500" />}
-                  Conta da Família?
-                </Label>
-                <p className="text-[10px] text-muted-foreground">
-                  {formData.isShared ? 'Todos os membros podem ver e lançar nesta conta.' : 'Apenas o dono da conta terá acesso aos dados.'}
-                </p>
-              </div>
-              <Switch checked={formData.isShared} onCheckedChange={v => setFormData({...formData, isShared: v})} />
+            
+            <div className="space-y-3">
+              <Label className="text-sm font-bold">Privacidade e Acesso</Label>
+              <RadioGroup 
+                value={formData.privacyMode} 
+                onValueChange={(v: any) => setFormData({...formData, privacyMode: v})}
+                className="grid grid-cols-1 gap-2"
+              >
+                <div className={cn(
+                  "flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer",
+                  formData.privacyMode === 'shared' ? "border-primary bg-primary/5" : "border-border hover:border-border/80"
+                )} onClick={() => setFormData({...formData, privacyMode: 'shared'})}>
+                  <RadioGroupItem value="shared" id="shared" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="shared" className="font-bold flex items-center gap-2 cursor-pointer">
+                      <Users className="w-4 h-4 text-primary" /> Compartilhada
+                    </Label>
+                    <p className="text-[10px] text-muted-foreground">Todos os membros da família podem ver e realizar lançamentos.</p>
+                  </div>
+                </div>
+
+                <div className={cn(
+                  "flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer",
+                  formData.privacyMode === 'exclusive' ? "border-orange-500 bg-orange-50" : "border-border hover:border-border/80"
+                )} onClick={() => setFormData({...formData, privacyMode: 'exclusive'})}>
+                  <RadioGroupItem value="exclusive" id="exclusive" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="exclusive" className="font-bold flex items-center gap-2 cursor-pointer">
+                      <ShieldCheck className="w-4 h-4 text-orange-500" /> Exclusiva
+                    </Label>
+                    <p className="text-[10px] text-muted-foreground">Todos podem ver o saldo, mas apenas o dono pode realizar lançamentos.</p>
+                  </div>
+                </div>
+
+                <div className={cn(
+                  "flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer",
+                  formData.privacyMode === 'private' ? "border-destructive bg-destructive/5" : "border-border hover:border-border/80"
+                )} onClick={() => setFormData({...formData, privacyMode: 'private'})}>
+                  <RadioGroupItem value="private" id="private" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="private" className="font-bold flex items-center gap-2 cursor-pointer">
+                      <EyeOff className="w-4 h-4 text-destructive" /> Privada
+                    </Label>
+                    <p className="text-[10px] text-muted-foreground">Totalmente invisível para os outros membros da família.</p>
+                  </div>
+                </div>
+              </RadioGroup>
             </div>
 
-            {!formData.isShared && (
+            {formData.privacyMode !== 'shared' && (
               <div className="space-y-2 animate-scale-in">
                 <Label>Dono da Conta</Label>
                 <Select value={formData.userId} onValueChange={v => setFormData({...formData, userId: v})}>
