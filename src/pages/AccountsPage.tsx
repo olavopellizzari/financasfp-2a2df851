@@ -6,7 +6,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { UserFilter } from '@/components/UserFilter';
 import { 
   Dialog,
@@ -37,7 +36,6 @@ import {
   User as UserIcon,
   Loader2,
   ShieldCheck,
-  ShieldAlert,
   Building2,
   LayoutGrid,
   EyeOff,
@@ -142,7 +140,7 @@ export function AccountsPage() {
   const openEditDialog = (account: Account) => {
     setEditingAccount(account);
     
-    let privacyMode: any = 'shared';
+    let privacyMode: 'shared' | 'exclusive' | 'private' = 'shared';
     if (!account.is_shared) privacyMode = 'private';
     else if (account.user_id) privacyMode = 'exclusive';
 
@@ -162,13 +160,17 @@ export function AccountsPage() {
     setIsLoading(true);
 
     try {
+      // Validação crucial: se for compartilhado, o userId DEVE ser null para o banco
+      const finalUserId = formData.privacyMode === 'shared' ? null : (formData.userId || currentUser?.id);
+      const isShared = formData.privacyMode !== 'private';
+
       const accountData = {
         name: formData.name,
         bank: formData.bank,
         type: formData.type,
         balance: parseFloat(formData.balance) || 0,
-        userId: formData.privacyMode === 'shared' ? null : formData.userId,
-        isShared: formData.privacyMode !== 'private',
+        userId: finalUserId,
+        isShared: isShared,
       };
 
       if (editingAccount) {
@@ -362,44 +364,53 @@ export function AccountsPage() {
                 onValueChange={(v: any) => setFormData({...formData, privacyMode: v})}
                 className="grid grid-cols-1 gap-2"
               >
-                <div className={cn(
-                  "flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer",
-                  formData.privacyMode === 'shared' ? "border-primary bg-primary/5" : "border-border hover:border-border/80"
-                )} onClick={() => setFormData({...formData, privacyMode: 'shared'})}>
+                <Label 
+                  htmlFor="shared"
+                  className={cn(
+                    "flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer",
+                    formData.privacyMode === 'shared' ? "border-primary bg-primary/5" : "border-border hover:border-border/80"
+                  )}
+                >
                   <RadioGroupItem value="shared" id="shared" className="mt-1" />
                   <div className="flex-1">
-                    <Label htmlFor="shared" className="font-bold flex items-center gap-2 cursor-pointer">
+                    <div className="font-bold flex items-center gap-2">
                       <Users className="w-4 h-4 text-primary" /> Compartilhada
-                    </Label>
+                    </div>
                     <p className="text-[10px] text-muted-foreground">Todos os membros da família podem ver e realizar lançamentos.</p>
                   </div>
-                </div>
+                </Label>
 
-                <div className={cn(
-                  "flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer",
-                  formData.privacyMode === 'exclusive' ? "border-orange-500 bg-orange-50" : "border-border hover:border-border/80"
-                )} onClick={() => setFormData({...formData, privacyMode: 'exclusive'})}>
+                <Label 
+                  htmlFor="exclusive"
+                  className={cn(
+                    "flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer",
+                    formData.privacyMode === 'exclusive' ? "border-orange-500 bg-orange-50" : "border-border hover:border-border/80"
+                  )}
+                >
                   <RadioGroupItem value="exclusive" id="exclusive" className="mt-1" />
                   <div className="flex-1">
-                    <Label htmlFor="exclusive" className="font-bold flex items-center gap-2 cursor-pointer">
+                    <div className="font-bold flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-orange-500" /> Exclusiva
-                    </Label>
+                    </div>
                     <p className="text-[10px] text-muted-foreground">Todos podem ver o saldo, mas apenas o dono pode realizar lançamentos.</p>
                   </div>
-                </div>
+                </Label>
 
-                <div className={cn(
-                  "flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer",
-                  formData.privacyMode === 'private' ? "border-destructive bg-destructive/5" : "border-border hover:border-border/80"
-                )} onClick={() => setFormData({...formData, privacyMode: 'private'})}>
+                <Label 
+                  htmlFor="private"
+                  className={cn(
+                    "flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer",
+                    formData.privacyMode === 'private' ? "border-destructive bg-destructive/5" : "border-border hover:border-border/80"
+                  )}
+                >
                   <RadioGroupItem value="private" id="private" className="mt-1" />
                   <div className="flex-1">
-                    <Label htmlFor="private" className="font-bold flex items-center gap-2 cursor-pointer">
+                    <div className="font-bold flex items-center gap-2">
                       <EyeOff className="w-4 h-4 text-destructive" /> Privada
-                    </Label>
+                    </div>
                     <p className="text-[10px] text-muted-foreground">Totalmente invisível para os outros membros da família.</p>
                   </div>
-                </div>
+                </Label>
               </RadioGroup>
             </div>
 
