@@ -10,6 +10,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
+import { 
   Plus, 
   Wallet, 
   AlertTriangle, 
@@ -18,7 +25,8 @@ import {
   CalendarIcon,
   Pencil,
   Trash2,
-  DollarSign
+  DollarSign,
+  Calculator
 } from 'lucide-react';
 import { db, Debt, formatCurrency, generateId } from '@/lib/db';
 import { toast } from '@/hooks/use-toast';
@@ -43,6 +51,8 @@ export function DebtsPage() {
     startDate: new Date(),
     dueDate: new Date(),
     monthlyPayment: '',
+    installmentsCount: '',
+    frequency: 'monthly' as 'monthly' | 'semiannual' | 'annual',
     notes: ''
   });
 
@@ -55,6 +65,15 @@ export function DebtsPage() {
     const data = await db.getAll<Debt>('debts');
     setDebts(data.filter(d => d.user_id === currentUser.id));
   };
+
+  // Cálculo automático do valor total baseado em parcelas
+  useEffect(() => {
+    const payment = parseFloat(debtForm.monthlyPayment) || 0;
+    const count = parseInt(debtForm.installmentsCount) || 0;
+    if (payment > 0 && count > 0) {
+      setDebtForm(prev => ({ ...prev, totalAmount: (payment * count).toFixed(2) }));
+    }
+  }, [debtForm.monthlyPayment, debtForm.installmentsCount]);
 
   const handleSaveDebt = async () => {
     if (!currentUser || !debtForm.name || !debtForm.totalAmount) {
@@ -73,6 +92,8 @@ export function DebtsPage() {
         start_date: debtForm.startDate as any,
         due_date: debtForm.dueDate as any,
         monthly_payment: parseFloat(debtForm.monthlyPayment) || 0,
+        installments_count: parseInt(debtForm.installmentsCount) || undefined,
+        frequency: debtForm.frequency,
         is_active: true,
         notes: debtForm.notes,
         createdAt: editingDebt?.createdAt || new Date(),
@@ -109,6 +130,8 @@ export function DebtsPage() {
       startDate: new Date(debt.start_date),
       dueDate: new Date(debt.due_date),
       monthlyPayment: debt.monthly_payment.toString(),
+      installmentsCount: debt.installments_count?.toString() || '',
+      frequency: debt.frequency || 'monthly',
       notes: debt.notes
     });
     setDialogOpen(true);
@@ -170,6 +193,8 @@ export function DebtsPage() {
       startDate: new Date(),
       dueDate: new Date(),
       monthlyPayment: '',
+      installmentsCount: '',
+      frequency: 'monthly',
       notes: ''
     });
   };
@@ -309,7 +334,7 @@ export function DebtsPage() {
                         <p className="font-semibold text-expense">{formatCurrency(remaining)}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Parcela Mensal</p>
+                        <p className="text-xs text-muted-foreground">Parcela ({debt.frequency === 'annual' ? 'Anual' : debt.frequency === 'semiannual' ? 'Semestral' : 'Mensal'})</p>
                         <p className="font-semibold">{formatCurrency(debt.monthly_payment)}</p>
                       </div>
                     </div>
@@ -393,7 +418,47 @@ export function DebtsPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Valor Total *</Label>
+                <Label>Frequência</Label>
+                <Select 
+                  value={debtForm.frequency} 
+                  onValueChange={(v: any) => setDebtForm(prev => ({ ...prev, frequency: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Mensal</SelectItem>
+                    <SelectItem value="semiannual">Semestral</SelectItem>
+                    <SelectItem value="annual">Anual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Nº de Parcelas</Label>
+                <Input
+                  type="number"
+                  value={debtForm.installmentsCount}
+                  onChange={(e) => setDebtForm(prev => ({ ...prev, installmentsCount: e.target.value }))}
+                  placeholder="Ex: 12"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Valor da Parcela *</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={debtForm.monthlyPayment}
+                  onChange={(e) => setDebtForm(prev => ({ ...prev, monthlyPayment: e.target.value }))}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1">
+                  Valor Total <Calculator className="h-3 w-3 text-muted-foreground" />
+                </Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -402,6 +467,9 @@ export function DebtsPage() {
                   placeholder="0.00"
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Já Pago</Label>
                 <Input
@@ -409,19 +477,6 @@ export function DebtsPage() {
                   step="0.01"
                   value={debtForm.paidAmount}
                   onChange={(e) => setDebtForm(prev => ({ ...prev, paidAmount: e.target.value }))}
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Parcela Mensal</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={debtForm.monthlyPayment}
-                  onChange={(e) => setDebtForm(prev => ({ ...prev, monthlyPayment: e.target.value }))}
                   placeholder="0.00"
                 />
               </div>

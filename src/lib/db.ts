@@ -176,6 +176,8 @@ export interface Debt {
   start_date: string;
   due_date: string;
   monthly_payment: number;
+  installments_count?: number;
+  frequency?: 'monthly' | 'semiannual' | 'annual';
   is_active: boolean;
   notes: string;
   createdAt: Date;
