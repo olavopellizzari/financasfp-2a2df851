@@ -96,30 +96,32 @@ export function Dashboard() {
 
   const filteredAccounts = useMemo(() => {
     if (selectedUserId === 'total') return allAccounts;
-    if (selectedUserId === 'all') return allAccounts.filter(a => a.is_shared);
-    // Usuário específico: apenas as exclusivas dele
-    return allAccounts.filter(a => a.user_id === selectedUserId && !a.is_shared);
+    // Família: Apenas o que é compartilhado e NÃO tem dono específico
+    if (selectedUserId === 'all') return allAccounts.filter(a => a.is_shared && !a.user_id);
+    // Usuário específico: Tudo o que pertence a ele (Exclusivo ou Privado)
+    return allAccounts.filter(a => a.user_id === selectedUserId);
   }, [allAccounts, selectedUserId]);
 
   const userFilteredTransactions = useMemo(() => {
     if (selectedUserId === 'total') return allTransactions;
 
     if (selectedUserId === 'all') {
-      const sharedAccountIds = new Set(allAccounts.filter(a => a.is_shared).map(a => a.id));
-      const sharedCardIds = new Set(allCards.filter(c => (c as any).is_shared).map(c => c.id));
+      // Transações de contas/cartões da família (sem dono)
+      const familyAccountIds = new Set(allAccounts.filter(a => a.is_shared && !a.user_id).map(a => a.id));
+      const familyCardIds = new Set(allCards.filter(c => (c as any).is_shared && !c.user_id).map(c => c.id));
       return allTransactions.filter(t => 
-        (t.accountId && sharedAccountIds.has(t.accountId)) || 
-        (t.cardId && sharedCardIds.has(t.cardId))
+        (t.accountId && familyAccountIds.has(t.accountId)) || 
+        (t.cardId && familyCardIds.has(t.cardId))
       );
     }
 
-    // Usuário específico: apenas transações de contas/cartões exclusivos dele
-    const exclusiveAccountIds = new Set(allAccounts.filter(a => a.user_id === selectedUserId && !a.is_shared).map(a => a.id));
-    const exclusiveCardIds = new Set(allCards.filter(c => c.user_id === selectedUserId && !(c as any).is_shared).map(c => c.id));
+    // Usuário específico: Transações de contas/cartões que pertencem a ele
+    const userAccountIds = new Set(allAccounts.filter(a => a.user_id === selectedUserId).map(a => a.id));
+    const userCardIds = new Set(allCards.filter(c => c.user_id === selectedUserId).map(c => c.id));
     
     return allTransactions.filter(t => {
-      if (t.accountId) return exclusiveAccountIds.has(t.accountId);
-      if (t.cardId) return exclusiveCardIds.has(t.cardId);
+      if (t.accountId) return userAccountIds.has(t.accountId);
+      if (t.cardId) return userCardIds.has(t.cardId);
       return t.userId === selectedUserId;
     });
   }, [allTransactions, allAccounts, allCards, selectedUserId]);
@@ -136,7 +138,6 @@ export function Dashboard() {
   }, [launchTransactions]);
 
   const totalBalance = useMemo(() => {
-    // Filtra contas ativas e que NÃO estão marcadas para exclusão dos totais
     return filteredAccounts
       .filter(a => a.active !== false && !a.exclude_from_totals)
       .reduce((sum, a) => sum + getAccountBalance(a.id), 0);
@@ -187,12 +188,12 @@ export function Dashboard() {
 
     const cardsToShow = allCards.filter(card => {
       if (selectedUserId === 'total') return true;
-      if (selectedUserId === 'all') return (card as any).is_shared;
-      return card.user_id === selectedUserId && !(card as any).is_shared;
+      if (selectedUserId === 'all') return (card as any).is_shared && !card.user_id;
+      return card.user_id === selectedUserId;
     });
 
     cardsToShow.forEach(card => {
-      const isShared = (card as any).is_shared;
+      const isShared = (card as any).is_shared && !card.user_id;
       const ownerId = card.user_id;
       const owner = users.find(u => u.id === ownerId);
 
