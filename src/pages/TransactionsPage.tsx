@@ -201,6 +201,7 @@ export function TransactionsPage() {
 
   const filteredTransactions = useMemo(() => {
     return allTransactions.filter(tx => {
+      // 1. Filtro de Modo (Cartão vs Conta)
       if (isCardMode) {
         if (tx.type !== 'CREDIT' && tx.type !== 'REFUND') return false;
         if (selectedCardId !== 'all' && tx.cardId !== selectedCardId) return false;
@@ -210,25 +211,27 @@ export function TransactionsPage() {
         if (tx.effectiveMonth !== selectedMonthStr) return false;
       }
 
+      // 2. Filtro de Usuário (Lógica idêntica ao Dashboard)
       let matchesUser = true;
       if (selectedUserId === 'total') {
         matchesUser = true;
       } else if (selectedUserId === 'all') {
-        const account = allAccounts.find(a => a.id === tx.accountId);
-        const card = allCards.find(c => c.id === tx.cardId);
-        matchesUser = (account?.is_shared) || ((card as any)?.is_shared);
+        // Família: Apenas o que é compartilhado e NÃO tem dono específico
+        const familyAccountIds = new Set(allAccounts.filter(a => a.is_shared && !a.user_id).map(a => a.id));
+        const familyCardIds = new Set(allCards.filter(c => (c as any).is_shared && !c.user_id).map(c => c.id));
+        matchesUser = (tx.accountId && familyAccountIds.has(tx.accountId)) || 
+                      (tx.cardId && familyCardIds.has(tx.cardId));
       } else {
-        if (tx.cardId) {
-          const card = allCards.find(c => c.id === tx.cardId);
-          matchesUser = card?.user_id === selectedUserId && !(card as any).is_shared;
-        } else if (tx.accountId) {
-          const acc = allAccounts.find(a => a.id === tx.accountId);
-          matchesUser = acc?.user_id === selectedUserId && !acc.is_shared;
-        } else {
-          matchesUser = tx.userId === selectedUserId;
-        }
+        // Usuário específico: Tudo o que pertence a ele (Exclusivo ou Privado)
+        const userAccountIds = new Set(allAccounts.filter(a => a.user_id === selectedUserId).map(a => a.id));
+        const userCardIds = new Set(allCards.filter(c => c.user_id === selectedUserId).map(c => c.id));
+        
+        if (tx.accountId) matchesUser = userAccountIds.has(tx.accountId);
+        else if (tx.cardId) matchesUser = userCardIds.has(tx.cardId);
+        else matchesUser = tx.userId === selectedUserId;
       }
 
+      // 3. Filtros de Busca e Tipo
       const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = filterType === 'ALL' || tx.type === filterType;
       
