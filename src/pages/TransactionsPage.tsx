@@ -169,7 +169,7 @@ export function TransactionsPage() {
     mesFatura: format(new Date(), 'yyyy-MM'),
     categoryId: '',
     accountId: '',
-    cardId: initialCardId !== 'all' ? initialCardId : (allCards[0]?.id || ''),
+    cardId: initialCardId !== 'all' ? initialCardId : '',
     installments: '1',
     isPaid: false,
     recurrence: 'none' as 'none' | 'monthly' | 'annual' | 'custom',
@@ -181,6 +181,15 @@ export function TransactionsPage() {
 
   const isAdmin = isCurrentUserAdmin();
   
+  // Filtro de Contas e Cartões disponíveis para o usuário logado
+  const availableAccounts = useMemo(() => {
+    return allAccounts.filter(a => a.active && (a.is_shared || a.user_id === currentUser?.id));
+  }, [allAccounts, currentUser?.id]);
+
+  const availableCards = useMemo(() => {
+    return allCards.filter(c => !c.is_archived && ((c as any).is_shared || c.user_id === currentUser?.id));
+  }, [allCards, currentUser?.id]);
+
   const selectedMonthStr = useMemo(() => {
     if (!currentMonth || !isValid(currentMonth)) return format(new Date(), 'yyyy-MM');
     return format(currentMonth, 'yyyy-MM');
@@ -275,8 +284,8 @@ export function TransactionsPage() {
       purchaseDate: new Date(),
       mesFatura: format(new Date(), 'yyyy-MM'),
       categoryId: '',
-      accountId: allAccounts[0]?.id || '',
-      cardId: (selectedCardId !== 'all' ? selectedCardId : (allCards[0]?.id || '')),
+      accountId: availableAccounts[0]?.id || '',
+      cardId: (selectedCardId !== 'all' ? selectedCardId : (availableCards[0]?.id || '')),
       installments: '1',
       isPaid: defaultType === 'INCOME' || defaultType === 'TRANSFER' || defaultType === 'REFUND',
       recurrence: 'none',
@@ -308,14 +317,12 @@ export function TransactionsPage() {
   }, [formData.purchaseDate, formData.cardId, formData.type, calculateMesFatura, editingTransaction]);
 
   const handleOpenDialog = () => {
-    if (!isCardMode && allAccounts.length === 0) {
-      toast({ title: "Conta necessária", description: "Crie uma conta antes de lançar transações.", variant: "destructive" });
-      navigate('/accounts');
+    if (!isCardMode && availableAccounts.length === 0) {
+      toast({ title: "Conta necessária", description: "Você não possui acesso a nenhuma conta para lançar.", variant: "destructive" });
       return;
     }
-    if (isCardMode && allCards.length === 0) {
-      toast({ title: "Cartão necessário", description: "Crie um cartão antes de lançar gastos.", variant: "destructive" });
-      navigate('/cards');
+    if (isCardMode && availableCards.length === 0) {
+      toast({ title: "Cartão necessário", description: "Você não possui acesso a nenhum cartão para lançar.", variant: "destructive" });
       return;
     }
     resetForm();
@@ -439,13 +446,10 @@ export function TransactionsPage() {
       let currentMesFatura = null;
       let effectiveMonthStr = format(dateForIteration, 'yyyy-MM');
       
-      // REGRAS DE COMPETÊNCIA SOLICITADAS:
       if (formData.type === 'CREDIT' || formData.type === 'REFUND') {
-        // Cartão: Competência = Mês da Fatura
         currentMesFatura = calculateMesFatura(dateForIteration, formData.cardId);
         effectiveMonthStr = currentMesFatura;
       } else {
-        // Conta: Competência = Mês do Lançamento
         effectiveMonthStr = format(dateForIteration, 'yyyy-MM');
         currentMesFatura = null;
       }
@@ -641,10 +645,57 @@ export function TransactionsPage() {
             </TabsList>
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Usuário {activeTab === 'TRANSFER' && 'Origem'}</Label><Select value={formData.userId} onValueChange={v => setFormData({ ...formData, userId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{users.filter(u => u.is_active !== false).map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent></Select></div>
-                <div className="space-y-2"><Label>{(formData.type === 'CREDIT' || formData.type === 'REFUND') ? 'Cartão' : 'Conta Origem'}</Label>{(formData.type === 'CREDIT' || formData.type === 'REFUND') ? <Select value={formData.cardId} onValueChange={v => setFormData({ ...formData, cardId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{allCards.filter(c => !c.is_archived).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select> : <Select value={formData.accountId} onValueChange={v => setFormData({ ...formData, accountId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{allAccounts.filter(a => a.active).map(a => (<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}</SelectContent></Select>}</div>
+                <div className="space-y-2">
+                  <Label>Usuário {activeTab === 'TRANSFER' && 'Origem'}</Label>
+                  <Select value={formData.userId} onValueChange={v => setFormData({ ...formData, userId: v })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      {users.filter(u => u.is_active !== false).map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>{(formData.type === 'CREDIT' || formData.type === 'REFUND') ? 'Cartão' : 'Conta Origem'}</Label>
+                  {(formData.type === 'CREDIT' || formData.type === 'REFUND') ? (
+                    <Select 
+                      value={formData.cardId} 
+                      onValueChange={v => {
+                        const card = availableCards.find(c => c.id === v);
+                        setFormData({ 
+                          ...formData, 
+                          cardId: v,
+                          // Se o cartão for exclusivo, força o usuário a ser o dono
+                          userId: card && !(card as any).is_shared ? card.user_id : formData.userId
+                        });
+                      }}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        {availableCards.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Select 
+                      value={formData.accountId} 
+                      onValueChange={v => {
+                        const acc = availableAccounts.find(a => a.id === v);
+                        setFormData({ 
+                          ...formData, 
+                          accountId: v,
+                          // Se a conta for exclusiva, força o usuário a ser o dono
+                          userId: acc && !acc.is_shared ? acc.user_id || '' : formData.userId
+                        });
+                      }}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        {availableAccounts.map(a => (<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
               </div>
-              {activeTab === 'TRANSFER' && (<div className="p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-4"><div className="flex items-center gap-2 text-primary font-bold text-sm"><ArrowRight className="w-4 h-4" /> Destino da Transferência</div><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label>Usuário Destino</Label><Select value={formData.destinationUserId} onValueChange={v => setFormData({ ...formData, destinationUserId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{users.filter(u => u.is_active !== false).map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><Label>Conta Destino</Label><Select value={formData.destinationAccountId} onValueChange={v => setFormData({ ...formData, destinationAccountId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{allAccounts.filter(a => a.active).map(a => (<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}</SelectContent></Select></div></div></div>)}
+              {activeTab === 'TRANSFER' && (<div className="p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-4"><div className="flex items-center gap-2 text-primary font-bold text-sm"><ArrowRight className="w-4 h-4" /> Destino da Transferência</div><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label>Usuário Destino</Label><Select value={formData.destinationUserId} onValueChange={v => setFormData({ ...formData, destinationUserId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{users.filter(u => u.is_active !== false).map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><Label>Conta Destino</Label><Select value={formData.destinationAccountId} onValueChange={v => setFormData({ ...formData, destinationAccountId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{availableAccounts.map(a => (<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}</SelectContent></Select></div></div></div>)}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Data da Compra</Label><Input type="date" value={isValid(formData.purchaseDate) ? format(formData.purchaseDate, 'yyyy-MM-dd') : ''} onChange={e => setFormData({ ...formData, purchaseDate: parseInputDate(e.target.value) })} /></div>
                 <div className="space-y-2"><Label>Valor</Label><Input type="number" step="0.01" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} placeholder="0,00" required /></div>
