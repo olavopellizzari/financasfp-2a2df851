@@ -109,7 +109,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div 
-      className="min-h-screen flex w-full bg-background"
+      className="min-h-screen flex w-full bg-background overflow-x-hidden"
       style={{ 
         '--primary': userHsl,
         '--sidebar-primary': userHsl,
@@ -206,18 +206,18 @@ export function AppLayout({ children }: AppLayoutProps) {
         </button>
       </aside>
 
-      <main className="flex-1 flex flex-col min-h-screen">
+      <main className="flex-1 flex flex-col min-h-screen min-w-0">
         <header className="flex items-center justify-between p-4 border-b bg-card">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setIsMobileMenuOpen(true)}>
+          <div className="flex items-center gap-3 min-w-0">
+            <Button variant="ghost" size="icon" className="lg:hidden flex-shrink-0" onClick={() => setIsMobileMenuOpen(true)}>
               <Menu className="w-5 h-5" />
             </Button>
-            <div className="flex items-center gap-2">
-              <Wallet className="w-5 h-5 text-primary" />
-              <span className="font-bold text-lg">{familyName || 'Finanças'}</span>
+            <div className="flex items-center gap-2 truncate">
+              <Wallet className="w-5 h-5 text-primary flex-shrink-0" />
+              <span className="font-bold text-lg truncate">{familyName || 'Finanças'}</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <NotificationsPanel />
             
             <DropdownMenu>
@@ -251,7 +251,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
         </header>
 
-        <div className="flex-1 p-4 lg:p-6 overflow-auto">
+        <div className="flex-1 p-4 lg:p-6 overflow-x-hidden overflow-y-auto">
           {children}
         </div>
       </main>
