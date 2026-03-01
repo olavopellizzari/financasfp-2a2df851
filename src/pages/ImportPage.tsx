@@ -47,7 +47,7 @@ const CATEGORY_KEYWORDS: Record<string, string> = {
 };
 
 export function ImportPage() {
-  const { categories, refresh, allCards, allAccounts } = useFinance();
+  const { categories, refresh, allCards, allAccounts, calculateMesFatura, createTransaction } = useFinance();
   const { currentUser, users } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -179,8 +179,6 @@ export function ImportPage() {
 
     setIsLoading(true);
     try {
-      const baseEffectiveDate = parse(headerMonth, 'yyyy-MM', new Date());
-
       for (const item of parsedData) {
         const groupId = item.installments ? generateId() : null;
         const startInstallment = item.installments?.current || 1;
@@ -191,37 +189,35 @@ export function ImportPage() {
 
         for (let i = 0; i <= (totalInstallments - startInstallment); i++) {
           const currentInstallmentNum = startInstallment + i;
-          const targetEffectiveMonth = format(addMonths(baseEffectiveDate, i), 'yyyy-MM');
-          const targetInvoiceMonth = importType === 'card' ? format(subMonths(parse(targetEffectiveMonth, 'yyyy-MM', new Date()), 1), 'yyyy-MM') : null;
+          const dateForIteration = addMonths(item.date, i);
           
-          await db.add('transactions', {
-            id: generateId(),
+          let effectiveMonthStr = format(dateForIteration, 'yyyy-MM');
+          let currentMesFatura = null;
+
+          if (importType === 'card') {
+            currentMesFatura = calculateMesFatura(dateForIteration, globalTargetId);
+            effectiveMonthStr = currentMesFatura;
+          }
+
+          await createTransaction({
             type: item.type,
             amount: item.amount,
             description: item.description,
-            purchaseDate: addMonths(item.date, i), // BUG FIX: Data da compra avança mensalmente
-            effectiveDate: addMonths(item.date, i),
-            effectiveMonth: targetEffectiveMonth,
-            mesFatura: targetInvoiceMonth,
+            purchaseDate: dateForIteration,
+            effectiveDate: dateForIteration,
+            effectiveMonth: effectiveMonthStr,
+            mes_fatura: currentMesFatura,
             status: 'confirmed',
             isPaid: false,
             userId: item.matchedUserId || currentUser?.id || '',
             accountId: finalAccountId,
             cardId: finalCardId,
-            invoiceId: null,
             categoryId: item.suggestedCategoryId || '',
-            merchantId: null,
-            tagIds: [],
             installmentGroupId: groupId,
             installmentNumber: currentInstallmentNum,
             totalInstallments: totalInstallments,
             notes: `Importado: ${item.userName}`,
-            importBatchId: null,
-            isRecurring: false,
-            recurrenceType: null,
-            recurrenceCount: null,
-            createdAt: new Date(),
-            updatedAt: new Date()
+            isRecurring: false
           });
         }
       }

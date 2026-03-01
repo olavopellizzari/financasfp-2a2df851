@@ -30,6 +30,7 @@ export function SettingsPage() {
   const [isCleaning, setIsCleaning] = useState(false);
   const [isFixingDates, setIsFixingDates] = useState(false);
   const [isRecalculating, setIsRecalculating] = useState(false);
+  const [isFixingAccountMonths, setIsFixingAccountMonths] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingEmail, setSavingEmail] = useState(false);
@@ -168,7 +169,7 @@ export function SettingsPage() {
           .from('transactions')
           .update({ description: newDescription })
           .eq('id', tx.id)
-          .in('user_id', familyUserIds); // Filtro de segurança por usuários da família
+          .in('user_id', familyUserIds);
         
         if (!error) count++;
       }
@@ -216,7 +217,7 @@ export function SettingsPage() {
               .from('transactions')
               .update({ purchase_date: correctDateStr, effective_date: correctDateStr })
               .eq('id', tx.id)
-              .in('user_id', familyUserIds); // Filtro de segurança
+              .in('user_id', familyUserIds);
             
             if (!error) totalUpdated++;
           }
@@ -253,9 +254,9 @@ export function SettingsPage() {
         if (tx.mesFatura !== newMesFatura) {
           const { error } = await supabase
             .from('transactions')
-            .update({ mes_fatura: newMesFatura })
+            .update({ mes_fatura: newMesFatura, effective_month: newMesFatura })
             .eq('id', tx.id)
-            .in('user_id', familyUserIds); // Filtro de segurança
+            .in('user_id', familyUserIds);
           
           if (!error) updatedCount++;
         }
@@ -267,6 +268,39 @@ export function SettingsPage() {
       toast({ title: "Erro no recálculo", description: error.message, variant: "destructive" });
     } finally {
       setIsRecalculating(false);
+    }
+  };
+
+  const handleFixAccountMonths = async () => {
+    if (!currentUser?.family_id) return;
+    const familyUserIds = users.map(u => u.id);
+    if (!confirm('Isso garantirá que todos os lançamentos em CONTA fiquem no mês da própria data. Deseja continuar?')) return;
+    
+    setIsFixingAccountMonths(true);
+    try {
+      const accountTxs = allTransactions.filter(t => !t.cardId);
+      let updatedCount = 0;
+
+      for (const tx of accountTxs) {
+        const correctMonth = tx.purchaseDate.substring(0, 7); // yyyy-MM
+        
+        if (tx.effectiveMonth !== correctMonth) {
+          const { error } = await supabase
+            .from('transactions')
+            .update({ effective_month: correctMonth, mes_fatura: null })
+            .eq('id', tx.id)
+            .in('user_id', familyUserIds);
+          
+          if (!error) updatedCount++;
+        }
+      }
+
+      toast({ title: "Competências corrigidas!", description: `${updatedCount} lançamentos em conta foram ajustados.` });
+      await refresh();
+    } catch (error: any) {
+      toast({ title: "Erro na correção", description: error.message, variant: "destructive" });
+    } finally {
+      setIsFixingAccountMonths(false);
     }
   };
 
@@ -284,7 +318,6 @@ export function SettingsPage() {
       const familyId = currentUser.family_id;
       const familyUserIds = users.map(u => u.id);
 
-      // Tabelas que possuem household_id
       if (onlyTransactions) {
         await supabase.from('transactions').delete().in('user_id', familyUserIds);
       } else {
@@ -501,6 +534,17 @@ export function SettingsPage() {
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><Wrench className="h-5 w-5" /> Manutenção da Família</CardTitle></CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Corrigir Competência de Contas</Label>
+                  <p className="text-sm text-muted-foreground">Garante que lançamentos em conta fiquem no mês da própria data.</p>
+                </div>
+                <Button variant="outline" onClick={handleFixAccountMonths} disabled={isFixingAccountMonths}>
+                  {isFixingAccountMonths ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />} 
+                  Corrigir Contas
+                </Button>
+              </div>
+              <Separator />
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Recalcular Faturas</Label>

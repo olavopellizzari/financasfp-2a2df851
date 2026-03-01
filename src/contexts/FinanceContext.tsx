@@ -217,6 +217,27 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.isPaid !== undefined) updateData.is_paid = data.isPaid;
     if (data.categoryId !== undefined) updateData.category_id = data.categoryId;
     if (data.status !== undefined) updateData.status = data.status;
+    if (data.userId !== undefined) updateData.user_id = data.userId;
+    
+    // Se a data mudar, precisamos recalcular a competência
+    if (data.purchaseDate !== undefined) {
+      const pDate = data.purchaseDate instanceof Date ? data.purchaseDate : parseISO(data.purchaseDate);
+      updateData.purchase_date = format(pDate, 'yyyy-MM-dd');
+      updateData.effective_date = format(pDate, 'yyyy-MM-dd');
+      
+      // Busca a transação atual para saber se é cartão ou conta
+      const currentTx = allTransactions.find(t => t.id === id);
+      if (currentTx) {
+        if (currentTx.cardId) {
+          const mesFatura = calculateMesFatura(pDate, currentTx.cardId);
+          updateData.mes_fatura = mesFatura;
+          updateData.effective_month = mesFatura;
+        } else {
+          updateData.effective_month = format(pDate, 'yyyy-MM');
+          updateData.mes_fatura = null;
+        }
+      }
+    }
     
     const { error } = await supabase
       .from('transactions')
