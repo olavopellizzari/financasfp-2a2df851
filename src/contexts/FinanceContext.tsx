@@ -67,6 +67,11 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       const familyId = currentUser.family_id;
       const familyUserIds = users.map(u => u.id);
 
+      // Se a lista de usuários ainda não carregou, esperamos um pouco
+      if (familyUserIds.length === 0) {
+        familyUserIds.push(currentUser.id);
+      }
+
       const [catData, accData, cardData, txData, budData, invData, goalData, debtData] = await Promise.all([
         supabase
           .from('categories')
@@ -75,7 +80,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           .order('name'),
         supabase.from('accounts').select('*').eq('household_id', familyId).order('name'),
         supabase.from('cards').select('*').eq('household_id', familyId).order('name'),
-        supabase.from('transactions').select('*').eq('household_id', familyId).order('purchase_date', { ascending: false }),
+        supabase.from('transactions').select('*').in('user_id', familyUserIds).order('purchase_date', { ascending: false }),
         supabase.from('budgets').select('*').in('user_id', familyUserIds),
         supabase.from('invoices').select('*').in('user_id', familyUserIds),
         supabase.from('goals').select('*').in('user_id', familyUserIds),
@@ -182,7 +187,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const createTransaction = async (data: any) => {
     const { error } = await supabase.from('transactions').insert([{
       user_id: data.userId,
-      household_id: currentUser?.family_id,
       account_id: data.accountId,
       card_id: data.cardId,
       category_id: data.categoryId,
@@ -216,8 +220,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase
       .from('transactions')
       .update(updateData)
-      .eq('id', id)
-      .eq('household_id', currentUser?.family_id); // Segurança extra
+      .eq('id', id);
 
     if (error) throw error;
     await fetchData();
@@ -227,8 +230,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase
       .from('transactions')
       .delete()
-      .eq('id', id)
-      .eq('household_id', currentUser?.family_id); // Segurança extra
+      .eq('id', id);
 
     if (error) throw error;
     await fetchData();
@@ -262,8 +264,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase
       .from('accounts')
       .update(updateData)
-      .eq('id', id)
-      .eq('household_id', currentUser?.family_id); // Segurança extra
+      .eq('id', id);
 
     if (error) throw error;
     await fetchData();
@@ -273,8 +274,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase
       .from('accounts')
       .delete()
-      .eq('id', id)
-      .eq('household_id', currentUser?.family_id); // Segurança extra
+      .eq('id', id);
 
     if (error) throw error;
     await fetchData();
@@ -318,8 +318,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase
       .from('cards')
       .update(updateData)
-      .eq('id', id)
-      .eq('household_id', currentUser?.family_id); // Segurança extra
+      .eq('id', id);
 
     if (error) throw error;
     await fetchData();
@@ -329,8 +328,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase
       .from('cards')
       .delete()
-      .eq('id', id)
-      .eq('household_id', currentUser?.family_id); // Segurança extra
+      .eq('id', id);
 
     if (error) throw error;
     await fetchData();

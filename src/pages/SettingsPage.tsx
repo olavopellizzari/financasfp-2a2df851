@@ -148,6 +148,7 @@ export function SettingsPage() {
 
   const handleFixDescriptions = async () => {
     if (!currentUser?.family_id) return;
+    const familyUserIds = users.map(u => u.id);
     if (!confirm('Isso removerá sufixos como "(1/12)" de todas as descrições de lançamentos da sua família. Deseja continuar?')) return;
     
     setIsCleaning(true);
@@ -167,7 +168,7 @@ export function SettingsPage() {
           .from('transactions')
           .update({ description: newDescription })
           .eq('id', tx.id)
-          .eq('household_id', currentUser.family_id); // Filtro de segurança
+          .in('user_id', familyUserIds); // Filtro de segurança por usuários da família
         
         if (!error) count++;
       }
@@ -183,6 +184,7 @@ export function SettingsPage() {
 
   const handleFixDates = async () => {
     if (!currentUser?.family_id) return;
+    const familyUserIds = users.map(u => u.id);
     if (!confirm('Isso ajustará a data de cada parcela para o mês correspondente na sua família. Deseja continuar?')) return;
     
     setIsFixingDates(true);
@@ -214,7 +216,7 @@ export function SettingsPage() {
               .from('transactions')
               .update({ purchase_date: correctDateStr, effective_date: correctDateStr })
               .eq('id', tx.id)
-              .eq('household_id', currentUser.family_id); // Filtro de segurança
+              .in('user_id', familyUserIds); // Filtro de segurança
             
             if (!error) totalUpdated++;
           }
@@ -236,6 +238,7 @@ export function SettingsPage() {
 
   const handleRecalculateInvoices = async () => {
     if (!currentUser?.family_id) return;
+    const familyUserIds = users.map(u => u.id);
     if (!confirm('Isso atualizará o mês da fatura de todos os lançamentos de cartão da sua família. Deseja continuar?')) return;
     
     setIsRecalculating(true);
@@ -252,7 +255,7 @@ export function SettingsPage() {
             .from('transactions')
             .update({ mes_fatura: newMesFatura })
             .eq('id', tx.id)
-            .eq('household_id', currentUser.family_id); // Filtro de segurança
+            .in('user_id', familyUserIds); // Filtro de segurança
           
           if (!error) updatedCount++;
         }
@@ -282,13 +285,13 @@ export function SettingsPage() {
       const familyUserIds = users.map(u => u.id);
 
       // Tabelas que possuem household_id
-      const householdTables = onlyTransactions ? ['transactions'] : ['transactions', 'cards', 'accounts'];
-      for (const table of householdTables) {
-        await supabase.from(table).delete().eq('household_id', familyId);
-      }
-
-      // Tabelas que possuem apenas user_id (filtramos pelos membros da família)
-      if (!onlyTransactions) {
+      if (onlyTransactions) {
+        await supabase.from('transactions').delete().in('user_id', familyUserIds);
+      } else {
+        await supabase.from('transactions').delete().in('user_id', familyUserIds);
+        await supabase.from('cards').delete().eq('household_id', familyId);
+        await supabase.from('accounts').delete().eq('household_id', familyId);
+        
         const userTables = ['budgets', 'goals', 'debts', 'invoices'];
         for (const table of userTables) {
           await supabase.from(table).delete().in('user_id', familyUserIds);
