@@ -46,7 +46,7 @@ interface FinanceContextType {
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
-  const { currentUser } = useAuth();
+  const { currentUser, users } = useAuth();
   const [allAccounts, setAllAccounts] = useState<Account[]>([]);
   const [allCards, setAllCards] = useState<Card[]>([]);
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
@@ -64,19 +64,22 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
+      const familyId = currentUser.family_id;
+      const familyUserIds = users.map(u => u.id);
+
       const [catData, accData, cardData, txData, budData, invData, goalData, debtData] = await Promise.all([
         supabase
           .from('categories')
           .select('*')
-          .or(`household_id.eq.${currentUser.family_id},household_id.is.null`)
+          .or(`household_id.eq.${familyId},household_id.is.null`)
           .order('name'),
-        supabase.from('accounts').select('*').order('name'),
-        supabase.from('cards').select('*').order('name'),
-        supabase.from('transactions').select('*').order('purchase_date', { ascending: false }),
-        supabase.from('budgets').select('*'),
-        supabase.from('invoices').select('*'),
-        supabase.from('goals').select('*'),
-        supabase.from('debts').select('*')
+        supabase.from('accounts').select('*').eq('household_id', familyId).order('name'),
+        supabase.from('cards').select('*').eq('household_id', familyId).order('name'),
+        supabase.from('transactions').select('*').eq('household_id', familyId).order('purchase_date', { ascending: false }),
+        supabase.from('budgets').select('*').in('user_id', familyUserIds),
+        supabase.from('invoices').select('*').in('user_id', familyUserIds),
+        supabase.from('goals').select('*').in('user_id', familyUserIds),
+        supabase.from('debts').select('*').in('user_id', familyUserIds)
       ]);
 
       if (catData.data) {
@@ -135,7 +138,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser, users]);
 
   useEffect(() => {
     fetchData();
@@ -169,19 +172,17 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
     const day = getDate(purchaseDate);
     
-    // Se o dia da compra for maior ou igual ao dia de fechamento,
-    // a compra cai na fatura do mês seguinte.
     if (day >= card.closing_day) {
       return format(addMonths(purchaseDate, 1), 'yyyy-MM');
     }
     
-    // Caso contrário, cai na fatura do mês atual.
     return format(purchaseDate, 'yyyy-MM');
   };
 
   const createTransaction = async (data: any) => {
     const { error } = await supabase.from('transactions').insert([{
       user_id: data.userId,
+      household_id: currentUser?.family_id,
       account_id: data.accountId,
       card_id: data.cardId,
       category_id: data.categoryId,
@@ -211,13 +212,24 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.isPaid !== undefined) updateData.is_paid = data.isPaid;
     if (data.categoryId !== undefined) updateData.category_id = data.categoryId;
     if (data.status !== undefined) updateData.status = data.status;
-    const { error } = await supabase.from('transactions').update(updateData).eq('id', id);
+    
+    const { error } = await supabase
+      .from('transactions')
+      .update(updateData)
+      .eq('id', id)
+      .eq('household_id', currentUser?.family_id); // Segurança extra
+
     if (error) throw error;
     await fetchData();
   };
 
   const deleteTransaction = async (id: string) => {
-    const { error } = await supabase.from('transactions').delete().eq('id', id);
+    const { error } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('id', id)
+      .eq('household_id', currentUser?.family_id); // Segurança extra
+
     if (error) throw error;
     await fetchData();
   };
@@ -246,13 +258,24 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.isArchived !== undefined) updateData.active = !data.isArchived;
     if (data.isShared !== undefined) updateData.is_shared = data.isShared;
     if (data.userId !== undefined) updateData.user_id = data.userId;
-    const { error } = await supabase.from('accounts').update(updateData).eq('id', id);
+    
+    const { error } = await supabase
+      .from('accounts')
+      .update(updateData)
+      .eq('id', id)
+      .eq('household_id', currentUser?.family_id); // Segurança extra
+
     if (error) throw error;
     await fetchData();
   };
 
   const deleteAccount = async (id: string) => {
-    const { error } = await supabase.from('accounts').delete().eq('id', id);
+    const { error } = await supabase
+      .from('accounts')
+      .delete()
+      .eq('id', id)
+      .eq('household_id', currentUser?.family_id); // Segurança extra
+
     if (error) throw error;
     await fetchData();
   };
@@ -291,13 +314,24 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       updateData.is_shared = data.isShared;
       updateData.user_id = data.isShared ? null : (data.userId || currentUser?.id);
     }
-    const { error } = await supabase.from('cards').update(updateData).eq('id', id);
+    
+    const { error } = await supabase
+      .from('cards')
+      .update(updateData)
+      .eq('id', id)
+      .eq('household_id', currentUser?.family_id); // Segurança extra
+
     if (error) throw error;
     await fetchData();
   };
 
   const deleteCard = async (id: string) => {
-    const { error } = await supabase.from('cards').delete().eq('id', id);
+    const { error } = await supabase
+      .from('cards')
+      .delete()
+      .eq('id', id)
+      .eq('household_id', currentUser?.family_id); // Segurança extra
+
     if (error) throw error;
     await fetchData();
   };

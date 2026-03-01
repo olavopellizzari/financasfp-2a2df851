@@ -21,7 +21,7 @@ const AVATAR_COLORS = [
 ];
 
 export function SettingsPage() {
-  const { currentUser, refreshProfile, isCurrentUserAdmin, refreshUsers } = useAuth();
+  const { currentUser, refreshProfile, isCurrentUserAdmin, refreshUsers, users } = useAuth();
   const { allTransactions, allCards, calculateMesFatura, refresh } = useFinance();
   const { permission, isStandalone, requestPermission, sendTestNotification } = usePushNotifications();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -147,20 +147,32 @@ export function SettingsPage() {
   };
 
   const handleFixDescriptions = async () => {
-    if (!confirm('Isso removerá sufixos como "(1/12)" de todas as descrições de lançamentos antigos. Deseja continuar?')) return;
+    if (!currentUser?.family_id) return;
+    if (!confirm('Isso removerá sufixos como "(1/12)" de todas as descrições de lançamentos da sua família. Deseja continuar?')) return;
+    
     setIsCleaning(true);
     try {
       const regex = /\s*\(\d+\s*\/\s*\d+\)$/;
       const toUpdate = allTransactions.filter(t => regex.test(t.description));
+      
       if (toUpdate.length === 0) {
         toast({ title: "Tudo limpo!", description: "Nenhum lançamento com sufixo de parcela foi encontrado." });
         return;
       }
+
+      let count = 0;
       for (const tx of toUpdate) {
         const newDescription = tx.description.replace(regex, '').trim();
-        await supabase.from('transactions').update({ description: newDescription }).eq('id', tx.id);
+        const { error } = await supabase
+          .from('transactions')
+          .update({ description: newDescription })
+          .eq('id', tx.id)
+          .eq('household_id', currentUser.family_id); // Filtro de segurança
+        
+        if (!error) count++;
       }
-      toast({ title: "Sucesso!", description: `${toUpdate.length} descrições foram corrigidas.` });
+
+      toast({ title: "Sucesso!", description: `${count} descrições foram corrigidas.` });
       await refresh();
     } catch (error: any) {
       toast({ title: "Erro na limpeza", description: error.message, variant: "destructive" });
@@ -170,7 +182,9 @@ export function SettingsPage() {
   };
 
   const handleFixDates = async () => {
-    if (!confirm('Isso ajustará a data de cada parcela para o mês correspondente, mantendo o dia original. Deseja continuar?')) return;
+    if (!currentUser?.family_id) return;
+    if (!confirm('Isso ajustará a data de cada parcela para o mês correspondente na sua família. Deseja continuar?')) return;
+    
     setIsFixingDates(true);
     try {
       const groups = new Map<string, any[]>();
@@ -181,6 +195,7 @@ export function SettingsPage() {
           groups.set(tx.installmentGroupId, group);
         }
       });
+
       let totalUpdated = 0;
       for (const [groupId, txs] of groups.entries()) {
         const sortedTxs = [...txs].sort((a, b) => a.installmentNumber - b.installmentNumber);
@@ -188,16 +203,24 @@ export function SettingsPage() {
         const [year, month, day] = baseTx.purchaseDate.split('-').map(Number);
         const baseDate = new Date(year, month - 1, day, 12, 0, 0);
         const baseInstallmentNum = baseTx.installmentNumber;
+
         for (const tx of sortedTxs) {
           const monthsToAdd = tx.installmentNumber - baseInstallmentNum;
           const correctDate = addMonths(baseDate, monthsToAdd);
           const correctDateStr = format(correctDate, 'yyyy-MM-dd');
+          
           if (tx.purchaseDate !== correctDateStr) {
-            const { error } = await supabase.from('transactions').update({ purchase_date: correctDateStr, effective_date: correctDateStr }).eq('id', tx.id);
+            const { error } = await supabase
+              .from('transactions')
+              .update({ purchase_date: correctDateStr, effective_date: correctDateStr })
+              .eq('id', tx.id)
+              .eq('household_id', currentUser.family_id); // Filtro de segurança
+            
             if (!error) totalUpdated++;
           }
         }
       }
+
       if (totalUpdated > 0) {
         toast({ title: "Datas corrigidas!", description: `${totalUpdated} lançamentos foram ajustados.` });
         await refresh();
@@ -212,7 +235,9 @@ export function SettingsPage() {
   };
 
   const handleRecalculateInvoices = async () => {
-    if (!confirm('Isso atualizará o mês da fatura de todos os seus lançamentos de cartão para a nova regra de fechamento. Deseja continuar?')) return;
+    if (!currentUser?.family_id) return;
+    if (!confirm('Isso atualizará o mês da fatura de todos os lançamentos de cartão da sua família. Deseja continuar?')) return;
+    
     setIsRecalculating(true);
     try {
       const creditTxs = allTransactions.filter(t => t.cardId && (t.type === 'CREDIT' || t.type === 'REFUND'));
@@ -226,7 +251,8 @@ export function SettingsPage() {
           const { error } = await supabase
             .from('transactions')
             .update({ mes_fatura: newMesFatura })
-            .eq('id', tx.id);
+            .eq('id', tx.id)
+            .eq('household_id', currentUser.family_id); // Filtro de segurança
           
           if (!error) updatedCount++;
         }
@@ -242,15 +268,34 @@ export function SettingsPage() {
   };
 
   const handleResetData = async (onlyTransactions = false) => {
-    const message = onlyTransactions ? 'ATENÇÃO: Isso apagará TODOS os seus lançamentos na nuvem. Contas e cartões serão mantidos. Continuar?' : 'ATENÇÃO CRÍTICA: Isso apagará TODOS os seus dados (contas, cartões, transações) na nuvem. Esta ação é irreversível. Continuar?';
+    if (!currentUser?.family_id) return;
+    
+    const message = onlyTransactions 
+      ? 'ATENÇÃO: Isso apagará TODOS os lançamentos da sua família na nuvem. Contas e cartões serão mantidos. Continuar?' 
+      : 'ATENÇÃO CRÍTICA: Isso apagará TODOS os dados da sua família (contas, cartões, transações) na nuvem. Esta ação é irreversível. Continuar?';
+    
     if (!confirm(message)) return;
+    
     setIsDeleting(true);
     try {
-      const tables = onlyTransactions ? ['transactions'] : ['transactions', 'cards', 'accounts', 'budgets', 'goals', 'debts'];
-      for (const table of tables) {
-        await supabase.from(table).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      const familyId = currentUser.family_id;
+      const familyUserIds = users.map(u => u.id);
+
+      // Tabelas que possuem household_id
+      const householdTables = onlyTransactions ? ['transactions'] : ['transactions', 'cards', 'accounts'];
+      for (const table of householdTables) {
+        await supabase.from(table).delete().eq('household_id', familyId);
       }
-      toast({ title: onlyTransactions ? 'Lançamentos removidos!' : 'Dados resetados!', description: 'O banco de dados na nuvem foi limpo com sucesso.' });
+
+      // Tabelas que possuem apenas user_id (filtramos pelos membros da família)
+      if (!onlyTransactions) {
+        const userTables = ['budgets', 'goals', 'debts', 'invoices'];
+        for (const table of userTables) {
+          await supabase.from(table).delete().in('user_id', familyUserIds);
+        }
+      }
+
+      toast({ title: onlyTransactions ? 'Lançamentos removidos!' : 'Dados resetados!', description: 'O banco de dados da sua família foi limpo com sucesso.' });
       setTimeout(() => window.location.href = '/', 1000);
     } catch (error: any) {
       toast({ title: 'Erro ao resetar', description: error.message, variant: 'destructive' });
@@ -451,12 +496,12 @@ export function SettingsPage() {
       {isAdmin && (
         <>
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><Wrench className="h-5 w-5" /> Manutenção</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Wrench className="h-5 w-5" /> Manutenção da Família</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Recalcular Faturas</Label>
-                  <p className="text-sm text-muted-foreground">Ajusta o mês da fatura de todos os lançamentos de cartão para a nova regra.</p>
+                  <p className="text-sm text-muted-foreground">Ajusta o mês da fatura de todos os lançamentos de cartão da sua família.</p>
                 </div>
                 <Button variant="outline" onClick={handleRecalculateInvoices} disabled={isRecalculating}>
                   {isRecalculating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />} 
@@ -465,27 +510,27 @@ export function SettingsPage() {
               </div>
               <Separator />
               <div className="flex items-center justify-between">
-                <div className="space-y-0.5"><Label>Limpar Descrições</Label><p className="text-sm text-muted-foreground">Remove o sufixo "(1/10)" das descrições.</p></div>
+                <div className="space-y-0.5"><Label>Limpar Descrições</Label><p className="text-sm text-muted-foreground">Remove o sufixo "(1/10)" das descrições da sua família.</p></div>
                 <Button variant="outline" onClick={handleFixDescriptions} disabled={isCleaning}>{isCleaning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />} Corrigir Descrições</Button>
               </div>
               <Separator />
               <div className="flex items-center justify-between">
-                <div className="space-y-0.5"><Label>Corrigir Datas de Parcelas</Label><p className="text-sm text-muted-foreground">Ajusta a data de cada parcela para o mês correto.</p></div>
+                <div className="space-y-0.5"><Label>Corrigir Datas de Parcelas</Label><p className="text-sm text-muted-foreground">Ajusta a data de cada parcela para o mês correto na sua família.</p></div>
                 <Button variant="outline" onClick={handleFixDates} disabled={isFixingDates}>{isFixingDates ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4 mr-2" />} Corrigir Datas</Button>
               </div>
             </CardContent>
           </Card>
 
           <Card className="border-destructive/50">
-            <CardHeader><CardTitle className="flex items-center gap-2 text-destructive"><Trash2 className="h-5 w-5" /> Zona de Perigo (Nuvem)</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2 text-destructive"><Trash2 className="h-5 w-5" /> Zona de Perigo (Dados da Família)</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="space-y-0.5"><Label>Resetar Lançamentos</Label><p className="text-sm text-muted-foreground">Apaga apenas o histórico de transações.</p></div>
+                <div className="space-y-0.5"><Label>Resetar Lançamentos</Label><p className="text-sm text-muted-foreground">Apaga apenas o histórico de transações da sua família.</p></div>
                 <Button variant="outline" className="text-destructive border-destructive hover:bg-destructive/10" onClick={() => handleResetData(true)} disabled={isDeleting}>{isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Resetar Lançamentos'}</Button>
               </div>
               <Separator />
               <div className="flex items-center justify-between">
-                <div className="space-y-0.5"><Label>Limpar Todos os Dados</Label><p className="text-sm text-muted-foreground">Remove permanentemente tudo da nuvem.</p></div>
+                <div className="space-y-0.5"><Label>Limpar Todos os Dados</Label><p className="text-sm text-muted-foreground">Remove permanentemente tudo da sua família na nuvem.</p></div>
                 <Button variant="destructive" onClick={() => handleResetData(false)} disabled={isDeleting}>{isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Limpar Tudo na Nuvem'}</Button>
               </div>
             </CardContent>
