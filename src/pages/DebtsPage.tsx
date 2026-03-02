@@ -28,7 +28,8 @@ import {
   Pencil,
   Trash2,
   DollarSign,
-  Calculator
+  Calculator,
+  Clock
 } from 'lucide-react';
 import { Debt, formatCurrency, generateId } from '@/lib/db';
 import { toast } from '@/hooks/use-toast';
@@ -82,6 +83,8 @@ export function DebtsPage() {
         start_date: format(debtForm.startDate, 'yyyy-MM-dd'),
         due_date: format(debtForm.dueDate, 'yyyy-MM-dd'),
         monthly_payment: parseFloat(debtForm.monthlyPayment) || 0,
+        installments_count: parseInt(debtForm.installmentsCount) || null,
+        frequency: debtForm.frequency,
         is_active: (parseFloat(debtForm.paidAmount) || 0) < (parseFloat(debtForm.totalAmount) || 0),
         notes: debtForm.notes
       };
@@ -105,7 +108,7 @@ export function DebtsPage() {
       startDate: new Date(debt.start_date),
       dueDate: new Date(debt.due_date),
       monthlyPayment: debt.monthly_payment.toString(),
-      installmentsCount: '',
+      installmentsCount: debt.installments_count?.toString() || '',
       frequency: debt.frequency || 'monthly',
       notes: debt.notes,
       userId: debt.user_id
@@ -162,12 +165,14 @@ export function DebtsPage() {
         </div>
         <div className="flex items-center gap-3">
           <UserFilter value={selectedUserId} onChange={setSelectedUserId} className="w-[200px]" />
-          <Button onClick={() => { resetForm(); setDialogOpen(true); }}><Plus className="h-4 w-4 mr-2" /> Nova Dívida</Button>
+          <Button onClick={() => { resetForm(); setDialogOpen(true); }} className="gradient-primary shadow-primary">
+            <Plus className="h-4 w-4 mr-2" /> Nova Dívida
+          </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-expense/10 border-expense/20"><CardContent className="pt-6"><div className="flex items-center gap-3"><div className="p-3 rounded-xl bg-expense text-white"><TrendingDown className="h-5 w-5" /></div><div><p className="text-sm text-muted-foreground">Total Restante</p><p className="text-2xl font-bold text-expense">{formatCurrency(totalDebt)}</p></div></div></CardContent></Card>
+        <Card className="bg-expense/10 border-expense/20"><CardContent className="pt-6"><div className="flex items-center gap-3"><div className="p-3 rounded-xl bg-expense text-white shadow-lg"><TrendingDown className="h-5 w-5" /></div><div><p className="text-sm text-muted-foreground">Total Restante</p><p className="text-2xl font-bold text-expense">{formatCurrency(totalDebt)}</p></div></div></CardContent></Card>
         <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><div className="p-3 rounded-xl bg-primary/10"><Wallet className="h-5 w-5 text-primary" /></div><div><p className="text-sm text-muted-foreground">Dívidas Ativas</p><p className="text-2xl font-bold">{activeDebts.length}</p></div></div></CardContent></Card>
         <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><div className="p-3 rounded-xl bg-income/10"><CheckCircle className="h-5 w-5 text-income" /></div><div><p className="text-sm text-muted-foreground">Quitadas</p><p className="text-2xl font-bold">{paidDebts.length}</p></div></div></CardContent></Card>
       </div>
@@ -175,21 +180,53 @@ export function DebtsPage() {
       <div className="grid gap-4">
         {activeDebts.map(debt => {
           const percentage = (debt.paid_amount / debt.total_amount) * 100;
+          const frequencyLabel = debt.frequency === 'monthly' ? 'Mensal' : debt.frequency === 'semiannual' ? 'Semestral' : 'Anual';
+          
           return (
-            <Card key={debt.id}>
+            <Card key={debt.id} className="finance-card group">
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between mb-4">
-                  <div><h3 className="font-semibold text-lg">{debt.name}</h3><p className="text-sm text-muted-foreground">Vencimento: {format(new Date(debt.due_date), 'dd/MM/yyyy')}</p></div>
-                  <div className="flex gap-1"><Button variant="ghost" size="icon" onClick={() => handleEditDebt(debt)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteDebt(debt.id)}><Trash2 className="h-4 w-4" /></Button></div>
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-lg">{debt.name}</h3>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <CalendarIcon className="h-3 w-3" />
+                      <span>Vencimento: {format(new Date(debt.due_date), 'dd/MM/yyyy')}</span>
+                      <Badge variant="outline" className="h-4 text-[10px] uppercase">{frequencyLabel}</Badge>
+                    </div>
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditDebt(debt)}><Pencil className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteDebt(debt.id)}><Trash2 className="h-4 w-4" /></Button>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                  <div><p className="text-xs text-muted-foreground">Total</p><p className="font-semibold">{formatCurrency(debt.total_amount)}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Pago</p><p className="font-semibold text-income">{formatCurrency(debt.paid_amount)}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Restante</p><p className="font-semibold text-expense">{formatCurrency(debt.total_amount - debt.paid_amount)}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Parcela</p><p className="font-semibold">{formatCurrency(debt.monthly_payment)}</p></div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="p-3 bg-muted/50 rounded-xl">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Total</p>
+                    <p className="font-bold">{formatCurrency(debt.total_amount)}</p>
+                  </div>
+                  <div className="p-3 bg-income/5 rounded-xl">
+                    <p className="text-[10px] font-bold text-income uppercase mb-1">Pago</p>
+                    <p className="font-bold text-income">{formatCurrency(debt.paid_amount)}</p>
+                  </div>
+                  <div className="p-3 bg-expense/5 rounded-xl">
+                    <p className="text-[10px] font-bold text-expense uppercase mb-1">Restante</p>
+                    <p className="font-bold text-expense">{formatCurrency(debt.total_amount - debt.paid_amount)}</p>
+                  </div>
+                  <div className="p-3 bg-primary/5 rounded-xl">
+                    <p className="text-[10px] font-bold text-primary uppercase mb-1">Parcela</p>
+                    <p className="font-bold">{formatCurrency(debt.monthly_payment)}</p>
+                  </div>
                 </div>
-                <div className="space-y-2 mb-4"><div className="flex justify-between text-sm"><span>Progresso</span><span>{percentage.toFixed(0)}%</span></div><Progress value={percentage} className="h-2" /></div>
-                <Button variant="outline" onClick={() => { setSelectedDebt(debt); setPaymentAmount(debt.monthly_payment.toString()); setPaymentDialogOpen(true); }}><DollarSign className="h-4 w-4 mr-2" /> Registrar Pagamento</Button>
+                <div className="space-y-2 mb-6">
+                  <div className="flex justify-between text-xs font-bold">
+                    <span className="text-muted-foreground uppercase">Progresso da Quitação</span>
+                    <span>{percentage.toFixed(0)}%</span>
+                  </div>
+                  <Progress value={percentage} className="h-2" />
+                </div>
+                <Button variant="outline" className="w-full sm:w-auto rounded-xl" onClick={() => { setSelectedDebt(debt); setPaymentAmount(debt.monthly_payment.toString()); setPaymentDialogOpen(true); }}>
+                  <DollarSign className="h-4 w-4 mr-2" /> Registrar Pagamento
+                </Button>
               </CardContent>
             </Card>
           );
@@ -197,28 +234,80 @@ export function DebtsPage() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>{editingDebt ? 'Editar Dívida' : 'Nova Dívida'}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-md rounded-[24px]">
+          <DialogHeader>
+            <DialogTitle>{editingDebt ? 'Editar Dívida' : 'Nova Dívida'}</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2"><Label>Responsável</Label><Select value={debtForm.userId} onValueChange={v => setDebtForm({...debtForm, userId: v})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent></Select></div>
-            <div className="space-y-2"><Label>Nome da Dívida *</Label><Input value={debtForm.name} onChange={(e) => setDebtForm(prev => ({ ...prev, name: e.target.value }))} /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Valor Total *</Label><Input type="number" step="0.01" value={debtForm.totalAmount} onChange={(e) => setDebtForm(prev => ({ ...prev, totalAmount: e.target.value }))} /></div>
-              <div className="space-y-2"><Label>Valor da Parcela</Label><Input type="number" step="0.01" value={debtForm.monthlyPayment} onChange={(e) => setDebtForm(prev => ({ ...prev, monthlyPayment: e.target.value }))} /></div>
+            <div className="space-y-2">
+              <Label>Responsável</Label>
+              <Select value={debtForm.userId} onValueChange={v => setDebtForm({...debtForm, userId: v})}>
+                <SelectTrigger className="rounded-xl h-11"><SelectValue /></SelectTrigger>
+                <SelectContent>{users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Nome da Dívida *</Label>
+              <Input value={debtForm.name} onChange={(e) => setDebtForm(prev => ({ ...prev, name: e.target.value }))} className="rounded-xl h-11" placeholder="Ex: Financiamento Carro" />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Já Pago</Label><Input type="number" step="0.01" value={debtForm.paidAmount} onChange={(e) => setDebtForm(prev => ({ ...prev, paidAmount: e.target.value }))} /></div>
-              <div className="space-y-2"><Label>Vencimento</Label><Input type="date" value={format(debtForm.dueDate, 'yyyy-MM-dd')} onChange={(e) => setDebtForm(prev => ({ ...prev, dueDate: new Date(e.target.value) }))} /></div>
+              <div className="space-y-2">
+                <Label>Valor Total *</Label>
+                <Input type="number" step="0.01" value={debtForm.totalAmount} onChange={(e) => setDebtForm(prev => ({ ...prev, totalAmount: e.target.value }))} className="rounded-xl h-11" placeholder="0.00" />
+              </div>
+              <div className="space-y-2">
+                <Label>Valor da Parcela</Label>
+                <Input type="number" step="0.01" value={debtForm.monthlyPayment} onChange={(e) => setDebtForm(prev => ({ ...prev, monthlyPayment: e.target.value }))} className="rounded-xl h-11" placeholder="0.00" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Frequência</Label>
+                <Select value={debtForm.frequency} onValueChange={(v: any) => setDebtForm({...debtForm, frequency: v})}>
+                  <SelectTrigger className="rounded-xl h-11"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Mensal</SelectItem>
+                    <SelectItem value="semiannual">Semestral</SelectItem>
+                    <SelectItem value="annual">Anual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Qtd. Parcelas</Label>
+                <Input type="number" value={debtForm.installmentsCount} onChange={(e) => setDebtForm(prev => ({ ...prev, installmentsCount: e.target.value }))} className="rounded-xl h-11" placeholder="Ex: 12" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Já Pago</Label>
+                <Input type="number" step="0.01" value={debtForm.paidAmount} onChange={(e) => setDebtForm(prev => ({ ...prev, paidAmount: e.target.value }))} className="rounded-xl h-11" placeholder="0.00" />
+              </div>
+              <div className="space-y-2">
+                <Label>Próximo Vencimento</Label>
+                <Input type="date" value={format(debtForm.dueDate, 'yyyy-MM-dd')} onChange={(e) => setDebtForm(prev => ({ ...prev, dueDate: new Date(e.target.value) }))} className="rounded-xl h-11" />
+              </div>
             </div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button><Button onClick={handleSaveDebt}>Salvar</Button></DialogFooter>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDialogOpen(false)} className="flex-1 h-11 rounded-xl">Cancelar</Button>
+            <Button onClick={handleSaveDebt} className="flex-1 h-11 rounded-xl gradient-primary">Salvar</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
-        <DialogContent><DialogHeader><DialogTitle>Registrar Pagamento</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-4"><div className="space-y-2"><Label>Valor do Pagamento</Label><Input type="number" step="0.01" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} /></div></div>
-          <DialogFooter><Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancelar</Button><Button onClick={handleConfirmPayment}>Confirmar</Button></DialogFooter>
+        <DialogContent className="max-w-sm rounded-[24px]">
+          <DialogHeader><DialogTitle>Registrar Pagamento</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Valor do Pagamento</Label>
+              <Input type="number" step="0.01" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="rounded-xl h-11" />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)} className="flex-1 h-11 rounded-xl">Cancelar</Button>
+            <Button onClick={handleConfirmPayment} className="flex-1 h-11 rounded-xl gradient-primary">Confirmar</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
