@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { UserFilter } from '@/components/UserFilter';
-import { BankLogo } from '@/components/BankLogo';
 import { 
   Dialog,
   DialogContent,
@@ -228,7 +227,13 @@ export function AccountsPage() {
         <CardContent className="p-4">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <BankLogo logoUrl={bankInfo.logo} bankName={bankInfo.name} size="lg" />
+              <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center overflow-hidden border shadow-sm">
+                {bankInfo.logo ? (
+                  <img src={bankInfo.logo} alt={bankInfo.name} className="w-8 h-8 object-contain" />
+                ) : (
+                  <Building2 className="w-6 h-6 text-muted-foreground" />
+                )}
+              </div>
               <div>
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-foreground">{account.name}</p>
@@ -456,7 +461,13 @@ export function AccountsPage() {
                   {BANKS.map(bank => (
                     <SelectItem key={bank.id} value={bank.id}>
                       <div className="flex items-center gap-2">
-                        <BankLogo logoUrl={bank.logo} bankName={bank.name} size="sm" />
+                        <div className="w-5 h-5 bg-white rounded flex items-center justify-center overflow-hidden border border-muted">
+                          {bank.logo ? (
+                            <img src={bank.logo} alt="" className="w-4 h-4 object-contain" />
+                          ) : (
+                            <Building2 className="w-3 h-3 text-muted-foreground" />
+                          )}
+                        </div>
                         {bank.name}
                       </div>
                     </SelectItem>
