@@ -70,6 +70,55 @@ export function DebtsPage() {
     return debts.filter(d => d.user_id === selectedUserId);
   }, [debts, selectedUserId]);
 
+  // Lógica de ajuste automático
+  const handleTotalAmountChange = (val: string) => {
+    const total = parseFloat(val) || 0;
+    const count = parseInt(debtForm.installmentsCount) || 0;
+    
+    let newMonthly = debtForm.monthlyPayment;
+    if (total > 0 && count > 0) {
+      newMonthly = (total / count).toFixed(2);
+    }
+
+    setDebtForm(prev => ({ ...prev, totalAmount: val, monthlyPayment: newMonthly }));
+  };
+
+  const handleMonthlyPaymentChange = (val: string) => {
+    const monthly = parseFloat(val) || 0;
+    const count = parseInt(debtForm.installmentsCount) || 0;
+    
+    let newTotal = debtForm.totalAmount;
+    if (monthly > 0 && count > 0) {
+      newTotal = (monthly * count).toFixed(2);
+    }
+
+    setDebtForm(prev => ({ ...prev, monthlyPayment: val, totalAmount: newTotal }));
+  };
+
+  const handleInstallmentsCountChange = (val: string) => {
+    const count = parseInt(val) || 0;
+    const total = parseFloat(debtForm.totalAmount) || 0;
+    const monthly = parseFloat(debtForm.monthlyPayment) || 0;
+    
+    let newMonthly = debtForm.monthlyPayment;
+    let newTotal = debtForm.totalAmount;
+
+    if (count > 0) {
+      if (total > 0) {
+        newMonthly = (total / count).toFixed(2);
+      } else if (monthly > 0) {
+        newTotal = (monthly * count).toFixed(2);
+      }
+    }
+
+    setDebtForm(prev => ({ 
+      ...prev, 
+      installmentsCount: val, 
+      monthlyPayment: newMonthly,
+      totalAmount: newTotal
+    }));
+  };
+
   const handleSaveDebt = async () => {
     if (!debtForm.name || !debtForm.totalAmount) {
       toast({ title: 'Erro', description: 'Preencha os campos obrigatórios', variant: 'destructive' });
@@ -284,11 +333,11 @@ export function DebtsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Valor Total *</Label>
-                <Input type="number" step="0.01" value={debtForm.totalAmount} onChange={(e) => setDebtForm(prev => ({ ...prev, totalAmount: e.target.value }))} className="rounded-xl h-11" placeholder="0.00" />
+                <Input type="number" step="0.01" value={debtForm.totalAmount} onChange={(e) => handleTotalAmountChange(e.target.value)} className="rounded-xl h-11" placeholder="0.00" />
               </div>
               <div className="space-y-2">
                 <Label>Valor da Parcela</Label>
-                <Input type="number" step="0.01" value={debtForm.monthlyPayment} onChange={(e) => setDebtForm(prev => ({ ...prev, monthlyPayment: e.target.value }))} className="rounded-xl h-11" placeholder="0.00" />
+                <Input type="number" step="0.01" value={debtForm.monthlyPayment} onChange={(e) => handleMonthlyPaymentChange(e.target.value)} className="rounded-xl h-11" placeholder="0.00" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -305,7 +354,7 @@ export function DebtsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Qtd. Parcelas</Label>
-                <Input type="number" value={debtForm.installmentsCount} onChange={(e) => setDebtForm(prev => ({ ...prev, installmentsCount: e.target.value }))} className="rounded-xl h-11" placeholder="Ex: 12" />
+                <Input type="number" value={debtForm.installmentsCount} onChange={(e) => handleInstallmentsCountChange(e.target.value)} className="rounded-xl h-11" placeholder="Ex: 12" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
