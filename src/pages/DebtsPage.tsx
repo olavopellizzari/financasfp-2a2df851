@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import { Debt, formatCurrency, generateId } from '@/lib/db';
 import { toast } from '@/hooks/use-toast';
-import { format, isBefore, isValid } from 'date-fns';
+import { format, isBefore, isValid, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
@@ -105,8 +105,8 @@ export function DebtsPage() {
       totalAmount: debt.total_amount.toString(),
       paidAmount: debt.paid_amount.toString(),
       interestRate: debt.interest_rate.toString(),
-      startDate: new Date(debt.start_date),
-      dueDate: new Date(debt.due_date),
+      startDate: parseISO(debt.start_date),
+      dueDate: parseISO(debt.due_date),
       monthlyPayment: debt.monthly_payment.toString(),
       installmentsCount: debt.installments_count?.toString() || '',
       frequency: debt.frequency || 'monthly',
@@ -190,7 +190,7 @@ export function DebtsPage() {
                     <h3 className="font-bold text-lg">{debt.name}</h3>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <CalendarIcon className="h-3 w-3" />
-                      <span>Vencimento: {format(new Date(debt.due_date), 'dd/MM/yyyy')}</span>
+                      <span>Vencimento: {format(parseISO(debt.due_date), 'dd/MM/yyyy')}</span>
                       <Badge variant="outline" className="h-4 text-[10px] uppercase">{frequencyLabel}</Badge>
                     </div>
                   </div>
@@ -284,7 +284,28 @@ export function DebtsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Próximo Vencimento</Label>
-                <Input type="date" value={format(debtForm.dueDate, 'yyyy-MM-dd')} onChange={(e) => setDebtForm(prev => ({ ...prev, dueDate: new Date(e.target.value) }))} className="rounded-xl h-11" />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal h-11 rounded-xl",
+                        !debtForm.dueDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {debtForm.dueDate ? format(debtForm.dueDate, "dd/MM/yyyy") : <span>Selecione uma data</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={debtForm.dueDate}
+                      onSelect={(date) => date && setDebtForm(prev => ({ ...prev, dueDate: date }))}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
           </div>

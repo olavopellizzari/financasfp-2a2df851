@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { UserFilter } from '@/components/UserFilter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
+import { Calendar } from '@/components/ui/calendar';
 import { 
   Dialog,
   DialogContent,
@@ -66,7 +67,8 @@ import {
   Sparkles,
   ChevronsUpDown,
   ArrowLeft,
-  Loader2
+  Loader2,
+  CalendarIcon
 } from 'lucide-react';
 import { format, addMonths, addYears, subMonths, isValid, parseISO, startOfDay, isAfter, isSameDay, parse } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -124,12 +126,6 @@ const formatLocal = (date: Date | string, formatStr: string) => {
   const d = typeof date === 'string' ? parseISO(date) : date;
   if (!isValid(d)) return '';
   return format(d, formatStr, { locale: ptBR });
-};
-
-const parseInputDate = (dateStr: string) => {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const d = new Date(year, month - 1, day, 12, 0, 0);
-  return isValid(d) ? d : new Date();
 };
 
 export function TransactionsPage() {
@@ -336,8 +332,8 @@ export function TransactionsPage() {
       type: tx.type,
       amount: tx.amount.toString(),
       description: tx.description,
-      purchaseDate: new Date(tx.purchaseDate),
-      mesFatura: tx.mesFatura || format(new Date(tx.purchaseDate), 'yyyy-MM'),
+      purchaseDate: parseISO(tx.purchaseDate),
+      mesFatura: tx.mesFatura || format(parseISO(tx.purchaseDate), 'yyyy-MM'),
       categoryId: tx.categoryId,
       accountId: (tx.type === 'CREDIT' || tx.type === 'REFUND') ? '' : (tx.accountId || ''),
       cardId: (tx.type === 'CREDIT' || tx.type === 'REFUND') ? tx.cardId || '' : '',
@@ -408,7 +404,8 @@ export function TransactionsPage() {
           description: formData.description,
           categoryId: formData.categoryId,
           isPaid: formData.isPaid,
-          notes: formData.notes
+          notes: formData.notes,
+          purchaseDate: formData.purchaseDate
         };
 
         if (editingTransaction.installmentGroupId) {
@@ -718,7 +715,31 @@ export function TransactionsPage() {
               </div>
               {activeTab === 'TRANSFER' && (<div className="p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-4"><div className="flex items-center gap-2 text-primary font-bold text-sm"><ArrowRight className="w-4 h-4" /> Destino da Transferência</div><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label>Usuário Destino</Label><Select value={formData.destinationUserId} onValueChange={v => setFormData({ ...formData, destinationUserId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{users.filter(u => u.is_active !== false).map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><Label>Conta Destino</Label><Select value={formData.destinationAccountId} onValueChange={v => setFormData({ ...formData, destinationAccountId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{availableAccounts.map(a => (<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}</SelectContent></Select></div></div></div>)}
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Data da Compra</Label><Input type="date" value={isValid(formData.purchaseDate) ? format(formData.purchaseDate, 'yyyy-MM-dd') : ''} onChange={e => setFormData({ ...formData, purchaseDate: parseInputDate(e.target.value) })} /></div>
+                <div className="space-y-2">
+                  <Label>Data da Compra</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal h-11 rounded-xl",
+                          !formData.purchaseDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formData.purchaseDate ? format(formData.purchaseDate, "dd/MM/yyyy") : <span>Selecione uma data</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={formData.purchaseDate}
+                        onSelect={(date) => date && setFormData(prev => ({ ...prev, purchaseDate: date }))}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <div className="space-y-2"><Label>Valor</Label><Input type="number" step="0.01" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} placeholder="0,00" required /></div>
               </div>
               <div className="space-y-2">
