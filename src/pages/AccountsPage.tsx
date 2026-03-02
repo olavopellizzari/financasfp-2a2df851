@@ -56,18 +56,18 @@ import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const BANKS = [
-  { id: 'nubank', name: 'NuBank', color: '#8a05be', logo: 'https://isdxnskghygvaezqjbyv.supabase.co/storage/v1/object/public/attachments/logo-nu-nubank-roxo-icon-1024.png' },
-  { id: 'itau', name: 'Itaú', color: '#ec7000', logo: 'https://isdxnskghygvaezqjbyv.supabase.co/storage/v1/object/public/attachments/itau.png' },
+  { id: 'nubank', name: 'NuBank', color: '#8a05be', logo: 'https://unavatar.io/nubank.com.br' },
+  { id: 'itau', name: 'Itaú', color: '#ec7000', logo: 'https://unavatar.io/itau.com.br' },
   { id: 'bradesco', name: 'Bradesco', color: '#cc092f', logo: 'https://unavatar.io/bradesco.com.br' },
-  { id: 'santander', name: 'Santander', color: '#ec0000', logo: 'https://isdxnskghygvaezqjbyv.supabase.co/storage/v1/object/public/attachments/santander.png' },
-  { id: 'bb', name: 'Banco do Brasil', color: '#fcf800', logo: 'https://isdxnskghygvaezqjbyv.supabase.co/storage/v1/object/public/attachments/bb.png' },
-  { id: 'caixa', name: 'Caixa Econômica', color: '#005ca9', logo: 'https://isdxnskghygvaezqjbyv.supabase.co/storage/v1/object/public/attachments/CEF.png' },
-  { id: 'inter', name: 'Banco Inter', color: '#ff7a00', logo: 'https://isdxnskghygvaezqjbyv.supabase.co/storage/v1/object/public/attachments/niter.png' },
-  { id: 'c6', name: 'C6 Bank', color: '#212121', logo: 'https://isdxnskghygvaezqjbyv.supabase.co/storage/v1/object/public/attachments/c6-bank.png' },
-  { id: 'sicredi', name: 'Sicredi', color: '#3fb149', logo: 'https://isdxnskghygvaezqjbyv.supabase.co/storage/v1/object/public/attachments/sicredi.png' },
-  { id: 'xp', name: 'XP Investimentos', color: '#000000', logo: 'https://isdxnskghygvaezqjbyv.supabase.co/storage/v1/object/public/attachments/xp-investimentos.png' },
-  { id: 'btg', name: 'BTG Pactual', color: '#003399', logo: 'https://isdxnskghygvaezqjbyv.supabase.co/storage/v1/object/public/attachments/btg-pactual-1.png' },
-  { id: 'mercado-pago', name: 'Mercado Pago', color: '#00beef', logo: 'https://isdxnskghygvaezqjbyv.supabase.co/storage/v1/object/public/attachments/mercado-pago.png' },
+  { id: 'santander', name: 'Santander', color: '#ec0000', logo: 'https://unavatar.io/santander.com.br' },
+  { id: 'bb', name: 'Banco do Brasil', color: '#fcf800', logo: 'https://unavatar.io/bb.com.br' },
+  { id: 'caixa', name: 'Caixa Econômica', color: '#005ca9', logo: 'https://unavatar.io/caixa.gov.br' },
+  { id: 'inter', name: 'Banco Inter', color: '#ff7a00', logo: 'https://unavatar.io/inter.co' },
+  { id: 'c6', name: 'C6 Bank', color: '#212121', logo: 'https://unavatar.io/c6bank.com.br' },
+  { id: 'sicredi', name: 'Sicredi', color: '#3fb149', logo: 'https://unavatar.io/sicredi.com.br' },
+  { id: 'xp', name: 'XP Investimentos', color: '#000000', logo: 'https://unavatar.io/xp.com.br' },
+  { id: 'btg', name: 'BTG Pactual', color: '#003399', logo: 'https://unavatar.io/btgpactual.com' },
+  { id: 'mercado-pago', name: 'Mercado Pago', color: '#00beef', logo: 'https://unavatar.io/mercadopago.com.br' },
   { id: 'outro', name: 'Outro Banco', color: '#64748b', logo: '' },
 ];
 
@@ -235,7 +235,7 @@ export function AccountsPage() {
                   <img 
                     src={bankInfo.logo} 
                     alt={bankInfo.name} 
-                    className="w-10 h-10 object-contain" 
+                    className="w-10 h-10 object-contain transition-all duration-300 group-hover:scale-110" 
                     onError={() => setImgError(true)}
                   />
                 ) : (
