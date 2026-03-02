@@ -56,7 +56,7 @@ import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const BANKS = [
-  { id: 'nubank', name: 'NuBank', color: '#8a05be', logo: 'https://unavatar.io/nubank.com.br' },
+  { id: 'nubank', name: 'NuBank', color: '#8a05be', logo: 'https://logodownload.org/wp-content/uploads/2019/08/nubank-logo-3.png' },
   { id: 'itau', name: 'Itaú', color: '#ec7000', logo: 'https://unavatar.io/itau.com.br' },
   { id: 'bradesco', name: 'Bradesco', color: '#cc092f', logo: 'https://unavatar.io/bradesco.com.br' },
   { id: 'santander', name: 'Santander', color: '#ec0000', logo: 'https://unavatar.io/santander.com.br' },
@@ -229,7 +229,6 @@ export function AccountsPage() {
         <CardContent className="p-5">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
-              {/* Logo Container - Agora sem fundo branco e com filtro de brilho/inversão */}
               <div className="w-12 h-12 flex items-center justify-center shrink-0">
                 {bankInfo.logo && !imgError ? (
                   <img 
