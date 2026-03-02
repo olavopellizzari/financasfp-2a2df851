@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { UserFilter } from '@/components/UserFilter';
+import { BankLogo } from '@/components/BankLogo';
 import { 
   Dialog,
   DialogContent,
@@ -56,17 +57,17 @@ import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const BANKS = [
-  { id: 'nubank', name: 'NuBank', color: '#8a05be', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/NuBank_logo.svg/512px-NuBank_logo.svg.png' },
-  { id: 'itau', name: 'Itaú', color: '#ec7000', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Banco_Ita%C3%BA_logo.svg/512px-Banco_Ita%C3%BA_logo.svg.png' },
-  { id: 'bradesco', name: 'Bradesco', color: '#cc092f', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Bradesco_logo.svg/512px-Bradesco_logo.svg.png' },
-  { id: 'santander', name: 'Santander', color: '#ec0000', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Santander_Logotipo.svg/512px-Santander_Logotipo.svg.png' },
-  { id: 'bb', name: 'Banco do Brasil', color: '#fcf800', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Banco_do_Brasil_logo.svg/512px-Banco_do_Brasil_logo.svg.png' },
-  { id: 'caixa', name: 'Caixa Econômica', color: '#005ca9', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Caixa_Econ%C3%B4mica_Federal_logo.svg/512px-Caixa_Econ%C3%B4mica_Federal_logo.svg.png' },
-  { id: 'inter', name: 'Banco Inter', color: '#ff7a00', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Banco_Inter_logo.svg/512px-Banco_Inter_logo.svg.png' },
-  { id: 'c6', name: 'C6 Bank', color: '#212121', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/C6_Bank_logo.svg/512px-C6_Bank_logo.svg.png' },
-  { id: 'sicredi', name: 'Sicredi', color: '#3fb149', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Sicredi_logo.svg/512px-Sicredi_logo.svg.png' },
-  { id: 'xp', name: 'XP Investimentos', color: '#000000', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/XP_Investimentos_logo.svg/512px-XP_Investimentos_logo.svg.png' },
-  { id: 'btg', name: 'BTG Pactual', color: '#003399', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/BTG_Pactual_logo.svg/512px-BTG_Pactual_logo.svg.png' },
+  { id: 'nubank', name: 'NuBank', color: '#8a05be', logo: 'https://logo.clearbit.com/nubank.com.br' },
+  { id: 'itau', name: 'Itaú', color: '#ec7000', logo: 'https://logo.clearbit.com/itau.com.br' },
+  { id: 'bradesco', name: 'Bradesco', color: '#cc092f', logo: 'https://logo.clearbit.com/bradesco.com.br' },
+  { id: 'santander', name: 'Santander', color: '#ec0000', logo: 'https://logo.clearbit.com/santander.com.br' },
+  { id: 'bb', name: 'Banco do Brasil', color: '#fcf800', logo: 'https://logo.clearbit.com/bb.com.br' },
+  { id: 'caixa', name: 'Caixa Econômica', color: '#005ca9', logo: 'https://logo.clearbit.com/caixa.gov.br' },
+  { id: 'inter', name: 'Banco Inter', color: '#ff7a00', logo: 'https://logo.clearbit.com/bancointer.com.br' },
+  { id: 'c6', name: 'C6 Bank', color: '#212121', logo: 'https://logo.clearbit.com/c6bank.com.br' },
+  { id: 'sicredi', name: 'Sicredi', color: '#3fb149', logo: 'https://logo.clearbit.com/sicredi.com.br' },
+  { id: 'xp', name: 'XP Investimentos', color: '#000000', logo: 'https://logo.clearbit.com/xpi.com.br' },
+  { id: 'btg', name: 'BTG Pactual', color: '#003399', logo: 'https://logo.clearbit.com/btgpactual.com' },
   { id: 'outro', name: 'Outro Banco', color: '#64748b', logo: '' },
 ];
 
@@ -121,7 +122,6 @@ export function AccountsPage() {
 
   const activeAccounts = filteredAccounts.filter(a => a.active !== false);
 
-  // Calcula o saldo total excluindo as contas marcadas para exclusão
   const totalBalance = activeAccounts.reduce((sum, account) => {
     if (account.exclude_from_totals) return sum;
     return sum + getAccountBalance(account.id);
@@ -228,13 +228,7 @@ export function AccountsPage() {
         <CardContent className="p-4">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center overflow-hidden border shadow-sm">
-                {bankInfo.logo ? (
-                  <img src={bankInfo.logo} alt={bankInfo.name} className="w-8 h-8 object-contain" />
-                ) : (
-                  <Building2 className="w-6 h-6 text-muted-foreground" />
-                )}
-              </div>
+              <BankLogo logoUrl={bankInfo.logo} bankName={bankInfo.name} size="lg" />
               <div>
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-foreground">{account.name}</p>
@@ -462,13 +456,7 @@ export function AccountsPage() {
                   {BANKS.map(bank => (
                     <SelectItem key={bank.id} value={bank.id}>
                       <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 bg-white rounded flex items-center justify-center overflow-hidden border border-muted">
-                          {bank.logo ? (
-                            <img src={bank.logo} alt="" className="w-4 h-4 object-contain" />
-                          ) : (
-                            <Building2 className="w-3 h-3 text-muted-foreground" />
-                          )}
-                        </div>
+                        <BankLogo logoUrl={bank.logo} bankName={bank.name} size="sm" />
                         {bank.name}
                       </div>
                     </SelectItem>
