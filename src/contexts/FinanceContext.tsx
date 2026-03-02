@@ -41,6 +41,10 @@ interface FinanceContextType {
   updateCard: (id: string, data: any) => Promise<void>;
   deleteCard: (id: string) => Promise<void>;
   saveBudget: (data: any) => Promise<void>;
+  saveGoal: (data: any) => Promise<void>;
+  deleteGoal: (id: string) => Promise<void>;
+  saveDebt: (data: any) => Promise<void>;
+  deleteDebt: (id: string) => Promise<void>;
   calculateMesFatura: (purchaseDate: Date, cardId: string) => string;
 }
 
@@ -52,7 +56,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const familyId = currentUser?.family_id;
   const familyUserIds = useMemo(() => users.map(u => u.id), [users]);
 
-  // Queries individuais com TanStack Query para melhor performance e cache
+  // Queries individuais com TanStack Query
   const { data: categories = [], isLoading: loadingCats } = useQuery({
     queryKey: ['categories', familyId],
     queryFn: async () => {
@@ -156,20 +160,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await queryClient.invalidateQueries({ queryKey: ['debts'] });
   };
 
-  const filteredAccounts = useMemo(() => allAccountsRaw.filter(a => a.is_shared || a.user_id === currentUser?.id), [allAccountsRaw, currentUser?.id]);
-  const filteredCards = useMemo(() => allCardsRaw.filter(c => (c as any).is_shared || c.user_id === currentUser?.id), [allCardsRaw, currentUser?.id]);
-  const filteredTransactions = useMemo(() => allTransactionsRaw.filter(t => {
-    if (t.accountId) {
-      const acc = allAccountsRaw.find(a => a.id === t.accountId);
-      if (acc && !acc.is_shared && acc.user_id !== currentUser?.id) return false;
-    }
-    if (t.cardId) {
-      const card = allCardsRaw.find(c => c.id === t.cardId);
-      if (card && !(card as any).is_shared && card.user_id !== currentUser?.id) return false;
-    }
-    return true;
-  }), [allTransactionsRaw, allAccountsRaw, allCardsRaw, currentUser?.id]);
-
   const getAccountBalance = (accountId: string) => {
     const account = allAccountsRaw.find(a => a.id === accountId);
     if (!account) return 0;
@@ -199,13 +189,25 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   // Mutadores
   const createTransaction = async (data: any) => {
     const { error } = await supabase.from('transactions').insert([{
-      user_id: data.userId, household_id: familyId, account_id: data.accountId, card_id: data.cardId,
-      category_id: data.categoryId, amount: data.amount, description: data.description, type: data.type,
-      status: data.status || 'confirmed', purchase_date: format(data.purchaseDate, 'yyyy-MM-dd'),
+      user_id: data.userId, 
+      household_id: familyId, 
+      account_id: data.accountId || null, 
+      card_id: data.cardId || null,
+      category_id: data.categoryId || null, 
+      amount: data.amount, 
+      description: data.description, 
+      type: data.type,
+      status: data.status || 'confirmed', 
+      purchase_date: format(data.purchaseDate, 'yyyy-MM-dd'),
       effective_date: format(data.effectiveDate || data.purchaseDate, 'yyyy-MM-dd'),
-      effective_month: data.effectiveMonth, mes_fatura: data.mes_fatura,
-      installment_number: data.installmentNumber, total_installments: data.total_installments,
-      installment_group_id: data.installmentGroupId, is_recurring: data.isRecurring, is_paid: data.isPaid, notes: data.notes
+      effective_month: data.effectiveMonth, 
+      mes_fatura: data.mes_fatura,
+      installment_number: data.installmentNumber, 
+      total_installments: data.total_installments,
+      installment_group_id: data.installmentGroupId, 
+      is_recurring: data.isRecurring, 
+      is_paid: data.isPaid, 
+      notes: data.notes
     }]);
     if (error) throw error;
     await refresh();
@@ -216,7 +218,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.amount !== undefined) updateData.amount = data.amount;
     if (data.description !== undefined) updateData.description = data.description;
     if (data.isPaid !== undefined) updateData.is_paid = data.isPaid;
-    if (data.categoryId !== undefined) updateData.category_id = data.categoryId;
+    if (data.categoryId !== undefined) updateData.category_id = data.categoryId || null;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.userId !== undefined) updateData.user_id = data.userId;
     
@@ -315,9 +317,59 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const saveBudget = async (data: any) => {
     const { error } = await supabase.from('budgets').upsert({
-      user_id: data.userId, month: data.month, income: data.income,
-      savings_goal: data.savingsGoal, category_limits: data.categoryLimits
+      id: data.id,
+      user_id: data.userId, 
+      month: data.month, 
+      income: data.income,
+      savings_goal: data.savingsGoal, 
+      category_limits: data.categoryLimits
     });
+    if (error) throw error;
+    await refresh();
+  };
+
+  const saveGoal = async (data: any) => {
+    const { error } = await supabase.from('goals').upsert({
+      id: data.id,
+      user_id: data.user_id,
+      name: data.name,
+      target_amount: data.target_amount,
+      current_amount: data.current_amount,
+      deadline: data.deadline,
+      icon: data.icon,
+      color: data.color,
+      is_completed: data.is_completed
+    });
+    if (error) throw error;
+    await refresh();
+  };
+
+  const deleteGoal = async (id: string) => {
+    const { error } = await supabase.from('goals').delete().eq('id', id);
+    if (error) throw error;
+    await refresh();
+  };
+
+  const saveDebt = async (data: any) => {
+    const { error } = await supabase.from('debts').upsert({
+      id: data.id,
+      user_id: data.user_id,
+      name: data.name,
+      total_amount: data.total_amount,
+      paid_amount: data.paid_amount,
+      interest_rate: data.interest_rate,
+      start_date: data.start_date,
+      due_date: data.due_date,
+      monthly_payment: data.monthly_payment,
+      is_active: data.is_active,
+      notes: data.notes
+    });
+    if (error) throw error;
+    await refresh();
+  };
+
+  const deleteDebt = async (id: string) => {
+    const { error } = await supabase.from('debts').delete().eq('id', id);
     if (error) throw error;
     await refresh();
   };
@@ -333,7 +385,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       createTransaction, updateTransaction, deleteTransaction,
       createAccount, updateAccount, deleteAccount,
       createCard, updateCard, deleteCard,
-      saveBudget, calculateMesFatura
+      saveBudget, saveGoal, deleteGoal, saveDebt, deleteDebt, calculateMesFatura
     }}>
       {children}
     </FinanceContext.Provider>
