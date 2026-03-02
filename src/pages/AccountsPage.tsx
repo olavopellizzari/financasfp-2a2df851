@@ -56,18 +56,18 @@ import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const BANKS = [
-  { id: 'nubank', name: 'NuBank', color: '#8a05be', logo: 'https://unavatar.io/nubank.com.br' },
-  { id: 'itau', name: 'Itaú', color: '#ec7000', logo: 'https://unavatar.io/itau.com.br' },
+  { id: 'nubank', name: 'NuBank', color: '#8a05be', logo: '/bank-logos/nubank.png' },
+  { id: 'itau', name: 'Itaú', color: '#ec7000', logo: '/bank-logos/itau.png' },
   { id: 'bradesco', name: 'Bradesco', color: '#cc092f', logo: 'https://unavatar.io/bradesco.com.br' },
-  { id: 'santander', name: 'Santander', color: '#ec0000', logo: 'https://unavatar.io/santander.com.br' },
-  { id: 'bb', name: 'Banco do Brasil', color: '#fcf800', logo: 'https://unavatar.io/bb.com.br' },
-  { id: 'caixa', name: 'Caixa Econômica', color: '#005ca9', logo: 'https://unavatar.io/caixa.gov.br' },
-  { id: 'inter', name: 'Banco Inter', color: '#ff7a00', logo: 'https://unavatar.io/inter.co' },
-  { id: 'c6', name: 'C6 Bank', color: '#212121', logo: 'https://unavatar.io/c6bank.com.br' },
-  { id: 'sicredi', name: 'Sicredi', color: '#3fb149', logo: 'https://unavatar.io/sicredi.com.br' },
-  { id: 'xp', name: 'XP Investimentos', color: '#000000', logo: 'https://unavatar.io/xp.com.br' },
-  { id: 'btg', name: 'BTG Pactual', color: '#003399', logo: 'https://unavatar.io/btgpactual.com' },
-  { id: 'mercado-pago', name: 'Mercado Pago', color: '#00beef', logo: 'https://unavatar.io/mercadopago.com.br' },
+  { id: 'santander', name: 'Santander', color: '#ec0000', logo: '/bank-logos/santander.png' },
+  { id: 'bb', name: 'Banco do Brasil', color: '#fcf800', logo: '/bank-logos/bb.png' },
+  { id: 'caixa', name: 'Caixa Econômica', color: '#005ca9', logo: '/bank-logos/caixa.png' },
+  { id: 'inter', name: 'Banco Inter', color: '#ff7a00', logo: '/bank-logos/inter.png' },
+  { id: 'c6', name: 'C6 Bank', color: '#212121', logo: '/bank-logos/c6.png' },
+  { id: 'sicredi', name: 'Sicredi', color: '#3fb149', logo: '/bank-logos/sicredi.png' },
+  { id: 'xp', name: 'XP Investimentos', color: '#000000', logo: '/bank-logos/xp.png' },
+  { id: 'btg', name: 'BTG Pactual', color: '#003399', logo: '/bank-logos/btg.png' },
+  { id: 'mercado-pago', name: 'Mercado Pago', color: '#00beef', logo: '/bank-logos/mercado-pago.png' },
   { id: 'outro', name: 'Outro Banco', color: '#64748b', logo: '' },
 ];
 
