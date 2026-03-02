@@ -61,7 +61,7 @@ export interface Account {
   opening_date: string;
   active: boolean;
   is_shared: boolean;
-  exclude_from_totals?: boolean; // Novo campo
+  exclude_from_totals?: boolean;
   created_at: Date;
 }
 
@@ -168,7 +168,8 @@ export interface CycleSnapshot {
 
 export interface Debt {
   id: string;
-  user_id: string;
+  user_id: string | null;
+  household_id: string;
   name: string;
   total_amount: number;
   paid_amount: number;

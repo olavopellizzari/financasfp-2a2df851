@@ -374,6 +374,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.from('debts').upsert({
       id: data.id,
       user_id: data.user_id,
+      household_id: data.household_id,
       name: data.name,
       total_amount: data.total_amount,
       paid_amount: data.paid_amount,

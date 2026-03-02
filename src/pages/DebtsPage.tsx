@@ -125,10 +125,16 @@ export function DebtsPage() {
       return;
     }
 
+    if (!currentUser?.family_id) {
+      toast({ title: 'Erro', description: 'Família não identificada', variant: 'destructive' });
+      return;
+    }
+
     try {
       const debt: any = {
         id: editingDebt?.id || generateId(),
         user_id: debtForm.userId === 'family' ? null : debtForm.userId,
+        household_id: currentUser.family_id,
         name: debtForm.name,
         total_amount: parseFloat(debtForm.totalAmount) || 0,
         paid_amount: parseFloat(debtForm.paidAmount) || 0,
