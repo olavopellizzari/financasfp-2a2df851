@@ -149,6 +149,19 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     enabled: familyUserIds.length > 0
   });
 
+  // Filtros para o usuário logado
+  const filteredAccounts = useMemo(() => {
+    return allAccountsRaw.filter(a => a.user_id === currentUser?.id || a.is_shared);
+  }, [allAccountsRaw, currentUser?.id]);
+
+  const filteredCards = useMemo(() => {
+    return allCardsRaw.filter(c => c.user_id === currentUser?.id || (c as any).is_shared);
+  }, [allCardsRaw, currentUser?.id]);
+
+  const filteredTransactions = useMemo(() => {
+    return allTransactionsRaw.filter(t => t.userId === currentUser?.id);
+  }, [allTransactionsRaw, currentUser?.id]);
+
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ['accounts'] });
     await queryClient.invalidateQueries({ queryKey: ['cards'] });
