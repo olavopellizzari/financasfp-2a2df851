@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -13,17 +13,24 @@ interface BankLogoProps {
 
 export function BankLogo({ logoUrl, bankName, className, size = 'md' }: BankLogoProps) {
   const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Reset error state if logoUrl changes
+  useEffect(() => {
+    setError(false);
+    setLoading(true);
+  }, [logoUrl]);
 
   const sizeClasses = {
-    sm: 'w-6 h-6 text-xs',
-    md: 'w-10 h-10 text-sm',
-    lg: 'w-12 h-12 text-base'
+    sm: 'w-6 h-6 text-[10px]',
+    md: 'w-10 h-10 text-xs',
+    lg: 'w-12 h-12 text-sm'
   };
 
   const iconSizes = {
-    sm: 14,
-    md: 20,
-    lg: 24
+    sm: 12,
+    md: 18,
+    lg: 22
   };
 
   if (!logoUrl || error) {
@@ -43,15 +50,25 @@ export function BankLogo({ logoUrl, bankName, className, size = 'md' }: BankLogo
 
   return (
     <div className={cn(
-      "rounded-xl bg-white flex items-center justify-center overflow-hidden border shadow-sm shrink-0 p-1",
+      "rounded-xl bg-white flex items-center justify-center overflow-hidden border shadow-sm shrink-0 p-1.5 relative",
       sizeClasses[size],
       className
     )}>
+      {loading && (
+        <div className="absolute inset-0 bg-muted animate-pulse" />
+      )}
       <img 
         src={logoUrl} 
         alt={bankName} 
-        className="w-full h-full object-contain"
-        onError={() => setError(true)}
+        className={cn(
+          "w-full h-full object-contain transition-opacity duration-300",
+          loading ? "opacity-0" : "opacity-100"
+        )}
+        onLoad={() => setLoading(false)}
+        onError={() => {
+          setError(true);
+          setLoading(false);
+        }}
       />
     </div>
   );

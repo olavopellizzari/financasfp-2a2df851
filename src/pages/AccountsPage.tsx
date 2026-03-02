@@ -57,17 +57,17 @@ import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const BANKS = [
-  { id: 'nubank', name: 'NuBank', color: '#8a05be', logo: 'https://logo.clearbit.com/nubank.com.br' },
-  { id: 'itau', name: 'Itaú', color: '#ec7000', logo: 'https://logo.clearbit.com/itau.com.br' },
-  { id: 'bradesco', name: 'Bradesco', color: '#cc092f', logo: 'https://logo.clearbit.com/bradesco.com.br' },
-  { id: 'santander', name: 'Santander', color: '#ec0000', logo: 'https://logo.clearbit.com/santander.com.br' },
-  { id: 'bb', name: 'Banco do Brasil', color: '#fcf800', logo: 'https://logo.clearbit.com/bb.com.br' },
-  { id: 'caixa', name: 'Caixa Econômica', color: '#005ca9', logo: 'https://logo.clearbit.com/caixa.gov.br' },
-  { id: 'inter', name: 'Banco Inter', color: '#ff7a00', logo: 'https://logo.clearbit.com/bancointer.com.br' },
-  { id: 'c6', name: 'C6 Bank', color: '#212121', logo: 'https://logo.clearbit.com/c6bank.com.br' },
-  { id: 'sicredi', name: 'Sicredi', color: '#3fb149', logo: 'https://logo.clearbit.com/sicredi.com.br' },
-  { id: 'xp', name: 'XP Investimentos', color: '#000000', logo: 'https://logo.clearbit.com/xpi.com.br' },
-  { id: 'btg', name: 'BTG Pactual', color: '#003399', logo: 'https://logo.clearbit.com/btgpactual.com' },
+  { id: 'nubank', name: 'NuBank', color: '#8a05be', logo: 'https://unavatar.io/nubank.com.br' },
+  { id: 'itau', name: 'Itaú', color: '#ec7000', logo: 'https://unavatar.io/itau.com.br' },
+  { id: 'bradesco', name: 'Bradesco', color: '#cc092f', logo: 'https://unavatar.io/bradesco.com.br' },
+  { id: 'santander', name: 'Santander', color: '#ec0000', logo: 'https://unavatar.io/santander.com.br' },
+  { id: 'bb', name: 'Banco do Brasil', color: '#fcf800', logo: 'https://unavatar.io/bb.com.br' },
+  { id: 'caixa', name: 'Caixa Econômica', color: '#005ca9', logo: 'https://unavatar.io/caixa.gov.br' },
+  { id: 'inter', name: 'Banco Inter', color: '#ff7a00', logo: 'https://unavatar.io/inter.co' },
+  { id: 'c6', name: 'C6 Bank', color: '#212121', logo: 'https://unavatar.io/c6bank.com.br' },
+  { id: 'sicredi', name: 'Sicredi', color: '#3fb149', logo: 'https://unavatar.io/sicredi.com.br' },
+  { id: 'xp', name: 'XP Investimentos', color: '#000000', logo: 'https://unavatar.io/xp.com.br' },
+  { id: 'btg', name: 'BTG Pactual', color: '#003399', logo: 'https://unavatar.io/btgpactual.com' },
   { id: 'outro', name: 'Outro Banco', color: '#64748b', logo: '' },
 ];
 
