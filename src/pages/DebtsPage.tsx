@@ -29,7 +29,8 @@ import {
   Trash2,
   DollarSign,
   Calculator,
-  Clock
+  Clock,
+  Users
 } from 'lucide-react';
 import { Debt, formatCurrency, generateId } from '@/lib/db';
 import { toast } from '@/hooks/use-toast';
@@ -38,7 +39,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
 export function DebtsPage() {
-  const { currentUser, users } = useAuth();
+  const { currentUser, users, isCurrentUserAdmin } = useAuth();
   const { debts, saveDebt, deleteDebt } = useFinance();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
@@ -58,11 +59,14 @@ export function DebtsPage() {
     installmentsCount: '',
     frequency: 'monthly' as 'monthly' | 'semiannual' | 'annual',
     notes: '',
-    userId: currentUser?.id || ''
+    userId: currentUser?.id || 'family'
   });
+
+  const isAdmin = isCurrentUserAdmin();
 
   const filteredDebts = useMemo(() => {
     if (selectedUserId === 'all') return debts;
+    if (selectedUserId === 'family') return debts.filter(d => !d.user_id);
     return debts.filter(d => d.user_id === selectedUserId);
   }, [debts, selectedUserId]);
 
@@ -75,7 +79,7 @@ export function DebtsPage() {
     try {
       const debt: any = {
         id: editingDebt?.id || generateId(),
-        user_id: debtForm.userId || currentUser?.id,
+        user_id: debtForm.userId === 'family' ? null : debtForm.userId,
         name: debtForm.name,
         total_amount: parseFloat(debtForm.totalAmount) || 0,
         paid_amount: parseFloat(debtForm.paidAmount) || 0,
@@ -93,8 +97,8 @@ export function DebtsPage() {
       toast({ title: editingDebt ? 'Dívida atualizada!' : 'Dívida registrada!' });
       setDialogOpen(false);
       resetForm();
-    } catch (error) {
-      toast({ title: 'Erro ao salvar dívida', variant: 'destructive' });
+    } catch (error: any) {
+      toast({ title: 'Erro ao salvar dívida', description: error.message, variant: 'destructive' });
     }
   };
 
@@ -111,7 +115,7 @@ export function DebtsPage() {
       installmentsCount: debt.installments_count?.toString() || '',
       frequency: debt.frequency || 'monthly',
       notes: debt.notes,
-      userId: debt.user_id
+      userId: debt.user_id || 'family'
     });
     setDialogOpen(true);
   };
@@ -148,7 +152,7 @@ export function DebtsPage() {
     setDebtForm({
       name: '', totalAmount: '', paidAmount: '', interestRate: '',
       startDate: new Date(), dueDate: new Date(), monthlyPayment: '',
-      installmentsCount: '', frequency: 'monthly', notes: '', userId: currentUser?.id || ''
+      installmentsCount: '', frequency: 'monthly', notes: '', userId: currentUser?.id || 'family'
     });
   };
 
@@ -181,13 +185,25 @@ export function DebtsPage() {
         {activeDebts.map(debt => {
           const percentage = (debt.paid_amount / debt.total_amount) * 100;
           const frequencyLabel = debt.frequency === 'monthly' ? 'Mensal' : debt.frequency === 'semiannual' ? 'Semestral' : 'Anual';
+          const debtUser = users.find(u => u.id === debt.user_id);
           
           return (
             <Card key={debt.id} className="finance-card group">
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="space-y-1">
-                    <h3 className="font-bold text-lg">{debt.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-lg">{debt.name}</h3>
+                      {!debt.user_id ? (
+                        <Badge variant="secondary" className="bg-primary/10 text-primary border-none text-[10px] h-5">
+                          <Users className="w-3 h-3 mr-1" /> Família
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] h-5">
+                          {debtUser?.name || 'Usuário'}
+                        </Badge>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <CalendarIcon className="h-3 w-3" />
                       <span>Vencimento: {format(parseISO(debt.due_date), 'dd/MM/yyyy')}</span>
@@ -243,7 +259,22 @@ export function DebtsPage() {
               <Label>Responsável</Label>
               <Select value={debtForm.userId} onValueChange={v => setDebtForm({...debtForm, userId: v})}>
                 <SelectTrigger className="rounded-xl h-11"><SelectValue /></SelectTrigger>
-                <SelectContent>{users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  <SelectItem value="family">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-primary" />
+                      <span>Família (Compartilhada)</span>
+                    </div>
+                  </SelectItem>
+                  {users.map(u => (
+                    <SelectItem key={u.id} value={u.id}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full" style={{ backgroundColor: u.avatar_color }} />
+                        <span>{u.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">

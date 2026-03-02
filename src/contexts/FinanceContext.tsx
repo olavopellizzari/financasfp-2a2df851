@@ -143,7 +143,12 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const { data: debts = [] } = useQuery({
     queryKey: ['debts', familyUserIds],
     queryFn: async () => {
-      const { data } = await supabase.from('debts').select('*').in('user_id', familyUserIds);
+      if (familyUserIds.length === 0) return [];
+      // Busca dívidas dos usuários da família OU dívidas sem user_id (compartilhadas)
+      const { data } = await supabase
+        .from('debts')
+        .select('*')
+        .or(`user_id.in.(${familyUserIds.join(',')}),user_id.is.null`);
       return (data || []) as Debt[];
     },
     enabled: familyUserIds.length > 0
