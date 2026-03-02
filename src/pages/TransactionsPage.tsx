@@ -65,7 +65,8 @@ import {
   AlertCircle,
   Sparkles,
   ChevronsUpDown,
-  ArrowLeft
+  ArrowLeft,
+  Loader2
 } from 'lucide-react';
 import { format, addMonths, addYears, subMonths, isValid, parseISO, startOfDay, isAfter, isSameDay, parse } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -149,6 +150,7 @@ export function TransactionsPage() {
   const [bulkActionType, setBulkActionType] = useState<'edit' | 'delete' | null>(null);
   const [selectedTxForBulk, setSelectedTxForBulk] = useState<Transaction | null>(null);
   const [pendingUpdates, setPendingUpdates] = useState<Partial<Transaction> | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<TransactionType | 'ALL'>('ALL');
@@ -181,7 +183,6 @@ export function TransactionsPage() {
 
   const isAdmin = isCurrentUserAdmin();
   
-  // Filtro de Contas e Cartões disponíveis para o usuário logado (para LANÇAMENTO)
   const availableAccounts = useMemo(() => {
     return allAccounts.filter(a => a.active && (a.is_shared || a.user_id === currentUser?.id));
   }, [allAccounts, currentUser?.id]);
@@ -201,7 +202,6 @@ export function TransactionsPage() {
 
   const filteredTransactions = useMemo(() => {
     return allTransactions.filter(tx => {
-      // 1. Filtro de Modo (Cartão vs Conta)
       if (isCardMode) {
         if (tx.type !== 'CREDIT' && tx.type !== 'REFUND') return false;
         if (selectedCardId !== 'all' && tx.cardId !== selectedCardId) return false;
@@ -211,18 +211,15 @@ export function TransactionsPage() {
         if (tx.effectiveMonth !== selectedMonthStr) return false;
       }
 
-      // 2. Filtro de Usuário (Lógica idêntica ao Dashboard)
       let matchesUser = true;
       if (selectedUserId === 'total') {
         matchesUser = true;
       } else if (selectedUserId === 'all') {
-        // Família: Apenas o que é compartilhado e NÃO tem dono específico
         const familyAccountIds = new Set(allAccounts.filter(a => a.is_shared && !a.user_id).map(a => a.id));
         const familyCardIds = new Set(allCards.filter(c => (c as any).is_shared && !c.user_id).map(c => c.id));
         matchesUser = (tx.accountId && familyAccountIds.has(tx.accountId)) || 
                       (tx.cardId && familyCardIds.has(tx.cardId));
       } else {
-        // Usuário específico: Tudo o que pertence a ele (Exclusivo ou Privado)
         const userAccountIds = new Set(allAccounts.filter(a => a.user_id === selectedUserId).map(a => a.id));
         const userCardIds = new Set(allCards.filter(c => c.user_id === selectedUserId).map(c => c.id));
         
@@ -231,7 +228,6 @@ export function TransactionsPage() {
         else matchesUser = tx.userId === selectedUserId;
       }
 
-      // 3. Filtros de Busca e Tipo
       const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = filterType === 'ALL' || tx.type === filterType;
       
@@ -363,8 +359,12 @@ export function TransactionsPage() {
       setBulkDialogOpen(true);
     } else {
       if (window.confirm('Tem certeza que deseja excluir este lançamento?')) {
-        await deleteTransaction(tx.id);
-        toast({ title: 'Lançamento excluído!' });
+        try {
+          await deleteTransaction(tx.id);
+          toast({ title: 'Lançamento excluído!' });
+        } catch (e: any) {
+          toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
+        }
       }
     }
   };
@@ -377,8 +377,8 @@ export function TransactionsPage() {
       toast({ title: 'Lançamentos excluídos!', description: `${selectedIds.size} itens foram removidos.` });
       setSelectedIds(new Set());
       await refresh();
-    } catch (error) {
-      toast({ title: 'Erro ao excluir', variant: 'destructive' });
+    } catch (error: any) {
+      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
     }
   };
 
@@ -396,90 +396,97 @@ export function TransactionsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSaving(true);
     const totalAmount = parseFloat(formData.amount) || 0;
 
-    if (editingTransaction) {
-      const updates: any = {
-        userId: formData.userId,
-        type: formData.type,
-        amount: totalAmount,
-        description: formData.description,
-        categoryId: formData.categoryId,
-        isPaid: formData.isPaid,
-        notes: formData.notes
-      };
+    try {
+      if (editingTransaction) {
+        const updates: any = {
+          userId: formData.userId,
+          type: formData.type,
+          amount: totalAmount,
+          description: formData.description,
+          categoryId: formData.categoryId,
+          isPaid: formData.isPaid,
+          notes: formData.notes
+        };
 
-      if (editingTransaction.installmentGroupId) {
-        setPendingUpdates(updates);
-        setSelectedTxForBulk(editingTransaction);
-        setBulkActionType('edit');
-        setBulkDialogOpen(true);
-      } else {
-        await updateTransaction(editingTransaction.id, updates);
-        toast({ title: 'Lançamento atualizado!' });
+        if (editingTransaction.installmentGroupId) {
+          setPendingUpdates(updates);
+          setSelectedTxForBulk(editingTransaction);
+          setBulkActionType('edit');
+          setBulkDialogOpen(true);
+        } else {
+          await updateTransaction(editingTransaction.id, updates);
+          toast({ title: 'Lançamento atualizado!' });
+          setIsDialogOpen(false);
+        }
+        return;
+      }
+
+      if (formData.type === 'TRANSFER') {
+        await createTransaction({
+          type: 'TRANSFER', amount: totalAmount, description: formData.description || `Transferência para ${allAccounts.find(a => a.id === formData.destinationAccountId)?.name}`,
+          purchaseDate: formData.purchaseDate, effectiveDate: formData.purchaseDate, effectiveMonth: format(formData.purchaseDate, 'yyyy-MM'),
+          mesFatura: null, status: 'confirmed', isPaid: true, userId: formData.userId, accountId: formData.accountId, cardId: null, categoryId: '', notes: formData.notes, isRecurring: false
+        });
+        await createTransaction({
+          type: 'INCOME', amount: totalAmount, description: formData.description || `Transferência de ${allAccounts.find(a => a.id === formData.accountId)?.name}`,
+          purchaseDate: formData.purchaseDate, effectiveDate: formData.purchaseDate, effectiveMonth: format(formData.purchaseDate, 'yyyy-MM'),
+          mesFatura: null, status: 'confirmed', isPaid: true, userId: formData.destinationUserId, accountId: formData.destinationAccountId, cardId: null, categoryId: '', notes: formData.notes, isRecurring: false
+        });
+        toast({ title: 'Transferência realizada!' });
         setIsDialogOpen(false);
+        return;
       }
-      return;
-    }
 
-    if (formData.type === 'TRANSFER') {
-      await createTransaction({
-        type: 'TRANSFER', amount: totalAmount, description: formData.description || `Transferência para ${allAccounts.find(a => a.id === formData.destinationAccountId)?.name}`,
-        purchaseDate: formData.purchaseDate, effectiveDate: formData.purchaseDate, effectiveMonth: format(formData.purchaseDate, 'yyyy-MM'),
-        mesFatura: null, status: 'confirmed', isPaid: true, userId: formData.userId, accountId: formData.accountId, cardId: null, categoryId: '', notes: formData.notes, isRecurring: false
-      });
-      await createTransaction({
-        type: 'INCOME', amount: totalAmount, description: formData.description || `Transferência de ${allAccounts.find(a => a.id === formData.accountId)?.name}`,
-        purchaseDate: formData.purchaseDate, effectiveDate: formData.purchaseDate, effectiveMonth: format(formData.purchaseDate, 'yyyy-MM'),
-        mesFatura: null, status: 'confirmed', isPaid: true, userId: formData.destinationUserId, accountId: formData.destinationAccountId, cardId: null, categoryId: '', notes: formData.notes, isRecurring: false
-      });
-      toast({ title: 'Transferência realizada!' });
+      const numInstallments = parseInt(formData.installments) || 1;
+      const isRecurring = formData.recurrence !== 'none';
+      const iterations = formData.recurrence === 'custom' ? parseInt(formData.recurrenceCount) : (isRecurring ? (formData.recurrence === 'monthly' ? 60 : 10) : numInstallments);
+      const installmentAmount = totalAmount / (isRecurring ? 1 : numInstallments);
+      const groupId = (numInstallments > 1 || isRecurring) ? generateId() : null;
+
+      for (let i = 0; i < iterations; i++) {
+        const dateForIteration = formData.recurrence === 'annual' ? addMonths(formData.purchaseDate, i * 12) : addMonths(formData.purchaseDate, i);
+        let currentMesFatura = null;
+        let effectiveMonthStr = format(dateForIteration, 'yyyy-MM');
+        
+        if (formData.type === 'CREDIT' || formData.type === 'REFUND') {
+          currentMesFatura = calculateMesFatura(dateForIteration, formData.cardId);
+          effectiveMonthStr = currentMesFatura;
+        } else {
+          effectiveMonthStr = format(dateForIteration, 'yyyy-MM');
+          currentMesFatura = null;
+        }
+        
+        await createTransaction({
+          type: formData.type, 
+          amount: installmentAmount, 
+          description: formData.description,
+          purchaseDate: dateForIteration,
+          effectiveDate: dateForIteration, 
+          effectiveMonth: effectiveMonthStr, 
+          mes_fatura: currentMesFatura, 
+          status: 'confirmed', 
+          isPaid: i === 0 ? formData.isPaid : false, 
+          userId: formData.userId, 
+          accountId: (formData.type === 'CREDIT' || formData.type === 'REFUND') ? null : (formData.accountId || null), 
+          cardId: (formData.type === 'CREDIT' || formData.type === 'REFUND') ? formData.cardId || null : null, 
+          categoryId: formData.categoryId, 
+          installmentGroupId: groupId, 
+          installmentNumber: i + 1, 
+          totalInstallments: iterations, 
+          notes: formData.notes, 
+          isRecurring: isRecurring
+        });
+      }
       setIsDialogOpen(false);
-      return;
+      toast({ title: isRecurring ? 'Lançamentos fixos criados!' : 'Lançamento(s) criado(s)!' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
     }
-
-    const numInstallments = parseInt(formData.installments) || 1;
-    const isRecurring = formData.recurrence !== 'none';
-    const iterations = formData.recurrence === 'custom' ? parseInt(formData.recurrenceCount) : (isRecurring ? (formData.recurrence === 'monthly' ? 60 : 10) : numInstallments);
-    const installmentAmount = totalAmount / (isRecurring ? 1 : numInstallments);
-    const groupId = (numInstallments > 1 || isRecurring) ? generateId() : null;
-
-    for (let i = 0; i < iterations; i++) {
-      const dateForIteration = formData.recurrence === 'annual' ? addMonths(formData.purchaseDate, i * 12) : addMonths(formData.purchaseDate, i);
-      let currentMesFatura = null;
-      let effectiveMonthStr = format(dateForIteration, 'yyyy-MM');
-      
-      if (formData.type === 'CREDIT' || formData.type === 'REFUND') {
-        currentMesFatura = calculateMesFatura(dateForIteration, formData.cardId);
-        effectiveMonthStr = currentMesFatura;
-      } else {
-        effectiveMonthStr = format(dateForIteration, 'yyyy-MM');
-        currentMesFatura = null;
-      }
-      
-      await createTransaction({
-        type: formData.type, 
-        amount: installmentAmount, 
-        description: formData.description,
-        purchaseDate: dateForIteration,
-        effectiveDate: dateForIteration, 
-        effectiveMonth: effectiveMonthStr, 
-        mesFatura: currentMesFatura, 
-        status: 'confirmed', 
-        isPaid: i === 0 ? formData.isPaid : false, 
-        userId: formData.userId, 
-        accountId: (formData.type === 'CREDIT' || formData.type === 'REFUND') ? null : (formData.accountId || null), 
-        cardId: (formData.type === 'CREDIT' || formData.type === 'REFUND') ? formData.cardId || null : null, 
-        categoryId: formData.categoryId, 
-        installmentGroupId: groupId, 
-        installmentNumber: i + 1, 
-        totalInstallments: iterations, 
-        notes: formData.notes, 
-        isRecurring: isRecurring
-      });
-    }
-    setIsDialogOpen(false);
-    toast({ title: isRecurring ? 'Lançamentos fixos criados!' : 'Lançamento(s) criado(s)!' });
   };
 
   const handleBulkAction = async (scope: 'single' | 'future') => {
@@ -488,28 +495,32 @@ export function TransactionsPage() {
     const relatedTxs = allTransactions.filter(t => t.installmentGroupId === groupId);
     const currentEffDate = startOfDay(parseISO(selectedTxForBulk.effectiveDate));
 
-    if (bulkActionType === 'delete') {
-      if (scope === 'single') await deleteTransaction(selectedTxForBulk.id);
-      else {
-        const toDelete = relatedTxs.filter(t => {
-          const txDate = startOfDay(parseISO(t.effectiveDate));
-          return isAfter(txDate, currentEffDate) || isSameDay(txDate, currentEffDate);
-        });
-        for (const tx of toDelete) await deleteTransaction(tx.id);
+    try {
+      if (bulkActionType === 'delete') {
+        if (scope === 'single') await deleteTransaction(selectedTxForBulk.id);
+        else {
+          const toDelete = relatedTxs.filter(t => {
+            const txDate = startOfDay(parseISO(t.effectiveDate));
+            return isAfter(txDate, currentEffDate) || isSameDay(txDate, currentEffDate);
+          });
+          for (const tx of toDelete) await deleteTransaction(tx.id);
+        }
+        toast({ title: scope === 'single' ? 'Lançamento excluído!' : 'Série excluída!' });
+      } else if (bulkActionType === 'edit' && pendingUpdates) {
+        if (scope === 'single') {
+          await updateTransaction(selectedTxForBulk.id, pendingUpdates);
+        } else {
+          const toUpdate = relatedTxs.filter(t => {
+            const txDate = startOfDay(parseISO(t.effectiveDate));
+            return isAfter(txDate, currentEffDate) || isSameDay(txDate, currentEffDate);
+          });
+          for (const tx of toUpdate) await updateTransaction(tx.id, pendingUpdates);
+        }
+        toast({ title: 'Lançamentos personalizados!' });
+        setIsDialogOpen(false);
       }
-      toast({ title: scope === 'single' ? 'Lançamento excluído!' : 'Série excluída!' });
-    } else if (bulkActionType === 'edit' && pendingUpdates) {
-      if (scope === 'single') {
-        await updateTransaction(selectedTxForBulk.id, pendingUpdates);
-      } else {
-        const toUpdate = relatedTxs.filter(t => {
-          const txDate = startOfDay(parseISO(t.effectiveDate));
-          return isAfter(txDate, currentEffDate) || isSameDay(txDate, currentEffDate);
-        });
-        for (const tx of toUpdate) await updateTransaction(tx.id, pendingUpdates);
-      }
-      toast({ title: 'Lançamentos personalizados!' });
-      setIsDialogOpen(false);
+    } catch (e: any) {
+      toast({ title: 'Erro na ação em massa', description: e.message, variant: 'destructive' });
     }
     setBulkDialogOpen(false);
     setSelectedTxForBulk(null);
@@ -519,9 +530,13 @@ export function TransactionsPage() {
   };
 
   const handleTogglePaid = async (tx: Transaction) => {
-    const newStatus = !tx.isPaid;
-    await updateTransaction(tx.id, { isPaid: newStatus });
-    toast({ title: newStatus ? 'Lançamento pago!' : 'Lançamento pendente!' });
+    try {
+      const newStatus = !tx.isPaid;
+      await updateTransaction(tx.id, { isPaid: newStatus });
+      toast({ title: newStatus ? 'Lançamento pago!' : 'Lançamento pendente!' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao atualizar status', description: e.message, variant: 'destructive' });
+    }
   };
 
   return (
@@ -672,7 +687,6 @@ export function TransactionsPage() {
                         setFormData({ 
                           ...formData, 
                           cardId: v,
-                          // Se o cartão for exclusivo, força o usuário a ser o dono
                           userId: card && !(card as any).is_shared ? card.user_id : formData.userId
                         });
                       }}
@@ -690,7 +704,6 @@ export function TransactionsPage() {
                         setFormData({ 
                           ...formData, 
                           accountId: v,
-                          // Se a conta for exclusiva, força o usuário a ser o dono
                           userId: acc && !acc.is_shared ? acc.user_id || '' : formData.userId
                         });
                       }}
@@ -781,7 +794,13 @@ export function TransactionsPage() {
               <div className="flex items-center justify-between p-3 bg-muted/50 rounded-xl border border-dashed"><div className="space-y-0.5"><Label className="text-sm font-bold">Lançamento Pago</Label><p className="text-[10px] text-muted-foreground">Marque se o valor já saiu/entrou na conta</p></div><Switch checked={formData.isPaid} onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isPaid: checked }))} /></div>
               {formData.recurrence === 'custom' && !editingTransaction && (<div className="space-y-2 p-3 bg-primary/5 border border-primary/10 rounded-xl"><Label>Número de Repetições (Meses)</Label><Input type="number" min="1" max="60" value={formData.recurrenceCount} onChange={e => setFormData({ ...formData, recurrenceCount: e.target.value })} /><p className="text-[10px] text-muted-foreground mt-1">O valor total será repetido em cada mês.</p></div>)}
               {(formData.type === 'CREDIT' || formData.type === 'REFUND') && !editingTransaction && formData.recurrence === 'none' && <div className="space-y-2"><Label>Parcelas</Label><Select value={formData.installments} onValueChange={v => setFormData({ ...formData, installments: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 24 }, (_, i) => i + 1).map(n => <SelectItem key={n} value={n.toString()}>{n}x</SelectItem>)}</SelectContent></Select></div>}
-              <div className="flex gap-3 pt-4"><DialogClose asChild><Button variant="outline" className="flex-1">Cancelar</Button></DialogClose><Button type="submit" className="flex-1 gradient-primary">Salvar</Button></div>
+              <div className="flex gap-3 pt-4">
+                <DialogClose asChild><Button variant="outline" className="flex-1">Cancelar</Button></DialogClose>
+                <Button type="submit" className="flex-1 gradient-primary" disabled={isSaving}>
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Salvar
+                </Button>
+              </div>
             </form>
           </Tabs>
         </DialogContent>
