@@ -18,10 +18,17 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { 
   User, Trash2, Loader2, Sparkles, Wrench, Calendar, Bell, BellRing, 
   Smartphone, CheckCircle2, AlertTriangle, Zap, Camera, Upload, X, 
-  RefreshCw, Clock, Wallet, CreditCard, ShieldAlert, MessageSquare
+  RefreshCw, Clock, Wallet, CreditCard, ShieldAlert, MessageSquare,
+  HelpCircle
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -489,43 +496,65 @@ export function SettingsPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* WHATSAPP BOT */}
           <Card className="border-none shadow-md overflow-hidden">
-            <CardHeader className="bg-green-500/5">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-green-500/10 text-green-600">
-                  <MessageSquare className="h-5 w-5" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg">WhatsApp Bot 🚀</CardTitle>
-                  <CardDescription>Adicione lançamentos enviando uma mensagem.</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              <div className="p-4 bg-muted/50 rounded-xl border border-dashed space-y-3">
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Cadastre seu número abaixo para autorizar o bot. Depois, basta enviar mensagens como:
-                  <br /><strong className="text-foreground">"50.00 Almoço"</strong> ou <strong className="text-foreground">"1200.00 Salário"</strong>.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="flex-1 space-y-1.5">
-                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Seu Número (com DDD)</Label>
-                    <Input 
-                      placeholder="Ex: 5511999999999" 
-                      value={profileForm.whatsapp}
-                      onChange={e => setProfileForm({...profileForm, whatsapp: e.target.value})}
-                      className="h-10"
-                    />
-                  </div>
-                  <Button onClick={saveProfile} disabled={savingProfile} className="sm:mt-6 bg-green-600 hover:bg-green-700">
-                    {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Vincular WhatsApp'}
-                  </Button>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                <AlertTriangle className="w-3 h-3 text-warning" />
-                <span>O bot usará sua conta corrente principal por padrão.</span>
-              </div>
-            </CardContent>
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="whatsapp" className="border-none">
+                <CardHeader className="bg-green-500/5 p-0">
+                  <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                    <div className="flex items-center gap-3 text-left">
+                      <div className="p-2 rounded-lg bg-green-500/10 text-green-600">
+                        <MessageSquare className="h-5 w-5" />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-lg">WhatsApp Bot 🚀</CardTitle>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs p-4 space-y-2">
+                              <p className="font-bold text-xs uppercase">Como vincular:</p>
+                              <ol className="text-[10px] space-y-1 list-decimal pl-3">
+                                <li>Cadastre seu número com DDI e DDD (ex: 5511999999999).</li>
+                                <li>Crie um App no <strong>Meta for Developers</strong> (WhatsApp Business API).</li>
+                                <li>Configure o Webhook para a URL da sua Edge Function.</li>
+                                <li>Use o token de verificação: <code className="bg-muted px-1">financas_bot_token</code></li>
+                              </ol>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </div>
+                  </AccordionTrigger>
+                </CardHeader>
+                <AccordionContent>
+                  <CardContent className="p-6 space-y-4">
+                    <div className="p-4 bg-muted/50 rounded-xl border border-dashed space-y-4">
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Após vincular, envie mensagens como <strong className="text-foreground">"50.00 Almoço"</strong> para registrar gastos instantaneamente.
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="flex-1 space-y-1.5">
+                          <Label className="text-[10px] uppercase font-bold text-muted-foreground">Seu Número (com DDI e DDD)</Label>
+                          <Input 
+                            placeholder="Ex: 5511999999999" 
+                            value={profileForm.whatsapp}
+                            onChange={e => setProfileForm({...profileForm, whatsapp: e.target.value})}
+                            className="h-10"
+                          />
+                        </div>
+                        <Button onClick={saveProfile} disabled={savingProfile} className="sm:mt-6 bg-green-600 hover:bg-green-700">
+                          {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar Número'}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                      <AlertTriangle className="w-3 h-3 text-warning" />
+                      <span>O bot usará sua conta corrente principal por padrão.</span>
+                    </div>
+                  </CardContent>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </Card>
 
           {/* SEÇÃO DE ALERTAS */}
@@ -791,7 +820,7 @@ export function SettingsPage() {
                 </div>
               ) : (
                 <div className="p-4 bg-success/10 rounded-xl border border-success/20 flex items-center gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-success" />
+                  CheckCircle2 className="h-5 w-5 text-success" />
                   <p className="text-xs font-bold text-success">App Instalado & Pronto</p>
                 </div>
               )}
