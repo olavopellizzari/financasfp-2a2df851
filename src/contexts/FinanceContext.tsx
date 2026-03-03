@@ -209,6 +209,17 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const pDate = data.purchaseDate instanceof Date ? data.purchaseDate : new Date(data.purchaseDate);
     const eDate = data.effectiveDate ? (data.effectiveDate instanceof Date ? data.effectiveDate : new Date(data.effectiveDate)) : pDate;
 
+    let effectiveMonth = data.effectiveMonth;
+    let mesFatura = data.mes_fatura;
+
+    if (data.cardId) {
+      mesFatura = calculateMesFatura(pDate, data.cardId);
+      effectiveMonth = mesFatura; // Para transações de cartão, effectiveMonth é o mesFatura
+    } else {
+      effectiveMonth = format(pDate, 'yyyy-MM');
+      mesFatura = null;
+    }
+
     const { error } = await supabase.from('transactions').insert([{
       user_id: data.userId, 
       account_id: data.accountId || null, 
@@ -220,8 +231,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       status: data.status || 'confirmed', 
       purchase_date: format(pDate, 'yyyy-MM-dd'),
       effective_date: format(eDate, 'yyyy-MM-dd'),
-      effective_month: data.effectiveMonth, 
-      mes_fatura: data.mes_fatura,
+      effective_month: effectiveMonth, 
+      mes_fatura: mesFatura,
       installment_number: data.installmentNumber, 
       total_installments: data.total_installments,
       installment_group_id: data.installmentGroupId, 

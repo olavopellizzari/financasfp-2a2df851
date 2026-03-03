@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, Transaction, TransactionType, generateId } from '@/lib/db';
@@ -31,7 +31,7 @@ export function TransactionsPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<TransactionType | 'ALL'>('ALL');
-  const [selectedUserId, setSelectedUserId] = useState<string>('total');
+  const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'total');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -52,10 +52,34 @@ export function TransactionsPage() {
     notes: ''
   });
 
+  useEffect(() => {
+    // Atualiza o formData.userId quando currentUser muda
+    if (currentUser?.id) {
+      setFormData(prev => ({ ...prev, userId: currentUser.id, destinationUserId: currentUser.id }));
+    }
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    // Define o tipo de transação com base no search param
+    setFormData(prev => ({ ...prev, type: (isCardMode ? 'CREDIT' : 'EXPENSE') as TransactionType }));
+  }, [isCardMode]);
+
+  useEffect(() => {
+    // Preenche o cardId se estiver no modo cartão e um cardId for fornecido na URL
+    const cardIdFromUrl = searchParams.get('cardId');
+    if (isCardMode && cardIdFromUrl) {
+      setFormData(prev => ({ ...prev, cardId: cardIdFromUrl }));
+    }
+  }, [isCardMode, searchParams]);
+
   const selectedMonthStr = useMemo(() => format(currentMonth, 'yyyy-MM'), [currentMonth]);
 
   const filteredTransactions = useMemo(() => {
     return allTransactions.filter(tx => {
+      // Filtro por usuário
+      if (selectedUserId !== 'total' && tx.userId !== selectedUserId) return false;
+
+      // Filtro por tipo de transação (cartão vs conta)
       if (isCardMode) {
         if (tx.type !== 'CREDIT' && tx.type !== 'REFUND') return false;
         if (tx.mesFatura !== selectedMonthStr) return false;
@@ -63,11 +87,16 @@ export function TransactionsPage() {
         if (tx.type === 'CREDIT' || tx.type === 'REFUND') return false;
         if (tx.effectiveMonth !== selectedMonthStr) return false;
       }
+      
+      // Filtro por termo de busca
       const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Filtro por tipo de transação selecionado no dropdown
       const matchesType = filterType === 'ALL' || tx.type === filterType;
+      
       return matchesSearch && matchesType;
     }).sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
-  }, [allTransactions, selectedMonthStr, searchQuery, filterType, isCardMode]);
+  }, [allTransactions, selectedMonthStr, searchQuery, filterType, isCardMode, selectedUserId]);
 
   const monthStats = useMemo(() => {
     const income = filteredTransactions.filter(t => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
@@ -78,16 +107,39 @@ export function TransactionsPage() {
 
   const handleOpenDialog = () => {
     setEditingTransaction(null);
+    setFormData(prev => ({
+      ...prev,
+      amount: '',
+      description: '',
+      purchaseDate: new Date(),
+      categoryId: '',
+      accountId: allAccounts.find(a => a.user_id === currentUser?.id || a.is_shared)?.id || '',
+      cardId: isCardMode ? (allCards.find(c => c.user_id === currentUser?.id || (c as any).is_shared)?.id || '') : '',
+      installments: '1',
+      isPaid: false,
+      recurrence: 'none',
+      notes: ''
+    }));
     setIsDialogOpen(true);
   };
 
   const handleEdit = (tx: Transaction) => {
     setEditingTransaction(tx);
     setFormData({ 
-      ...formData, 
-      ...tx, 
-      amount: tx.amount.toString(), // Convertendo number para string para o formulário
-      purchaseDate: parseISO(tx.purchaseDate) 
+      userId: tx.userId,
+      type: tx.type,
+      amount: tx.amount.toString(),
+      description: tx.description,
+      purchaseDate: parseISO(tx.purchaseDate),
+      categoryId: tx.categoryId,
+      accountId: tx.accountId || '',
+      cardId: tx.cardId || '',
+      installments: tx.totalInstallments?.toString() || '1',
+      isPaid: tx.isPaid,
+      recurrence: tx.isRecurring ? 'monthly' : 'none', // Simplificado para edição
+      destinationUserId: '', // Não aplicável diretamente na edição de uma única transação
+      destinationAccountId: '', // Não aplicável diretamente na edição de uma única transação
+      notes: tx.notes || ''
     });
     setIsDialogOpen(true);
   };
@@ -107,13 +159,69 @@ export function TransactionsPage() {
     e.preventDefault();
     setIsSaving(true);
     try {
-      if (editingTransaction) {
-        await updateTransaction(editingTransaction.id, formData);
+      const baseData = {
+        userId: formData.userId,
+        type: formData.type,
+        amount: parseFloat(formData.amount),
+        description: formData.description,
+        purchaseDate: formData.purchaseDate,
+        categoryId: formData.categoryId,
+        isPaid: formData.isPaid,
+        notes: formData.notes,
+        isRecurring: formData.recurrence !== 'none',
+        installmentGroupId: null,
+        installmentNumber: null,
+        totalInstallments: null,
+        effectiveMonth: selectedMonthStr, // Default para conta
+        mes_fatura: null // Default para conta
+      };
+
+      if (formData.type === 'TRANSFER') {
+        // Lógica para transferências
+        // Criar duas transações: uma de saída e uma de entrada
+        await createTransaction({
+          ...baseData,
+          type: 'EXPENSE', // Saída da conta de origem
+          accountId: formData.accountId,
+          categoryId: categories.find(c => c.name === 'Transferência')?.id || '', // Categoria de transferência
+          description: `Transferência para ${users.find(u => u.id === formData.destinationUserId)?.name || 'Outra Conta'}`,
+          isPaid: true // Transferências são sempre pagas
+        });
+        await createTransaction({
+          ...baseData,
+          type: 'INCOME', // Entrada na conta de destino
+          userId: formData.destinationUserId,
+          accountId: formData.destinationAccountId,
+          categoryId: categories.find(c => c.name === 'Transferência')?.id || '', // Categoria de transferência
+          description: `Transferência de ${users.find(u => u.id === formData.userId)?.name || 'Outra Conta'}`,
+          isPaid: true // Transferências são sempre pagas
+        });
+      } else if (formData.type === 'CREDIT' || formData.type === 'REFUND') {
+        // Lógica para cartão de crédito
+        if (!formData.cardId) throw new Error('Selecione um cartão para lançamentos de cartão.');
+        
+        const mesFatura = calculateMesFatura(formData.purchaseDate, formData.cardId);
+
+        await createTransaction({
+          ...baseData,
+          cardId: formData.cardId,
+          effectiveMonth: mesFatura,
+          mes_fatura: mesFatura,
+          accountId: null, // Lançamentos de cartão não têm accountId direto
+        });
       } else {
-        await createTransaction({ ...formData, effectiveMonth: selectedMonthStr });
+        // Lógica para despesas/receitas em conta
+        if (!formData.accountId) throw new Error('Selecione uma conta para este lançamento.');
+        await createTransaction({
+          ...baseData,
+          accountId: formData.accountId,
+          cardId: null,
+        });
       }
+
       setIsDialogOpen(false);
       toast({ title: 'Salvo com sucesso!' });
+      await refresh(); // Força o refresh dos dados
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
     } finally {
@@ -121,12 +229,25 @@ export function TransactionsPage() {
     }
   };
 
+  const availableAccounts = useMemo(() => {
+    return allAccounts.filter(a => a.user_id === formData.userId || a.is_shared);
+  }, [allAccounts, formData.userId]);
+
+  const availableCards = useMemo(() => {
+    return allCards.filter(c => c.user_id === formData.userId || (c as any).is_shared);
+  }, [allCards, formData.userId]);
+
   return (
     <div className="space-y-6 animate-fade-in w-full max-w-full overflow-x-hidden">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">{isCardMode ? 'Lançamentos de Cartão' : 'Lançamentos'}</h1>
         <div className="flex items-center gap-3">
-          <UserFilter value={selectedUserId} onChange={setSelectedUserId} showTotalOption={true} className="w-[180px]" />
+          <UserFilter 
+            value={selectedUserId} 
+            onChange={setSelectedUserId} 
+            showTotalOption={true}
+            className="w-[180px]" 
+          />
           <Button onClick={handleOpenDialog} className="gradient-primary shadow-primary px-3 sm:px-4">
             <Plus className="w-4 h-4 sm:mr-2" /> 
             <span className="hidden sm:inline">Novo</span>
@@ -149,7 +270,7 @@ export function TransactionsPage() {
           </div>
           <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
             <div className="relative flex-1 min-w-[200px]"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" /></div>
-            <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}><SelectTrigger className="w-[140px]"><Filter className="w-4 h-4 mr-2" /><SelectValue placeholder="Tipo" /></SelectTrigger><SelectContent><SelectItem value="ALL">Todos</SelectItem><SelectItem value="INCOME">Receita</SelectItem><SelectItem value="EXPENSE">Despesa</SelectItem></SelectContent></Select>
+            <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}><SelectTrigger className="w-[140px]"><Filter className="w-4 h-4 mr-2" /><SelectValue placeholder="Tipo" /></SelectTrigger><SelectContent><SelectItem value="ALL">Todos</SelectItem><SelectItem value="INCOME">Receita</SelectItem><SelectItem value="EXPENSE">Despesa</SelectItem><SelectItem value="CREDIT">Cartão</SelectItem><SelectItem value="REFUND">Estorno</SelectItem></SelectContent></Select>
           </div>
         </CardContent>
       </Card>
@@ -168,7 +289,7 @@ export function TransactionsPage() {
       <TransactionForm 
         isOpen={isDialogOpen} onOpenChange={setIsDialogOpen} editingTransaction={editingTransaction}
         formData={formData} setFormData={setFormData} onSubmit={handleSubmit} isSaving={isSaving}
-        users={users as any} availableAccounts={allAccounts} availableCards={allCards} categories={categories}
+        users={users as any} availableAccounts={availableAccounts} availableCards={availableCards} categories={categories}
         onDescriptionChange={(desc) => setFormData({ ...formData, description: desc })}
       />
     </div>
