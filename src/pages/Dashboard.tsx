@@ -194,7 +194,43 @@ export function Dashboard() {
   const COLORS = ['#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#f97316', '#eab308', '#14b8a6', '#6366f1', '#ef4444', '#94a3b8'];
 
   const lastTransactions = useMemo(() => {
-    return [...userFilteredTransactions]
+    // Agrupar transações parceladas pelo installmentGroupId
+    const groupedTransactions = new Map<string, Transaction[]>();
+    userFilteredTransactions.forEach(tx => {
+      if (tx.installmentGroupId) {
+        if (!groupedTransactions.has(tx.installmentGroupId)) {
+          groupedTransactions.set(tx.installmentGroupId, []);
+        }
+        groupedTransactions.get(tx.installmentGroupId)?.push(tx);
+      } else {
+        // Adicionar transações não parceladas diretamente
+        groupedTransactions.set(tx.id, [tx]);
+      }
+    });
+
+    const processedTransactions: Transaction[] = [];
+    groupedTransactions.forEach(txs => {
+      if (txs.length > 1) {
+        // É uma transação parcelada
+        const firstTx = txs.reduce((prev, current) => 
+          (prev.installmentNumber || 0) < (current.installmentNumber || 0) ? prev : current
+        );
+        const totalAmount = txs.reduce((sum, t) => sum + t.amount, 0);
+        processedTransactions.push({
+          ...firstTx,
+          amount: totalAmount, // Valor total da compra
+          description: firstTx.description.replace(/\s*\(\d+\/\d+\)$/, '').trim(), // Remover "(x/y)"
+          isParcelled: true,
+          installmentNumber: firstTx.installmentNumber,
+          totalInstallments: firstTx.totalInstallments
+        } as Transaction);
+      } else {
+        // Não é parcelada ou é uma única parcela
+        processedTransactions.push(txs[0]);
+      }
+    });
+
+    return processedTransactions
       .sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime())
       .slice(0, 8);
   }, [userFilteredTransactions]);
@@ -237,13 +273,13 @@ export function Dashboard() {
           <Button variant="ghost" size="icon" onClick={() => setIsPrivate(!isPrivate)} className="shrink-0">{isPrivate ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}</Button>
           
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            <DropdownTrigger asChild>
               <Button className="gradient-primary shadow-primary shrink-0 px-3 sm:px-4">
                 <Plus className="w-4 h-4 sm:mr-2" /> 
                 <span className="hidden sm:inline">Novo</span> 
                 <ChevronDown className="ml-2 h-4 w-4 opacity-50 hidden sm:inline" />
               </Button>
-            </DropdownMenuTrigger>
+            </DropdownTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem onClick={() => navigate('/transactions')} className="gap-2 cursor-pointer">
                 <ArrowDownRight className="w-4 h-4 text-expense" /> Lançamento em Conta
@@ -499,7 +535,12 @@ export function Dashboard() {
                       <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-lg">{cat?.icon || '💰'}</div>
                       <div className="min-w-0">
                         <p className="text-xs font-bold truncate max-w-[120px]">{tx.description}</p>
-                        <p className="text-[10px] text-muted-foreground">{format(new Date(tx.purchaseDate), 'dd/MM/yy')}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {format(new Date(tx.purchaseDate), 'dd/MM/yy')}
+                          {tx.isParcelled && tx.installmentNumber && tx.totalInstallments && (
+                            ` • ${tx.installmentNumber}/${tx.totalInstallments} (${formatCurrency(tx.amount / tx.totalInstallments)})`
+                          )}
+                        </p>
                       </div>
                     </div>
                     <span className={cn("text-xs font-bold", tx.type === 'INCOME' || tx.type === 'REFUND' ? "text-income" : "text-expense")}>
