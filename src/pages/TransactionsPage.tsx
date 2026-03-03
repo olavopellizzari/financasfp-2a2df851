@@ -27,9 +27,6 @@ export function TransactionsPage() {
   const isCardMode = searchParams.get('type') === 'card';
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
-  const [bulkActionType, setBulkActionType] = useState<'edit' | 'delete' | null>(null);
-  const [selectedTxForBulk, setSelectedTxForBulk] = useState<Transaction | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -86,7 +83,12 @@ export function TransactionsPage() {
 
   const handleEdit = (tx: Transaction) => {
     setEditingTransaction(tx);
-    setFormData({ ...formData, ...tx, purchaseDate: parseISO(tx.purchaseDate) });
+    setFormData({ 
+      ...formData, 
+      ...tx, 
+      amount: tx.amount.toString(), // Convertendo number para string para o formulário
+      purchaseDate: parseISO(tx.purchaseDate) 
+    });
     setIsDialogOpen(true);
   };
 
@@ -156,14 +158,14 @@ export function TransactionsPage() {
           onToggleSelect={(id) => { const n = new Set(selectedIds); n.has(id) ? n.delete(id) : n.add(id); setSelectedIds(n); }}
           onToggleSelectAll={() => setSelectedIds(selectedIds.size === filteredTransactions.length ? new Set() : new Set(filteredTransactions.map(t => t.id)))}
           onEdit={handleEdit} onDelete={handleDelete} onTogglePaid={handleTogglePaid}
-          getCategoryById={getCategoryById} users={users}
+          getCategoryById={getCategoryById} users={users as any}
         />
       </Card>
 
       <TransactionForm 
         isOpen={isDialogOpen} onOpenChange={setIsDialogOpen} editingTransaction={editingTransaction}
         formData={formData} setFormData={setFormData} onSubmit={handleSubmit} isSaving={isSaving}
-        users={users} availableAccounts={allAccounts} availableCards={allCards} categories={categories}
+        users={users as any} availableAccounts={allAccounts} availableCards={allCards} categories={categories}
         onDescriptionChange={(desc) => setFormData({ ...formData, description: desc })}
       />
     </div>

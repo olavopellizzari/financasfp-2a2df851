@@ -17,7 +17,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion";
+} from "@/accordion";
 import {
   Tooltip,
   TooltipContent,
@@ -820,7 +820,7 @@ export function SettingsPage() {
                 </div>
               ) : (
                 <div className="p-4 bg-success/10 rounded-xl border border-success/20 flex items-center gap-3">
-                  CheckCircle2 className="h-5 w-5 text-success" />
+                  <CheckCircle2 className="h-5 w-5 text-success" />
                   <p className="text-xs font-bold text-success">App Instalado & Pronto</p>
                 </div>
               )}
