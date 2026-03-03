@@ -21,7 +21,7 @@ import {
 import { 
   User, Trash2, Loader2, Sparkles, Wrench, Calendar, Bell, BellRing, 
   Smartphone, CheckCircle2, AlertTriangle, Zap, Camera, Upload, X, 
-  RefreshCw, Clock, Wallet, CreditCard, ShieldAlert, ChevronDown
+  RefreshCw, Clock, Wallet, CreditCard, ShieldAlert, MessageSquare
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -47,7 +47,7 @@ export function SettingsPage() {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingEmail, setSavingEmail] = useState(false);
-  const [profileForm, setProfileForm] = useState({ name: '', email: '', avatarColor: AVATAR_COLORS[0], avatarUrl: '' });
+  const [profileForm, setProfileForm] = useState({ name: '', email: '', avatarColor: AVATAR_COLORS[0], avatarUrl: '', whatsapp: '' });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -74,7 +74,8 @@ export function SettingsPage() {
         name: currentUser.name || '', 
         email: currentUser.email || '', 
         avatarColor: currentUser.avatar_color || AVATAR_COLORS[0],
-        avatarUrl: currentUser.avatar_url || ''
+        avatarUrl: currentUser.avatar_url || '',
+        whatsapp: (currentUser as any).whatsapp_number || ''
       });
       if (currentUser.avatar_url) {
         setAvatarPreview(currentUser.avatar_url);
@@ -138,96 +139,35 @@ export function SettingsPage() {
     }
   };
 
-  useEffect(() => {
-    if (searchParams.get('mode') === 'profile') {
-      setEditProfileOpen(true);
-      setSearchParams({}, { replace: true });
-    }
-  }, [searchParams, setSearchParams]);
-
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !currentUser?.id) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast({ title: 'Erro', description: 'Selecione apenas arquivos de imagem.', variant: 'destructive' });
-      return;
-    }
-
-    if (file.size > 2 * 1024 * 1024) {
-      toast({ title: 'Erro', description: 'A imagem deve ter no máximo 2MB.', variant: 'destructive' });
-      return;
-    }
-
-    setUploadingAvatar(true);
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${currentUser.id}-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      const { error: dbError } = await supabase
-        .from('profiles')
-        .update({ 
-          avatar_url: publicUrl,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', currentUser.id);
-
-      if (dbError) throw dbError;
-
-      setAvatarPreview(publicUrl);
-      setProfileForm(prev => ({ ...prev, avatarUrl: publicUrl }));
-      
-      await refreshProfile();
-      await refreshUsers();
-      
-      toast({ title: 'Sucesso!', description: 'Foto de perfil atualizada.' });
-    } catch (error: any) {
-      console.error('Erro no upload:', error);
-      toast({ title: 'Erro no upload', description: error.message, variant: 'destructive' });
-    } finally {
-      setUploadingAvatar(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const removeAvatar = async () => {
+  const saveProfile = async () => {
     if (!currentUser?.id) return;
-    
-    setUploadingAvatar(true);
+
+    setSavingProfile(true);
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ 
-          avatar_url: null,
+        .update({
+          name: profileForm.name,
+          avatar_color: profileForm.avatarColor,
+          whatsapp_number: profileForm.whatsapp, // Salvando o número do WhatsApp
           updated_at: new Date().toISOString()
         })
         .eq('id', currentUser.id);
 
       if (error) throw error;
 
-      setAvatarPreview(null);
-      setProfileForm(prev => ({ ...prev, avatarUrl: '' }));
       await refreshProfile();
       await refreshUsers();
-      
-      toast({ title: 'Sucesso!', description: 'Foto de perfil removida.' });
-    } catch (error: any) {
-      toast({ title: 'Erro ao remover', description: error.message, variant: 'destructive' });
+      toast({ title: 'Perfil atualizado', description: 'Suas informações foram salvas.' });
+      setEditProfileOpen(false);
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
     } finally {
-      setUploadingAvatar(false);
+      setSavingProfile(false);
     }
   };
+
+  // ... (restante das funções de manutenção e reset mantidas iguais)
 
   const handleFixDescriptions = async () => {
     if (!currentUser?.family_id) return;
@@ -422,30 +362,87 @@ export function SettingsPage() {
     }
   };
 
-  const saveProfile = async () => {
-    if (!currentUser?.id) return;
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser?.id) return;
 
-    setSavingProfile(true);
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Erro', description: 'Selecione apenas arquivos de imagem.', variant: 'destructive' });
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: 'Erro', description: 'A imagem deve ter no máximo 2MB.', variant: 'destructive' });
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${currentUser.id}-${Date.now()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      const { error: dbError } = await supabase
+        .from('profiles')
+        .update({ 
+          avatar_url: publicUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', currentUser.id);
+
+      if (dbError) throw dbError;
+
+      setAvatarPreview(publicUrl);
+      setProfileForm(prev => ({ ...prev, avatarUrl: publicUrl }));
+      
+      await refreshProfile();
+      await refreshUsers();
+      
+      toast({ title: 'Sucesso!', description: 'Foto de perfil atualizada.' });
+    } catch (error: any) {
+      console.error('Erro no upload:', error);
+      toast({ title: 'Erro no upload', description: error.message, variant: 'destructive' });
+    } finally {
+      setUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const removeAvatar = async () => {
+    if (!currentUser?.id) return;
+    
+    setUploadingAvatar(true);
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({
-          name: profileForm.name,
-          avatar_color: profileForm.avatarColor,
+        .update({ 
+          avatar_url: null,
           updated_at: new Date().toISOString()
         })
         .eq('id', currentUser.id);
 
       if (error) throw error;
 
+      setAvatarPreview(null);
+      setProfileForm(prev => ({ ...prev, avatarUrl: '' }));
       await refreshProfile();
       await refreshUsers();
-      toast({ title: 'Perfil atualizado', description: 'Nome e cor foram salvos.' });
-      setEditProfileOpen(false);
-    } catch (e: any) {
-      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+      
+      toast({ title: 'Sucesso!', description: 'Foto de perfil removida.' });
+    } catch (error: any) {
+      toast({ title: 'Erro ao remover', description: error.message, variant: 'destructive' });
     } finally {
-      setSavingProfile(false);
+      setUploadingAvatar(false);
     }
   };
 
@@ -492,7 +489,48 @@ export function SettingsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          {/* SEÇÃO DE ALERTAS - AGORA COMO ACCORDION */}
+          {/* WHATSAPP BOT */}
+          <Card className="border-none shadow-md overflow-hidden">
+            <CardHeader className="bg-green-500/5">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-green-500/10 text-green-600">
+                  <MessageSquare className="h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">WhatsApp Bot 🚀</CardTitle>
+                  <CardDescription>Adicione lançamentos enviando uma mensagem.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div className="p-4 bg-muted/50 rounded-xl border border-dashed space-y-3">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Cadastre seu número abaixo para autorizar o bot. Depois, basta enviar mensagens como:
+                  <br /><strong className="text-foreground">"50.00 Almoço"</strong> ou <strong className="text-foreground">"1200.00 Salário"</strong>.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1 space-y-1.5">
+                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Seu Número (com DDD)</Label>
+                    <Input 
+                      placeholder="Ex: 11999999999" 
+                      value={profileForm.whatsapp}
+                      onChange={e => setProfileForm({...profileForm, whatsapp: e.target.value})}
+                      className="h-10"
+                    />
+                  </div>
+                  <Button onClick={saveProfile} disabled={savingProfile} className="sm:mt-6 bg-green-600 hover:bg-green-700">
+                    {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Vincular WhatsApp'}
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                <AlertTriangle className="w-3 h-3 text-warning" />
+                <span>O bot usará sua conta principal e a categoria "Outros" por padrão.</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* SEÇÃO DE ALERTAS */}
           <Card className="border-none shadow-md overflow-hidden">
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="alerts" className="border-none">
