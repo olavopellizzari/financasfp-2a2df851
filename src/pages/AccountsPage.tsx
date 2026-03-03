@@ -383,7 +383,7 @@ export function AccountsPage() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md rounded-[32px] p-0 overflow-hidden border-none shadow-2xl">
+        <DialogContent className="max-w-md rounded-[32px] p-0 overflow-y-auto max-h-[90vh] border-none shadow-2xl">
           <div className="bg-primary p-8 text-white">
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold text-white">{editingAccount ? 'Ajustar Conta' : 'Nova Conta'}</DialogTitle>
