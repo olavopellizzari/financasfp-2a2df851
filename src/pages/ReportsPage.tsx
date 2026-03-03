@@ -26,7 +26,8 @@ import {
   Sparkles,
   AlertTriangle,
   Activity,
-  Download
+  Download,
+  LayoutGrid
 } from 'lucide-react';
 import { formatCurrency, getCurrentMonth } from '@/lib/db';
 import { format, parse, addMonths, subMonths, startOfYear, endOfYear, eachMonthOfInterval, startOfMonth, endOfMonth, eachDayOfInterval, getYear, isAfter, startOfDay, getDate, isValid } from 'date-fns';
@@ -41,35 +42,52 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
 export function ReportsPage() {
-  const { transactions, allTransactions, categories, allAccounts, getAccountBalance } = useFinance();
-  const { currentUser, users, isCurrentUserAdmin } = useAuth();
+  const { allTransactions, categories, allAccounts, allCards } = useFinance();
+  const { currentUser, users } = useAuth();
   
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
-  const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'all');
+  const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'total');
 
-  // Sincroniza o filtro quando o usuário carrega
+  // Sincroniza o filtro inicial
   useEffect(() => {
-    if (currentUser?.id && selectedUserId === 'all') {
-      setSelectedUserId(currentUser.id);
+    if (currentUser?.id && selectedUserId === 'total') {
+      // Mantemos 'total' como padrão se o usuário quiser ver tudo, 
+      // ou podemos mudar para o ID do usuário se preferir começar pelo individual.
     }
   }, [currentUser?.id]);
-
-  const isAdmin = isCurrentUserAdmin();
 
   const safeParseMonth = (monthStr: string) => {
     const parsed = parse(monthStr, 'yyyy-MM', new Date());
     return isValid(parsed) ? parsed : new Date();
   };
 
-  // --- FILTRAGEM BASE ---
+  // --- FILTRAGEM ROBUSTA (Igual ao Dashboard) ---
   const filteredSource = useMemo(() => {
-    const source = isAdmin ? allTransactions : transactions;
-    return source.filter(t => selectedUserId === 'all' || t.userId === selectedUserId);
-  }, [allTransactions, transactions, selectedUserId, isAdmin]);
+    if (selectedUserId === 'total') return allTransactions;
+
+    if (selectedUserId === 'all') {
+      const familyAccountIds = new Set(allAccounts.filter(a => a.is_shared && !a.user_id).map(a => a.id));
+      const familyCardIds = new Set(allCards.filter(c => (c as any).is_shared && !c.user_id).map(c => c.id));
+      return allTransactions.filter(t => 
+        (t.accountId && familyAccountIds.has(t.accountId)) || 
+        (t.cardId && familyCardIds.has(t.cardId))
+      );
+    }
+
+    const userAccountIds = new Set(allAccounts.filter(a => a.user_id === selectedUserId).map(a => a.id));
+    const userCardIds = new Set(allCards.filter(c => c.user_id === selectedUserId).map(c => c.id));
+    
+    return allTransactions.filter(t => {
+      if (t.accountId) return userAccountIds.has(t.accountId);
+      if (t.cardId) return userCardIds.has(t.cardId);
+      return t.userId === selectedUserId;
+    });
+  }, [allTransactions, allAccounts, allCards, selectedUserId]);
 
   const getUserName = (id: string) => {
-    if (id === 'all') return 'Família (Todos)';
+    if (id === 'total') return 'Consolidado (Tudo)';
+    if (id === 'all') return 'Contas da Família';
     return users.find(u => u.id === id)?.name || 'Usuário';
   };
 
@@ -94,17 +112,15 @@ export function ReportsPage() {
     const netExpense = expenses - refunds;
     const savingsRate = income > 0 ? ((income - netExpense) / income) * 100 : 0;
 
-    // Gastos Fixos (Parcelados ou Recorrentes)
     const fixed = monthTransactions
       .filter(t => (t.type === 'EXPENSE' || t.type === 'CREDIT') && (t.installmentGroupId || t.isRecurring))
       .reduce((sum, t) => sum + t.amount, 0);
     
     const variable = netExpense - fixed;
 
-    // Top Estabelecimentos
     const merchants: Record<string, number> = {};
     monthTransactions.filter(t => t.type === 'EXPENSE' || t.type === 'CREDIT').forEach(t => {
-      const desc = t.description.split('(')[0].trim(); // Remove sufixos de parcelas
+      const desc = t.description.split('(')[0].trim();
       merchants[desc] = (merchants[desc] || 0) + t.amount;
     });
     const topMerchants = Object.entries(merchants)
@@ -159,7 +175,7 @@ export function ReportsPage() {
       .filter(c => c.value > 0).sort((a, b) => b.value - a.value);
   }, [monthlyStats, categories]);
 
-  // --- DADOS ANUAIS COM PROJEÇÃO ---
+  // --- DADOS ANUAIS ---
   const annualData = useMemo(() => {
     const start = startOfYear(new Date(selectedYear, 0, 1));
     const end = endOfYear(new Date(selectedYear, 0, 1));
@@ -227,18 +243,16 @@ export function ReportsPage() {
       const userName = getUserName(selectedUserId);
       const timestamp = format(new Date(), "dd/MM/yyyy HH:mm");
 
-      // Cabeçalho
       doc.setFontSize(20);
-      doc.setTextColor(34, 197, 94); // Cor primária verde
+      doc.setTextColor(34, 197, 94);
       doc.text("Relatório Financeiro Anual", 14, 22);
       
       doc.setFontSize(10);
       doc.setTextColor(100);
       doc.text(`Ano de Referência: ${selectedYear}`, 14, 30);
-      doc.text(`Usuário/Família: ${userName}`, 14, 35);
+      doc.text(`Filtro: ${userName}`, 14, 35);
       doc.text(`Gerado em: ${timestamp}`, 14, 40);
 
-      // Resumo Geral
       doc.setFontSize(14);
       doc.setTextColor(0);
       doc.text("Resumo Consolidado", 14, 55);
@@ -258,7 +272,6 @@ export function ReportsPage() {
         headStyles: { fillColor: [34, 197, 94] }
       });
 
-      // Tabela Mensal
       doc.text("Detalhamento Mensal", 14, (doc as any).lastAutoTable.finalY + 15);
 
       const tableData = annualData.map(m => [
@@ -274,17 +287,12 @@ export function ReportsPage() {
         body: tableData,
         theme: 'grid',
         headStyles: { fillColor: [31, 41, 55] },
-        columnStyles: {
-          1: { halign: 'right' },
-          2: { halign: 'right' },
-          3: { halign: 'right' }
-        }
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } }
       });
 
       doc.save(`Relatorio_Anual_${selectedYear}_${userName.replace(/\s/g, '_')}.pdf`);
-      toast({ title: "PDF Gerado!", description: "O download do relatório anual foi iniciado." });
+      toast({ title: "PDF Gerado!" });
     } catch (error) {
-      console.error("Erro ao gerar PDF:", error);
       toast({ title: "Erro ao gerar PDF", variant: "destructive" });
     }
   };
@@ -299,7 +307,12 @@ export function ReportsPage() {
           <p className="text-muted-foreground">Análise profunda da sua saúde financeira</p>
         </div>
         <div className="flex items-center gap-3">
-          <UserFilter value={selectedUserId} onChange={setSelectedUserId} className="w-[200px]" />
+          <UserFilter 
+            value={selectedUserId} 
+            onChange={setSelectedUserId} 
+            showTotalOption={true}
+            className="w-[200px]" 
+          />
         </div>
       </div>
 
@@ -309,7 +322,6 @@ export function ReportsPage() {
           <TabsTrigger value="annual" className="gap-2"><BarChart3 className="h-4 w-4" /> Anual</TabsTrigger>
         </TabsList>
 
-        {/* --- ABA MENSAL --- */}
         <TabsContent value="monthly" className="space-y-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -359,7 +371,6 @@ export function ReportsPage() {
           </div>
         </TabsContent>
 
-        {/* --- ABA ANUAL --- */}
         <TabsContent value="annual" className="space-y-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
