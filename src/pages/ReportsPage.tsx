@@ -3,6 +3,8 @@ import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserFilter } from '@/components/UserFilter';
@@ -132,6 +134,29 @@ export function ReportsPage() {
       return { day: dayNum.toString().padStart(2, '0'), amount: Math.max(0, amount) };
     });
   }, [monthlyStats, selectedMonth]);
+
+  const categoryData = useMemo(() => {
+    const byCategory: Record<string, { amount: number; category: any }> = {};
+    
+    // Usamos as transações do ano selecionado para o ranking de categorias no explorador
+    const yearTransactions = filteredSource.filter(t => t.effectiveMonth.startsWith(selectedYear.toString()) && t.status !== 'cancelled');
+    
+    yearTransactions.forEach(t => {
+      if (t.categoryId && (t.type === 'EXPENSE' || t.type === 'CREDIT' || t.type === 'REFUND')) {
+        if (!byCategory[t.categoryId]) {
+          byCategory[t.categoryId] = { amount: 0, category: categories.find(c => c.id === t.categoryId) };
+        }
+        const val = t.type === 'REFUND' ? -t.amount : t.amount;
+        byCategory[t.categoryId].amount += val;
+      }
+    });
+    return Object.entries(byCategory)
+      .map(([id, { amount, category }]) => ({
+        id, name: category?.name || 'Sem categoria', value: Math.max(0, amount),
+        color: category?.color || '#6366f1', icon: category?.icon || '📁'
+      }))
+      .filter(c => c.value > 0).sort((a, b) => b.value - a.value);
+  }, [filteredSource, selectedYear, categories]);
 
   // --- DADOS ANUAIS ---
   const annualData = useMemo(() => {
