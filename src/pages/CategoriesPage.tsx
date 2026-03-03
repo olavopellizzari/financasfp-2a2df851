@@ -177,9 +177,10 @@ export function CategoriesPage() {
               setCategoryForm({ name: '', icon: '📁', color: '#6366f1', kind: 'despesa' });
               setCategoryDialogOpen(true);
             }}
-            className="gradient-primary shadow-primary flex-1 sm:flex-none"
+            className="gradient-primary shadow-primary flex-1 sm:flex-none px-3 sm:px-4"
           >
-            <Plus className="w-4 h-4 mr-2" /> Nova Categoria
+            <Plus className="w-4 h-4 sm:mr-2" /> 
+            <span className="hidden sm:inline">Nova Categoria</span>
           </Button>
         </div>
       </div>

@@ -224,8 +224,9 @@ export function DebtsPage() {
         </div>
         <div className="flex items-center gap-3">
           <UserFilter value={selectedUserId} onChange={setSelectedUserId} className="w-[200px]" />
-          <Button onClick={() => { resetForm(); setDialogOpen(true); }} className="gradient-primary shadow-primary">
-            <Plus className="h-4 w-4 mr-2" /> Nova Dívida
+          <Button onClick={() => { resetForm(); setDialogOpen(true); }} className="gradient-primary shadow-primary px-3 sm:px-4">
+            <Plus className="w-4 h-4 sm:mr-2" /> 
+            <span className="hidden sm:inline">Nova Dívida</span>
           </Button>
         </div>
       </div>
@@ -403,7 +404,7 @@ export function DebtsPage() {
       </Dialog>
 
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
-        <DialogContent className="max-w-sm rounded-[24px]">
+        <DialogContent className="max-sm rounded-[24px]">
           <DialogHeader><DialogTitle>Registrar Pagamento</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">

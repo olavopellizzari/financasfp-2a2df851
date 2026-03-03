@@ -317,8 +317,9 @@ export function AccountsPage() {
             showTotalOption={true}
             className="w-[200px]" 
           />
-          <Button onClick={openCreateDialog} className="gradient-primary shadow-primary">
-            <Plus className="w-4 h-4 mr-2" /> Nova Conta
+          <Button onClick={openCreateDialog} className="gradient-primary shadow-primary px-3 sm:px-4">
+            <Plus className="w-4 h-4 sm:mr-2" /> 
+            <span className="hidden sm:inline">Nova Conta</span>
           </Button>
         </div>
       </div>

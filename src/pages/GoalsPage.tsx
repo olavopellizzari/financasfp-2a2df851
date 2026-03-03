@@ -138,8 +138,9 @@ export function GoalsPage() {
         </div>
         <div className="flex items-center gap-3">
           <UserFilter value={selectedUserId} onChange={setSelectedUserId} className="w-[200px]" />
-          <Button onClick={() => { resetForm(); setDialogOpen(true); }} className="gradient-primary shadow-primary">
-            <Plus className="w-4 h-4 mr-2" /> Nova Meta
+          <Button onClick={() => { resetForm(); setDialogOpen(true); }} className="gradient-primary shadow-primary px-3 sm:px-4">
+            <Plus className="w-4 h-4 sm:mr-2" /> 
+            <span className="hidden sm:inline">Nova Meta</span>
           </Button>
         </div>
       </div>
@@ -212,7 +213,9 @@ export function GoalsPage() {
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{editingGoal ? 'Editar Meta' : 'Nova Meta'}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>{editingGoal ? 'Editar Meta' : 'Nova Meta'}</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4 py-4">
             {isAdmin && (
               <div className="space-y-2">

@@ -127,7 +127,10 @@ export function TransactionsPage() {
         <h1 className="text-2xl font-bold">{isCardMode ? 'Lançamentos de Cartão' : 'Lançamentos'}</h1>
         <div className="flex items-center gap-3">
           <UserFilter value={selectedUserId} onChange={setSelectedUserId} showTotalOption={true} className="w-[180px]" />
-          <Button onClick={handleOpenDialog} className="gradient-primary shadow-primary"><Plus className="w-4 h-4 mr-2" /> Novo</Button>
+          <Button onClick={handleOpenDialog} className="gradient-primary shadow-primary px-3 sm:px-4">
+            <Plus className="w-4 h-4 sm:mr-2" /> 
+            <span className="hidden sm:inline">Novo</span>
+          </Button>
         </div>
       </div>
 

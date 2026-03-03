@@ -273,8 +273,9 @@ export function CardsPage() {
             showTotalOption={true}
             className="w-[200px]" 
           />
-          <Button onClick={handleOpenCreate} className="gradient-primary shadow-primary">
-            <Plus className="w-4 h-4 mr-2" /> Novo Cartão
+          <Button onClick={handleOpenCreate} className="gradient-primary shadow-primary px-3 sm:px-4">
+            <Plus className="w-4 h-4 sm:mr-2" /> 
+            <span className="hidden sm:inline">Novo Cartão</span>
           </Button>
         </div>
       </div>
@@ -342,8 +343,8 @@ export function CardsPage() {
                       <div className="flex items-center gap-2">
                         <Cpu className="w-10 h-10 opacity-50 rotate-90" />
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full">
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full" onClick={(e) => e.stopPropagation()}>
                               <MoreVertical className="h-5 w-5" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -602,25 +603,11 @@ export function CardsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Dia de Fechamento</Label>
-                <Input 
-                  type="number" 
-                  min="1" 
-                  max="31" 
-                  value={formData.closingDay} 
-                  onChange={e => setFormData({...formData, closingDay: e.target.value})} 
-                  required 
-                />
+                <Input type="number" min="1" max="31" value={formData.closingDay} onChange={e => setFormData({...formData, closingDay: e.target.value})} required />
               </div>
               <div className="space-y-2">
                 <Label>Dia de Vencimento</Label>
-                <Input 
-                  type="number" 
-                  min="1" 
-                  max="31" 
-                  value={formData.dueDay} 
-                  onChange={e => setFormData({...formData, dueDay: e.target.value})} 
-                  required 
-                />
+                <Input type="number" min="1" max="31" value={formData.dueDay} onChange={e => setFormData({...formData, dueDay: e.target.value})} required />
               </div>
             </div>
 

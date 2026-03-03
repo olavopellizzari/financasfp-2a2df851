@@ -240,8 +240,10 @@ export function Dashboard() {
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button className="gradient-primary shadow-primary shrink-0">
-                <Plus className="w-4 h-4 mr-2" /> Novo <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+              <Button className="gradient-primary shadow-primary shrink-0 px-3 sm:px-4">
+                <Plus className="w-4 h-4 sm:mr-2" /> 
+                <span className="hidden sm:inline">Novo</span> 
+                <ChevronDown className="ml-2 h-4 w-4 opacity-50 hidden sm:inline" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
