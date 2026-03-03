@@ -218,7 +218,7 @@ export function Dashboard() {
   }, [launchTransactions, allCards]);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in w-full max-w-full overflow-x-hidden">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Painel</h1>
@@ -228,20 +228,20 @@ export function Dashboard() {
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}><ChevronRight className="h-4 w-4" /></Button>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
           <UserFilter 
             value={selectedUserId} 
             onChange={setSelectedUserId} 
             showTotalOption={true}
-            className="w-[200px]" 
+            className="w-[160px] sm:w-[200px] shrink-0" 
           />
-          <Button variant="ghost" size="icon" onClick={() => setIsPrivate(!isPrivate)}>{isPrivate ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}</Button>
+          <Button variant="ghost" size="icon" onClick={() => setIsPrivate(!isPrivate)} className="shrink-0">{isPrivate ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}</Button>
           <NotificationsPanel />
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button className="gradient-primary shadow-primary">
-                <Plus className="w-4 h-4 mr-2" /> Novo Lançamento <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+              <Button className="gradient-primary shadow-primary shrink-0">
+                <Plus className="w-4 h-4 mr-2" /> Novo <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
@@ -258,7 +258,7 @@ export function Dashboard() {
 
       <QuickWidget selectedUserId={selectedUserId === 'total' ? 'all' : selectedUserId} date={selectedMonth} />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <BalanceCard title="Saldo Atual" amount={totalBalance} icon={<Wallet className="w-4 h-4 text-primary-foreground" />} variant="primary" isPrivate={isPrivate}>
           <Popover>
             <PopoverTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-primary-foreground/60"><ChevronDown className="w-4 h-4" /></Button></PopoverTrigger>
@@ -272,9 +272,9 @@ export function Dashboard() {
             </PopoverContent>
           </Popover>
         </BalanceCard>
-        <BalanceCard title="Receitas (Lançamentos)" amount={stats.income} icon={<TrendingUp className="w-4 h-4 text-income" />} variant="income" isPrivate={isPrivate} />
-        <BalanceCard title="Despesas (Lançamentos)" amount={stats.expenses} icon={<TrendingDown className="h-4 w-4 text-expense" />} variant="expense" isPrivate={isPrivate} />
-        <BalanceCard title="Cartão (Lançamentos)" amount={stats.cardExpenses} icon={<CreditCard className="h-4 w-4 text-purple-600" />} variant="credit" isPrivate={isPrivate}>
+        <BalanceCard title="Receitas" amount={stats.income} icon={<TrendingUp className="w-4 h-4 text-income" />} variant="income" isPrivate={isPrivate} />
+        <BalanceCard title="Despesas" amount={stats.expenses} icon={<TrendingDown className="h-4 w-4 text-expense" />} variant="expense" isPrivate={isPrivate} />
+        <BalanceCard title="Cartão" amount={stats.cardExpenses} icon={<CreditCard className="w-4 h-4 text-purple-600" />} variant="credit" isPrivate={isPrivate}>
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon" className="h-6 w-6 text-purple-600/60">
@@ -293,12 +293,12 @@ export function Dashboard() {
             </PopoverContent>
           </Popover>
         </BalanceCard>
-        <BalanceCard title="Resultado Lançamentos" amount={stats.balance} icon={<BarChart3 className="w-4 h-4 text-warning" />} variant="pending" isPrivate={isPrivate} />
+        <BalanceCard title="Resultado" amount={stats.balance} icon={<BarChart3 className="w-4 h-4 text-warning" />} variant="pending" isPrivate={isPrivate} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Fluxo de Lançamentos */}
-        <Card className="lg:col-span-2 border-none shadow-sm">
+        <Card className="lg:col-span-2 border-none shadow-sm overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-primary" /> Fluxo de Lançamentos
@@ -323,7 +323,7 @@ export function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] w-full mt-4">
+            <div className="h-[250px] sm:h-[300px] w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={fluxoData}>
                   <XAxis 
@@ -397,7 +397,7 @@ export function Dashboard() {
         <Card className="border-none shadow-sm">
           <CardHeader>
             <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-primary" /> Gastos por Cartão (Atividade Real)
+              <CreditCard className="w-4 h-4 text-primary" /> Gastos por Cartão
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -423,7 +423,7 @@ export function Dashboard() {
         <Card className="border-none shadow-sm">
           <CardHeader>
             <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <PieChartIcon className="w-4 h-4 text-primary" /> Top 10 Despesas (Atividade Real)
+              <PieChartIcon className="w-4 h-4 text-primary" /> Top 10 Despesas
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -485,7 +485,7 @@ export function Dashboard() {
         <Card className="border-none shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <History className="w-4 h-4 text-primary" /> Últimas Transações (Sistema)
+              <History className="w-4 h-4 text-primary" /> Últimas Transações
             </CardTitle>
             <Button variant="ghost" size="sm" className="h-7 text-[10px] text-muted-foreground" onClick={() => navigate('/transactions')}>Ver todas</Button>
           </CardHeader>

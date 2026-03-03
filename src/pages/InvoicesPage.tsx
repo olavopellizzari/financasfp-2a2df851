@@ -211,23 +211,23 @@ export function InvoicesPage() {
   const displayMonthDate = safeParseMonth(selectedMonth);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full overflow-x-hidden">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Faturas</h1>
-          <p className="text-muted-foreground">Gerencie suas faturas de cartão de crédito</p>
+          <h1 className="text-2xl sm:text-3xl font-bold">Faturas</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm">Gerencie suas faturas de cartão de crédito</p>
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" onClick={handlePreviousMonth}><ChevronLeft className="h-4 w-4" /></Button>
-          <span className="text-lg font-bold min-w-[150px] text-center capitalize">{format(displayMonthDate, 'MMMM yyyy', { locale: ptBR })}</span>
-          <Button variant="outline" size="icon" onClick={handleNextMonth}><ChevronRight className="h-4 w-4" /></Button>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-4 w-full sm:w-auto justify-center">
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePreviousMonth}><ChevronLeft className="h-4 w-4" /></Button>
+          <span className="text-sm sm:text-lg font-bold min-w-[120px] sm:min-w-[150px] text-center capitalize">{format(displayMonthDate, 'MMMM yyyy', { locale: ptBR })}</span>
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNextMonth}><ChevronRight className="h-4 w-4" /></Button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <Select value={selectedCardId} onValueChange={setSelectedCardId}>
-            <SelectTrigger className="w-[220px]">
+            <SelectTrigger className="w-full sm:w-[220px]">
               <SelectValue placeholder="Todos os cartões" />
             </SelectTrigger>
             <SelectContent>
@@ -247,44 +247,44 @@ export function InvoicesPage() {
           displayInvoices.map(invoice => (
             <Card key={invoice.id} className="overflow-hidden border-none shadow-md">
               <div className="flex items-stretch">
-                <div className="w-2" style={{ backgroundColor: invoice.card.color }} />
-                <div className="flex-1 p-6">
+                <div className="w-1.5 sm:w-2" style={{ backgroundColor: invoice.card.color }} />
+                <div className="flex-1 p-4 sm:p-6">
                   <div className="flex items-start justify-between mb-6">
                     <div className="flex items-center gap-3">
-                      <div className="p-3 rounded-xl" style={{ backgroundColor: `${invoice.card.color}20` }}><CreditCard className="h-5 w-5" style={{ color: invoice.card.color }} /></div>
-                      <div><h3 className="font-bold text-lg">{invoice.card.name}</h3><p className="text-xs text-muted-foreground uppercase tracking-wider">•••• {invoice.card.last_digits} · {invoice.transactionCount} lançamentos</p></div>
+                      <div className="p-2 sm:p-3 rounded-xl" style={{ backgroundColor: `${invoice.card.color}20` }}><CreditCard className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: invoice.card.color }} /></div>
+                      <div><h3 className="font-bold text-base sm:text-lg">{invoice.card.name}</h3><p className="text-[10px] text-muted-foreground uppercase tracking-wider">•••• {invoice.card.last_digits} · {invoice.transactionCount} lançamentos</p></div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleOpenConfig(invoice.card)} title="Configurar Cartão">
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenConfig(invoice.card)} title="Configurar Cartão">
                         <Settings2 className="h-4 w-4" />
                       </Button>
-                      <Badge variant={invoice.status === 'paid' ? 'default' : 'outline'} className={cn(invoice.status === 'paid' ? 'bg-income text-white' : '')}>{invoice.status === 'paid' ? 'Paga' : invoice.status === 'closed' ? 'Fechada' : 'Aberta'}</Badge>
+                      <Badge variant={invoice.status === 'paid' ? 'default' : 'outline'} className={cn("text-[10px] h-5", invoice.status === 'paid' ? 'bg-income text-white' : '')}>{invoice.status === 'paid' ? 'Paga' : invoice.status === 'closed' ? 'Fechada' : 'Aberta'}</Badge>
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-                    <div className="space-y-1"><p className="text-[10px] font-bold text-muted-foreground uppercase">Fechamento</p><p className="font-semibold">{isValid(invoice.closingDate) ? format(invoice.closingDate, 'dd/MM/yyyy') : '---'}</p></div>
-                    <div className="space-y-1"><p className="text-[10px] font-bold text-muted-foreground uppercase">Vencimento</p><p className="font-semibold">{isValid(invoice.dueDate) ? format(invoice.dueDate, 'dd/MM/yyyy') : '---'}</p></div>
-                    <div className="space-y-1"><p className="text-[10px] font-bold text-muted-foreground uppercase">Valor Total</p><p className="font-bold text-xl">{formatCurrency(invoice.total)}</p></div>
-                    <div className="space-y-1"><p className="text-[10px] font-bold text-muted-foreground uppercase">Restante</p><p className={cn("font-bold text-xl", invoice.total - invoice.paid > 0 ? 'text-expense' : 'text-income')}>{formatCurrency(invoice.total - invoice.paid)}</p></div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-8">
+                    <div className="space-y-1"><p className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase">Fechamento</p><p className="text-xs sm:text-sm font-semibold">{isValid(invoice.closingDate) ? format(invoice.closingDate, 'dd/MM/yyyy') : '---'}</p></div>
+                    <div className="space-y-1"><p className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase">Vencimento</p><p className="text-xs sm:text-sm font-semibold">{isValid(invoice.dueDate) ? format(invoice.dueDate, 'dd/MM/yyyy') : '---'}</p></div>
+                    <div className="space-y-1"><p className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase">Valor Total</p><p className="font-bold text-lg sm:text-xl">{formatCurrency(invoice.total)}</p></div>
+                    <div className="space-y-1"><p className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase">Restante</p><p className={cn("font-bold text-lg sm:text-xl", invoice.total - invoice.paid > 0 ? 'text-expense' : 'text-income')}>{formatCurrency(invoice.total - invoice.paid)}</p></div>
                   </div>
 
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Detalhamento da Fatura</h4>
-                      <Button variant="outline" size="sm" onClick={() => handlePayInvoice(invoice)} disabled={invoice.status === 'paid' || invoice.total === 0} className="h-8"><DollarSign className="h-3.5 w-3.5 mr-1" />{invoice.status === 'paid' ? 'Paga' : 'Pagar Fatura'}</Button>
+                      <h4 className="text-[10px] sm:text-sm font-bold uppercase tracking-widest text-muted-foreground">Detalhamento</h4>
+                      <Button variant="outline" size="sm" onClick={() => handlePayInvoice(invoice)} disabled={invoice.status === 'paid' || invoice.total === 0} className="h-8 text-xs"><DollarSign className="h-3.5 w-3.5 mr-1" />{invoice.status === 'paid' ? 'Paga' : 'Pagar'}</Button>
                     </div>
                     
-                    <div className="bg-muted/30 rounded-2xl overflow-hidden">
-                      <div className="max-h-[300px] overflow-y-auto">
+                    <div className="bg-muted/30 rounded-xl sm:rounded-2xl overflow-hidden">
+                      <div className="table-container max-h-[300px]">
                         {invoice.transactions.length > 0 ? (
                           <table className="w-full text-xs">
                             <thead className="bg-muted/50 sticky top-0">
                               <tr>
-                                <th className="text-left p-3 font-bold uppercase">Data</th>
-                                <th className="text-left p-3 font-bold uppercase">Descrição</th>
-                                <th className="text-left p-3 font-bold uppercase">Categoria</th>
-                                <th className="text-right p-3 font-bold uppercase">Valor</th>
+                                <th className="text-left p-3 font-bold uppercase whitespace-nowrap">Data</th>
+                                <th className="text-left p-3 font-bold uppercase whitespace-nowrap">Descrição</th>
+                                <th className="text-left p-3 font-bold uppercase whitespace-nowrap">Categoria</th>
+                                <th className="text-right p-3 font-bold uppercase whitespace-nowrap">Valor</th>
                                 <th className="p-3"></th>
                               </tr>
                             </thead>
@@ -295,13 +295,13 @@ export function InvoicesPage() {
                                   <tr key={tx.id} className="hover:bg-muted/50 transition-colors group">
                                     <td className="p-3 whitespace-nowrap">{format(new Date(tx.purchaseDate), 'dd/MM/yy')}</td>
                                     <td className="p-3">
-                                      <div className="flex flex-col">
-                                        <span className="font-semibold">{tx.description}</span>
-                                        {tx.totalInstallments > 1 && <span className="text-[10px] text-muted-foreground">Parcela {tx.installmentNumber}/{tx.totalInstallments}</span>}
+                                      <div className="flex flex-col min-w-[100px]">
+                                        <span className="font-semibold truncate max-w-[150px]">{tx.description}</span>
+                                        {tx.totalInstallments > 1 && <span className="text-[9px] text-muted-foreground">Parcela {tx.installmentNumber}/{tx.totalInstallments}</span>}
                                       </div>
                                     </td>
-                                    <td className="p-3"><Badge variant="outline" className="font-normal text-[10px]">{cat?.icon} {cat?.name}</Badge></td>
-                                    <td className={cn("p-3 text-right font-bold", tx.type === 'REFUND' ? 'text-income' : 'text-expense')}>
+                                    <td className="p-3"><Badge variant="outline" className="font-normal text-[9px] whitespace-nowrap">{cat?.icon} {cat?.name}</Badge></td>
+                                    <td className={cn("p-3 text-right font-bold whitespace-nowrap", tx.type === 'REFUND' ? 'text-income' : 'text-expense')}>
                                       {tx.type === 'REFUND' ? '+' : '-'} {formatCurrency(tx.amount)}
                                     </td>
                                     <td className="p-3 text-right">
@@ -316,7 +316,7 @@ export function InvoicesPage() {
                             </tbody>
                           </table>
                         ) : (
-                          <div className="p-8 text-center text-muted-foreground">Nenhum lançamento nesta fatura.</div>
+                          <div className="p-8 text-center text-muted-foreground text-xs">Nenhum lançamento nesta fatura.</div>
                         )}
                       </div>
                     </div>
@@ -330,46 +330,32 @@ export function InvoicesPage() {
 
       {/* Diálogo de Pagamento */}
       <Dialog open={payDialogOpen} onOpenChange={setPayDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[90vw] sm:max-w-md rounded-2xl">
           <DialogHeader><DialogTitle>Pagar Fatura</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2"><Label>Conta para débito</Label><Select value={paymentAccountId} onValueChange={setPaymentAccountId}><SelectTrigger><SelectValue placeholder="Selecione a conta" /></SelectTrigger><SelectContent>{accounts.filter(a => a.active !== false).map(account => <SelectItem key={account.id} value={account.id}>{account.name} - {formatCurrency(getAccountBalance(account.id))}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-2"><Label>Valor do pagamento</Label><Input type="number" step="0.01" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} placeholder="0,00" /></div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setPayDialogOpen(false)}>Cancelar</Button><Button onClick={handleConfirmPayment}>Confirmar Pagamento</Button></DialogFooter>
+          <DialogFooter className="gap-2"><Button variant="outline" onClick={() => setPayDialogOpen(false)} className="flex-1">Cancelar</Button><Button onClick={handleConfirmPayment} className="flex-1">Confirmar</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Diálogo de Configuração do Cartão */}
       <Dialog open={configDialogOpen} onOpenChange={setConfigDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-[90vw] sm:max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Configurar Cartão: {editingCard?.name}</DialogTitle>
-            <DialogDescription>Ajuste as das e responsáveis pelo pagamento da fatura.</DialogDescription>
+            <DialogTitle>Configurar Cartão</DialogTitle>
+            <DialogDescription className="text-xs">Ajuste as datas e responsáveis pelo pagamento.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSaveCardConfig} className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Dia de Fechamento</Label>
-                <Input 
-                  type="number" 
-                  min="1" 
-                  max="31" 
-                  value={cardFormData.closingDay} 
-                  onChange={e => setCardFormData({...cardFormData, closingDay: e.target.value})} 
-                  required 
-                />
+                <Label>Dia Fechamento</Label>
+                <Input type="number" min="1" max="31" value={cardFormData.closingDay} onChange={e => setCardFormData({...cardFormData, closingDay: e.target.value})} required />
               </div>
               <div className="space-y-2">
-                <Label>Dia de Vencimento</Label>
-                <Input 
-                  type="number" 
-                  min="1" 
-                  max="31" 
-                  value={cardFormData.dueDay} 
-                  onChange={e => setCardFormData({...cardFormData, dueDay: e.target.value})} 
-                  required 
-                />
+                <Label>Dia Vencimento</Label>
+                <Input type="number" min="1" max="31" value={cardFormData.dueDay} onChange={e => setCardFormData({...cardFormData, dueDay: e.target.value})} required />
               </div>
             </div>
 
@@ -386,7 +372,7 @@ export function InvoicesPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Conta Padrão para Pagamento</Label>
+              <Label>Conta Padrão</Label>
               <Select value={cardFormData.defaultAccountId} onValueChange={v => setCardFormData({...cardFormData, defaultAccountId: v})}>
                 <SelectTrigger><SelectValue placeholder="Selecione uma conta" /></SelectTrigger>
                 <SelectContent>
@@ -397,10 +383,10 @@ export function InvoicesPage() {
               </Select>
             </div>
 
-            <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setConfigDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar Configurações'}
+            <DialogFooter className="pt-4 gap-2">
+              <Button type="button" variant="outline" onClick={() => setConfigDialogOpen(false)} className="flex-1">Cancelar</Button>
+              <Button type="submit" disabled={isLoading} className="flex-1">
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
               </Button>
             </DialogFooter>
           </form>

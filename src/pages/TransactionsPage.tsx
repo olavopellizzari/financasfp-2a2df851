@@ -537,7 +537,7 @@ export function TransactionsPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in w-full max-w-full overflow-x-hidden">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           {isCardMode && (
@@ -547,55 +547,55 @@ export function TransactionsPage() {
           )}
           <div>
             <h1 className="text-2xl font-bold">{isCardMode ? 'Lançamentos de Cartão' : 'Lançamentos'}</h1>
-            <p className="text-muted-foreground">
-              {isCardMode ? 'Histórico detalhado de gastos no crédito' : 'Histórico de movimentações financeiras (Contas)'}
+            <p className="text-muted-foreground text-xs sm:text-sm">
+              {isCardMode ? 'Histórico detalhado de gastos no crédito' : 'Histórico de movimentações financeiras'}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
           <UserFilter 
             value={selectedUserId} 
             onChange={setSelectedUserId} 
             showTotalOption={true}
-            className="w-[180px]" 
+            className="w-[160px] sm:w-[180px] shrink-0" 
           />
-          <Button onClick={handleOpenDialog} className="gradient-primary shadow-primary">
-            <Plus className="w-4 h-4 mr-2" /> Novo Lançamento
+          <Button onClick={handleOpenDialog} className="gradient-primary shadow-primary shrink-0">
+            <Plus className="w-4 h-4 mr-2" /> Novo
           </Button>
         </div>
       </div>
 
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-foreground text-background px-6 py-3 rounded-full shadow-2xl flex items-center gap-6 animate-slide-up">
-          <span className="text-sm font-bold">{selectedIds.size} selecionados</span>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-foreground text-background px-4 sm:px-6 py-3 rounded-full shadow-2xl flex items-center gap-4 sm:gap-6 animate-slide-up max-w-[90vw]">
+          <span className="text-xs sm:text-sm font-bold whitespace-nowrap">{selectedIds.size} sel.</span>
           <div className="h-4 w-px bg-background/20" />
-          <Button variant="ghost" size="sm" className="text-background hover:bg-background/10" onClick={handleBulkDelete}>
-            <Trash2 className="w-4 h-4 mr-2" /> Excluir Selecionados
+          <Button variant="ghost" size="sm" className="text-background hover:bg-background/10 h-8 px-2" onClick={handleBulkDelete}>
+            <Trash2 className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Excluir</span>
           </Button>
-          <Button variant="ghost" size="sm" className="text-background hover:bg-background/10" onClick={() => setSelectedIds(new Set())}>
-            <X className="w-4 h-4 mr-2" /> Cancelar
+          <Button variant="ghost" size="sm" className="text-background hover:bg-background/10 h-8 px-2" onClick={() => setSelectedIds(new Set())}>
+            <X className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Cancelar</span>
           </Button>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-income/10 border-income/20"><CardContent className="p-4"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">{isCardMode ? 'Estornos' : 'Receitas'}</p><ArrowUpRight className="w-4 h-4 text-income" /></div><p className="text-xl font-bold text-income">{formatCurrency(isCardMode ? monthStats.income : monthStats.income)}</p></CardContent></Card>
-        <Card className="bg-expense/10 border-expense/20"><CardContent className="p-4"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">{isCardMode ? 'Gastos no Cartão' : 'Despesas'}</p><ArrowDownRight className="w-4 h-4 text-expense" /></div><p className="text-xl font-bold text-expense">{formatCurrency(monthStats.totalExpenses)}</p></CardContent></Card>
-        <Card className="bg-muted border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">{isCardMode ? 'Total da Fatura' : 'Saldo do Mês'}</p><Wallet className="w-4 h-4 text-muted-foreground" /></div><p className={cn("text-xl font-bold", monthStats.balance >= 0 ? 'text-income' : 'text-expense')}>{formatCurrency(isCardMode ? monthStats.totalExpenses : monthStats.balance)}</p></CardContent></Card>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="bg-income/10 border-income/20"><CardContent className="p-4"><div className="flex items-center justify-between"><p className="text-xs text-muted-foreground">{isCardMode ? 'Estornos' : 'Receitas'}</p><ArrowUpRight className="w-4 h-4 text-income" /></div><p className="text-lg sm:text-xl font-bold text-income">{formatCurrency(monthStats.income)}</p></CardContent></Card>
+        <Card className="bg-expense/10 border-expense/20"><CardContent className="p-4"><div className="flex items-center justify-between"><p className="text-xs text-muted-foreground">{isCardMode ? 'Gastos' : 'Despesas'}</p><ArrowDownRight className="w-4 h-4 text-expense" /></div><p className="text-lg sm:text-xl font-bold text-expense">{formatCurrency(monthStats.totalExpenses)}</p></CardContent></Card>
+        <Card className="bg-muted border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><p className="text-xs text-muted-foreground">{isCardMode ? 'Total' : 'Saldo'}</p><Wallet className="w-4 h-4 text-muted-foreground" /></div><p className={cn("text-lg sm:text-xl font-bold", monthStats.balance >= 0 ? 'text-income' : 'text-expense')}>{formatCurrency(isCardMode ? monthStats.totalExpenses : monthStats.balance)}</p></CardContent></Card>
       </div>
 
       <Card className="finance-card">
         <CardContent className="p-4">
           <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-            <div className="flex items-center gap-2 w-full lg:w-auto">
-              <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><ChevronLeft className="h-4 w-4" /></Button>
+            <div className="flex items-center gap-2 w-full lg:w-auto justify-center">
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><ChevronLeft className="h-4 w-4" /></Button>
               <span className="text-sm font-bold min-w-[120px] text-center capitalize">{formatLocal(currentMonth, 'MMMM yyyy')}</span>
-              <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}><ChevronRight className="h-4 w-4" /></Button>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}><ChevronRight className="h-4 w-4" /></Button>
             </div>
             <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
               {isCardMode && (
                 <Select value={selectedCardId} onValueChange={setSelectedCardId}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Todos os cartões" />
                   </SelectTrigger>
                   <SelectContent>
@@ -607,25 +607,25 @@ export function TransactionsPage() {
                 </Select>
               )}
               <div className="relative flex-1 min-w-[200px]"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar descrição..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" /></div>
-              <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}><SelectTrigger className="w-[140px]"><Filter className="w-4 h-4 mr-2" /><SelectValue placeholder="Tipo" /></SelectTrigger><SelectContent><SelectItem value="ALL">Todos</SelectItem>{TIPOS_TRANSACAO.filter(t => isCardMode ? (t.value === 'CREDIT' || t.value === 'REFUND') : (t.value !== 'CREDIT' && t.value !== 'REFUND')).map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent></Select>
+              <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}><SelectTrigger className="w-full sm:w-[140px]"><Filter className="w-4 h-4 mr-2" /><SelectValue placeholder="Tipo" /></SelectTrigger><SelectContent><SelectItem value="ALL">Todos</SelectItem>{TIPOS_TRANSACAO.filter(t => isCardMode ? (t.value === 'CREDIT' || t.value === 'REFUND') : (t.value !== 'CREDIT' && t.value !== 'REFUND')).map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent></Select>
             </div>
           </div>
         </CardContent>
       </Card>
 
       <Card className="finance-card overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="table-container">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 border-b">
               <tr>
                 <th className="p-4 w-10"><Checkbox checked={selectedIds.size === filteredTransactions.length && filteredTransactions.length > 0} onCheckedChange={toggleSelectAll} /></th>
-                <th className="text-left p-4 font-semibold">Data</th>
-                <th className="text-left p-4 font-semibold">Descrição</th>
-                <th className="text-left p-4 font-semibold">Categoria</th>
-                <th className="text-left p-4 font-semibold">Usuário</th>
-                <th className="text-right p-4 font-semibold">Valor</th>
-                <th className="text-center p-4 font-semibold">Status</th>
-                <th className="text-right p-4 font-semibold">Ações</th>
+                <th className="text-left p-4 font-semibold whitespace-nowrap">Data</th>
+                <th className="text-left p-4 font-semibold whitespace-nowrap">Descrição</th>
+                <th className="text-left p-4 font-semibold whitespace-nowrap">Categoria</th>
+                <th className="text-left p-4 font-semibold whitespace-nowrap">Usuário</th>
+                <th className="text-right p-4 font-semibold whitespace-nowrap">Valor</th>
+                <th className="text-center p-4 font-semibold whitespace-nowrap">Status</th>
+                <th className="text-right p-4 font-semibold whitespace-nowrap">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -636,12 +636,12 @@ export function TransactionsPage() {
                 return (
                   <tr key={tx.id} className={cn("hover:bg-muted/30 transition-colors group", selectedIds.has(tx.id) && "bg-primary/5")}>
                     <td className="p-4"><Checkbox checked={selectedIds.has(tx.id)} onCheckedChange={() => toggleSelect(tx.id)} /></td>
-                    <td className="p-4"><div className="flex flex-col"><span className="font-medium">{formatLocal(tx.purchaseDate, 'dd/MM/yy')}</span><span className="text-[10px] text-muted-foreground uppercase">{formatLocal(tx.purchaseDate, 'EEEE')}</span></div></td>
-                    <td className="p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-muted"><typeInfo.icon className={cn("w-4 h-4", typeInfo.color)} /></div><div className="flex flex-col"><span className="font-semibold">{tx.description}</span>{tx.installmentGroupId && <Badge variant="secondary" className="w-fit text-[10px] h-4 px-1">Parcela {tx.installmentNumber}/{tx.totalInstallments}</Badge>}</div></div></td>
-                    <td className="p-4"><Badge variant="outline" className="font-normal">{category?.icon} {category?.name || 'Sem Categoria'}</Badge></td>
-                    <td className="p-4"><div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] text-white font-bold" style={{ backgroundColor: txUser?.avatar_color || '#94a3b8' }}>{txUser?.name.charAt(0).toUpperCase() || '?'}</div><span className="text-xs truncate max-w-[80px]">{txUser?.name || 'Sistema'}</span></div></td>
-                    <td className="p-4 text-right font-semibold"><span className={typeInfo.color}>{tx.type === 'INCOME' || tx.type === 'REFUND' ? '+' : '-'} {formatCurrency(tx.amount)}</span></td>
-                    <td className="p-4 text-center"><button onClick={() => handleTogglePaid(tx)} className={cn("flex items-center gap-1 mx-auto px-2 py-1 rounded-full text-[10px] font-bold uppercase transition-all", tx.isPaid ? "bg-income/10 text-income hover:bg-income/20" : "bg-warning/10 text-warning hover:bg-warning/20 border border-warning/20")}>{tx.isPaid ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />} {tx.isPaid ? "Pago" : "Pendente"}</button></td>
+                    <td className="p-4"><div className="flex flex-col"><span className="font-medium whitespace-nowrap">{formatLocal(tx.purchaseDate, 'dd/MM/yy')}</span><span className="text-[10px] text-muted-foreground uppercase whitespace-nowrap">{formatLocal(tx.purchaseDate, 'EEEE')}</span></div></td>
+                    <td className="p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-muted shrink-0"><typeInfo.icon className={cn("w-4 h-4", typeInfo.color)} /></div><div className="flex flex-col min-w-[120px]"><span className="font-semibold truncate max-w-[200px]">{tx.description}</span>{tx.installmentGroupId && <Badge variant="secondary" className="w-fit text-[10px] h-4 px-1">Parcela {tx.installmentNumber}/{tx.totalInstallments}</Badge>}</div></div></td>
+                    <td className="p-4"><Badge variant="outline" className="font-normal whitespace-nowrap">{category?.icon} {category?.name || 'Sem Categoria'}</Badge></td>
+                    <td className="p-4"><div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] text-white font-bold shrink-0" style={{ backgroundColor: txUser?.avatar_color || '#94a3b8' }}>{txUser?.name.charAt(0).toUpperCase() || '?'}</div><span className="text-xs truncate max-w-[80px]">{txUser?.name || 'Sistema'}</span></div></td>
+                    <td className="p-4 text-right font-semibold"><span className={cn("whitespace-nowrap", typeInfo.color)}>{tx.type === 'INCOME' || tx.type === 'REFUND' ? '+' : '-'} {formatCurrency(tx.amount)}</span></td>
+                    <td className="p-4 text-center"><button onClick={() => handleTogglePaid(tx)} className={cn("flex items-center gap-1 mx-auto px-2 py-1 rounded-full text-[10px] font-bold uppercase transition-all whitespace-nowrap", tx.isPaid ? "bg-income/10 text-income hover:bg-income/20" : "bg-warning/10 text-warning hover:bg-warning/20 border border-warning/20")}>{tx.isPaid ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />} {tx.isPaid ? "Pago" : "Pendente"}</button></td>
                     <td className="p-4 text-right"><div className="flex justify-end gap-1"><Button size="icon" variant="ghost" onClick={() => handleTogglePaid(tx)} className={cn("h-8 w-8", tx.isPaid ? "text-muted-foreground" : "text-income")}>{tx.isPaid ? <RotateCcw className="w-4 h-4" /> : <Check className="w-4 h-4" />}</Button><Button size="icon" variant="ghost" onClick={() => handleEdit(tx)} className="h-8 w-8 text-muted-foreground"><Pencil className="w-4 h-4" /></Button><Button size="icon" variant="ghost" onClick={() => handleDelete(tx)} className="h-8 w-8 text-destructive"><Trash2 className="w-4 h-4" /></Button></div></td>
                   </tr>
                 );
@@ -652,19 +652,19 @@ export function TransactionsPage() {
       </Card>
 
       <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
-        <DialogContent><DialogHeader><DialogTitle>{bulkActionType === 'delete' ? 'Excluir Lançamento' : 'Editar Lançamento'}</DialogTitle><DialogDescription>Este lançamento faz parte de uma série. O que deseja fazer?</DialogDescription></DialogHeader><div className="grid gap-4 py-4"><Button variant="outline" onClick={() => handleBulkAction('single')}>{bulkActionType === 'delete' ? 'Excluir apenas este' : 'Editar apenas este'}</Button><Button className="gradient-primary" onClick={() => handleBulkAction('future')}>{bulkActionType === 'delete' ? 'Excluir este e os próximos' : 'Editar este e os próximos'}</Button></div><DialogFooter><Button variant="ghost" onClick={() => setBulkDialogOpen(false)}>Cancelar</Button></DialogFooter></DialogContent>
+        <DialogContent className="max-w-[90vw] sm:max-w-md rounded-2xl"><DialogHeader><DialogTitle>{bulkActionType === 'delete' ? 'Excluir Lançamento' : 'Editar Lançamento'}</DialogTitle><DialogDescription>Este lançamento faz parte de uma série. O que deseja fazer?</DialogDescription></DialogHeader><div className="grid gap-4 py-4"><Button variant="outline" onClick={() => handleBulkAction('single')}>{bulkActionType === 'delete' ? 'Excluir apenas este' : 'Editar apenas este'}</Button><Button className="gradient-primary" onClick={() => handleBulkAction('future')}>{bulkActionType === 'delete' ? 'Excluir este e os próximos' : 'Editar este e os próximos'}</Button></div><DialogFooter><Button variant="ghost" onClick={() => setBulkDialogOpen(false)}>Cancelar</Button></DialogFooter></DialogContent>
       </Dialog>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl">
           <DialogHeader><DialogTitle>{editingTransaction ? 'Editar Lançamento' : 'Novo Lançamento'}</DialogTitle></DialogHeader>
           <Tabs value={activeTab} onValueChange={(v: any) => { setActiveTab(v); setFormData(prev => ({ ...prev, type: v, isPaid: v === 'INCOME' || v === 'TRANSFER' || v === 'REFUND' })); }}>
-            <TabsList className="grid grid-cols-5 w-full">
+            <TabsList className="grid grid-cols-5 w-full overflow-x-auto">
               {TIPOS_TRANSACAO
-                .map(t => <TabsTrigger key={t.value} value={t.value} className="gap-1 px-1"><t.icon className="w-3 h-3" />{t.label}</TabsTrigger>)}
+                .map(t => <TabsTrigger key={t.value} value={t.value} className="gap-1 px-1 text-[10px] sm:text-xs"><t.icon className="w-3 h-3" />{t.label}</TabsTrigger>)}
             </TabsList>
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Usuário {activeTab === 'TRANSFER' && 'Origem'}</Label>
                   <Select value={formData.userId} onValueChange={v => setFormData({ ...formData, userId: v })}>
@@ -713,8 +713,8 @@ export function TransactionsPage() {
                   )}
                 </div>
               </div>
-              {activeTab === 'TRANSFER' && (<div className="p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-4"><div className="flex items-center gap-2 text-primary font-bold text-sm"><ArrowRight className="w-4 h-4" /> Destino da Transferência</div><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label>Usuário Destino</Label><Select value={formData.destinationUserId} onValueChange={v => setFormData({ ...formData, destinationUserId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{users.filter(u => u.is_active !== false).map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><Label>Conta Destino</Label><Select value={formData.destinationAccountId} onValueChange={v => setFormData({ ...formData, destinationAccountId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{availableAccounts.map(a => (<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}</SelectContent></Select></div></div></div>)}
-              <div className="grid grid-cols-2 gap-4">
+              {activeTab === 'TRANSFER' && (<div className="p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-4"><div className="flex items-center gap-2 text-primary font-bold text-sm"><ArrowRight className="w-4 h-4" /> Destino da Transferência</div><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div className="space-y-2"><Label>Usuário Destino</Label><Select value={formData.destinationUserId} onValueChange={v => setFormData({ ...formData, destinationUserId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{users.filter(u => u.is_active !== false).map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><Label>Conta Destino</Label><Select value={formData.destinationAccountId} onValueChange={v => setFormData({ ...formData, destinationAccountId: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{availableAccounts.map(a => (<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}</SelectContent></Select></div></div></div>)}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Data da Compra</Label>
                   <Popover>
@@ -753,13 +753,13 @@ export function TransactionsPage() {
                   />
                   {formData.categoryId && !editingTransaction && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[10px] text-primary font-bold animate-fade-in">
-                      <Sparkles className="w-3 h-3" /> Categoria sugerida
+                      <Sparkles className="w-3 h-3" /> Sugerida
                     </div>
                   )}
                 </div>
               </div>
               {activeTab !== 'TRANSFER' && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Categoria</Label>
                     <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
@@ -772,7 +772,7 @@ export function TransactionsPage() {
                         >
                           {formData.categoryId
                             ? sortedCategories.find((cat) => cat.id === formData.categoryId)?.name
-                            : "Selecionar categoria..."}
+                            : "Selecionar..."}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
@@ -780,7 +780,7 @@ export function TransactionsPage() {
                         <Command>
                           <CommandInput placeholder="Buscar categoria..." />
                           <CommandList>
-                            <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
+                            <CommandEmpty>Nenhuma encontrada.</CommandEmpty>
                             <CommandGroup>
                               {sortedCategories
                                 .filter(c => formData.type === 'INCOME' ? c.type === 'income' : c.type === 'expense' || c.type === 'both')

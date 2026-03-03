@@ -109,7 +109,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div 
-      className="min-h-screen flex w-full bg-background overflow-x-hidden"
+      className="min-h-screen flex w-full bg-background overflow-x-hidden max-w-full"
       style={{ 
         '--primary': userHsl,
         '--sidebar-primary': userHsl,
@@ -206,7 +206,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         </button>
       </aside>
 
-      <main className="flex-1 flex flex-col min-h-screen min-w-0">
+      <main className="flex-1 flex flex-col min-h-screen min-w-0 w-full max-w-full overflow-x-hidden">
         <header className="flex items-center justify-between p-4 border-b bg-card">
           <div className="flex items-center gap-3 min-w-0">
             <Button variant="ghost" size="icon" className="lg:hidden flex-shrink-0" onClick={() => setIsMobileMenuOpen(true)}>
@@ -251,7 +251,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
         </header>
 
-        <div className="flex-1 p-4 lg:p-6 overflow-x-hidden overflow-y-auto">
+        <div className="flex-1 p-4 lg:p-6 overflow-x-hidden overflow-y-auto w-full max-w-full">
           {children}
         </div>
       </main>
