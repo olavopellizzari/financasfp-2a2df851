@@ -3,14 +3,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFinance } from '@/contexts/FinanceContext';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { User, Trash2, Loader2, Sparkles, Wrench, Calendar, Bell, BellRing, Smartphone, CheckCircle2, AlertTriangle, Zap, Camera, Upload, X, RefreshCw } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { 
+  User, Trash2, Loader2, Sparkles, Wrench, Calendar, Bell, BellRing, 
+  Smartphone, CheckCircle2, AlertTriangle, Zap, Camera, Upload, X, 
+  RefreshCw, Clock, Wallet, CreditCard, ShieldAlert
+} from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { addMonths, format, parseISO } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
@@ -38,7 +43,20 @@ export function SettingsPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [dailyAlerts, setDailyAlerts] = useState(false);
+
+  // Estados para Alertas
+  const [loadingSettings, setLoadingSettings] = useState(true);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [alertSettings, setAlertSettings] = useState({
+    daily_spending_threshold: '0',
+    invoice_reminder_days: '3',
+    balance_report_frequency: 'off',
+    balance_report_time: '08:00',
+    low_balance_alert_value: '100',
+    enable_spending_limit: false,
+    enable_low_balance: false,
+    invoice_reminder_alert: true
+  });
 
   const isAdmin = isCurrentUserAdmin();
 
@@ -53,8 +71,64 @@ export function SettingsPage() {
       if (currentUser.avatar_url) {
         setAvatarPreview(currentUser.avatar_url);
       }
+      loadNotificationSettings();
     }
   }, [currentUser]);
+
+  const loadNotificationSettings = async () => {
+    if (!currentUser?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('notification_settings')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .single();
+
+      if (data) {
+        setAlertSettings({
+          daily_spending_threshold: data.daily_spending_threshold.toString(),
+          invoice_reminder_days: data.invoice_reminder_days.toString(),
+          balance_report_frequency: data.balance_report_frequency,
+          balance_report_time: data.balance_report_time,
+          low_balance_alert_value: data.low_balance_alert_value.toString(),
+          enable_spending_limit: data.enable_spending_limit,
+          enable_low_balance: data.enable_low_balance,
+          invoice_reminder_alert: true // Default
+        });
+      }
+    } catch (e) {
+      console.log("Configurações de alerta ainda não criadas.");
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
+  const saveAlertSettings = async () => {
+    if (!currentUser?.id) return;
+    setSavingSettings(true);
+    try {
+      const { error } = await supabase
+        .from('notification_settings')
+        .upsert({
+          user_id: currentUser.id,
+          daily_spending_threshold: parseFloat(alertSettings.daily_spending_threshold) || 0,
+          invoice_reminder_days: parseInt(alertSettings.invoice_reminder_days) || 3,
+          balance_report_frequency: alertSettings.balance_report_frequency,
+          balance_report_time: alertSettings.balance_report_time,
+          low_balance_alert_value: parseFloat(alertSettings.low_balance_alert_value) || 0,
+          enable_spending_limit: alertSettings.enable_spending_limit,
+          enable_low_balance: alertSettings.enable_low_balance,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+      toast({ title: "Sucesso!", description: "Preferências de alerta salvas." });
+    } catch (e: any) {
+      toast({ title: "Erro ao salvar", description: e.message, variant: "destructive" });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
 
   useEffect(() => {
     if (searchParams.get('mode') === 'profile') {
@@ -400,190 +474,321 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Configurações</h1>
-        <p className="text-muted-foreground">Personalize o aplicativo e gerencie seus dados na nuvem</p>
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Configurações</h1>
+          <p className="text-muted-foreground">Personalize o aplicativo e gerencie seus dados na nuvem</p>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><BellRing className="h-5 w-5" /> Notificações & Widget</CardTitle></CardHeader>
-        <CardContent className="space-y-6">
-          {!isStandalone ? (
-            <div className="flex items-start gap-4 p-4 bg-warning/10 rounded-xl border border-warning/20">
-              <AlertTriangle className="h-6 w-6 text-warning shrink-0 mt-1" />
-              <div className="space-y-1">
-                <p className="text-sm font-bold text-warning">Ação Necessária no iPhone:</p>
-                <p className="text-xs text-muted-foreground">Para ver o limite na tela de bloqueio, você deve:</p>
-                <ol className="text-xs text-muted-foreground list-decimal ml-4 mt-2 space-y-1">
-                  <li>Clicar no botão de <strong>Compartilhar</strong> no Safari</li>
-                  <li>Selecionar <strong>"Adicionar à Tela de Início"</strong></li>
-                  <li>Abrir o app pelo novo ícone</li>
-                </ol>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          {/* SEÇÃO DE ALERTAS */}
+          <Card className="border-none shadow-md overflow-hidden">
+            <CardHeader className="bg-primary/5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <BellRing className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">Alertas & Notificações</CardTitle>
+                </div>
+                <Button 
+                  size="sm" 
+                  onClick={saveAlertSettings} 
+                  disabled={savingSettings || loadingSettings}
+                  className="gradient-primary"
+                >
+                  {savingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                  Salvar Alertas
+                </Button>
               </div>
-            </div>
-          ) : (
-            <div className="flex items-start gap-4 p-4 bg-success/10 rounded-xl border border-success/20">
-              <CheckCircle2 className="h-6 w-6 text-success shrink-0 mt-1" />
-              <div className="space-y-1">
-                <p className="text-sm font-bold text-success">App Instalado!</p>
-                <p className="text-xs text-muted-foreground">As notificações de limite diário aparecerão na sua tela de bloqueio.</p>
+              <CardDescription>Configure como e quando você quer ser avisado.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 space-y-8">
+              
+              {/* Gasto Diário */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-orange-500/10 text-orange-600">
+                      <Zap className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <Label className="text-base font-bold">Limite de Gasto Diário</Label>
+                      <p className="text-xs text-muted-foreground">Avisar quando os gastos do dia ultrapassarem um valor.</p>
+                    </div>
+                  </div>
+                  <Switch 
+                    checked={alertSettings.enable_spending_limit} 
+                    onCheckedChange={(v) => setAlertSettings({...alertSettings, enable_spending_limit: v})} 
+                  />
+                </div>
+                {alertSettings.enable_spending_limit && (
+                  <div className="pl-12 animate-scale-in">
+                    <div className="flex items-center gap-3 max-w-xs">
+                      <span className="text-sm font-bold text-muted-foreground">R$</span>
+                      <Input 
+                        type="number" 
+                        value={alertSettings.daily_spending_threshold} 
+                        onChange={(e) => setAlertSettings({...alertSettings, daily_spending_threshold: e.target.value})}
+                        placeholder="Ex: 200.00"
+                        className="h-10 font-bold"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
 
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Status das Notificações</Label>
-              <p className="text-xs text-muted-foreground">
-                {permission === 'granted' ? '✅ Ativadas neste dispositivo' : permission === 'denied' ? '❌ Bloqueadas (verifique ajustes do iOS)' : '⚪ Aguardando permissão'}
-              </p>
-            </div>
-            <Button 
-              variant={permission === 'granted' ? 'outline' : 'default'} 
-              onClick={requestPermission} 
-              disabled={permission === 'granted' || !isStandalone}
-            >
-              {permission === 'granted' ? 'Já Ativado' : 'Ativar Notificações'}
-            </Button>
-          </div>
+              <Separator />
 
-          <Separator />
+              {/* Lembrete de Fatura */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-purple-500/10 text-purple-600">
+                      <CreditCard className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <Label className="text-base font-bold">Lembrete de Faturas</Label>
+                      <p className="text-xs text-muted-foreground">Notificar antes do vencimento dos cartões.</p>
+                    </div>
+                  </div>
+                  <Switch 
+                    checked={alertSettings.invoice_reminder_alert} 
+                    onCheckedChange={(v) => setAlertSettings({...alertSettings, invoice_reminder_alert: v})} 
+                  />
+                </div>
+                {alertSettings.invoice_reminder_alert && (
+                  <div className="pl-12 animate-scale-in">
+                    <div className="flex items-center gap-3 max-w-xs">
+                      <Select 
+                        value={alertSettings.invoice_reminder_days} 
+                        onValueChange={(v) => setAlertSettings({...alertSettings, invoice_reminder_days: v})}
+                      >
+                        <SelectTrigger className="h-10 font-medium">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 dia antes</SelectItem>
+                          <SelectItem value="3">3 dias antes</SelectItem>
+                          <SelectItem value="5">5 dias antes</SelectItem>
+                          <SelectItem value="7">1 semana antes</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="flex items-center gap-2"><Zap className="h-4 w-4 text-primary" /> Alerta de Limite Diário</Label>
-              <p className="text-xs text-muted-foreground">Receber uma notificação toda manhã com seu saldo disponível.</p>
-            </div>
-            <Switch 
-              checked={dailyAlerts} 
-              onCheckedChange={(v) => {
-                setDailyAlerts(v);
-                if (v) toast({ title: "Ativado!", description: "Você receberá o resumo diário às 08:00." });
-              }} 
-              disabled={permission !== 'granted'}
-            />
-          </div>
+              <Separator />
 
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Teste de Notificação</Label>
-              <p className="text-xs text-muted-foreground">Envia um alerta imediato para testar o som e vibração.</p>
-            </div>
-            <Button variant="outline" onClick={sendTestNotification} disabled={!isStandalone}>
-              <Bell className="h-4 w-4 mr-2" /> Testar Agora
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><User className="h-5 w-5" /> Perfil</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          {currentUser && (
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold overflow-hidden" style={{ backgroundColor: currentUser.avatar_color }}>
-                  {avatarPreview ? (
-                    <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    currentUser.name?.charAt(0).toUpperCase() || '?'
+              {/* Resumo de Saldo */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600">
+                    <Wallet className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <Label className="text-base font-bold">Resumo de Saldo</Label>
+                    <p className="text-xs text-muted-foreground">Receber um relatório do seu saldo atual.</p>
+                  </div>
+                </div>
+                <div className="pl-12 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Frequência</Label>
+                    <Select 
+                      value={alertSettings.balance_report_frequency} 
+                      onValueChange={(v) => setAlertSettings({...alertSettings, balance_report_frequency: v})}
+                    >
+                      <SelectTrigger className="h-10">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="off">Desativado</SelectItem>
+                        <SelectItem value="daily">Diariamente</SelectItem>
+                        <SelectItem value="weekly">Semanalmente (Segunda)</SelectItem>
+                        <SelectItem value="monthly">Mensalmente (Dia 1)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {alertSettings.balance_report_frequency !== 'off' && (
+                    <div className="space-y-1.5 animate-scale-in">
+                      <Label className="text-[10px] uppercase font-bold text-muted-foreground">Horário</Label>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <Input 
+                          type="time" 
+                          value={alertSettings.balance_report_time} 
+                          onChange={(e) => setAlertSettings({...alertSettings, balance_report_time: e.target.value})}
+                          className="h-10"
+                        />
+                      </div>
+                    </div>
                   )}
                 </div>
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  className="absolute bottom-0 right-0 h-8 w-8 rounded-full shadow-lg"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingAvatar}
-                >
-                  {uploadingAvatar ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-                </Button>
-                {avatarPreview && (
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute -top-1 -right-1 h-6 w-6 rounded-full"
-                    onClick={removeAvatar}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
+              </div>
+
+              <Separator />
+
+              {/* Saldo Baixo */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-destructive/10 text-destructive">
+                      <ShieldAlert className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <Label className="text-base font-bold">Alerta de Saldo Baixo</Label>
+                      <p className="text-xs text-muted-foreground">Avisar quando o saldo total ficar abaixo de um valor.</p>
+                    </div>
+                  </div>
+                  <Switch 
+                    checked={alertSettings.enable_low_balance} 
+                    onCheckedChange={(v) => setAlertSettings({...alertSettings, enable_low_balance: v})} 
+                  />
+                </div>
+                {alertSettings.enable_low_balance && (
+                  <div className="pl-12 animate-scale-in">
+                    <div className="flex items-center gap-3 max-w-xs">
+                      <span className="text-sm font-bold text-muted-foreground">R$</span>
+                      <Input 
+                        type="number" 
+                        value={alertSettings.low_balance_alert_value} 
+                        onChange={(e) => setAlertSettings({...alertSettings, low_balance_alert_value: e.target.value})}
+                        placeholder="Ex: 100.00"
+                        className="h-10 font-bold border-destructive/30"
+                      />
+                    </div>
+                  </div>
                 )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarUpload}
-                  className="hidden"
-                />
               </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-semibold">{currentUser.name}</h3>
-                <p className="text-muted-foreground">{currentUser.email}</p>
+
+            </CardContent>
+          </Card>
+
+          {/* PERFIL */}
+          <Card className="border-none shadow-md">
+            <CardHeader><CardTitle className="flex items-center gap-2"><User className="h-5 w-5" /> Perfil</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              {currentUser && (
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold overflow-hidden" style={{ backgroundColor: currentUser.avatar_color }}>
+                      {avatarPreview ? (
+                        <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        currentUser.name?.charAt(0).toUpperCase() || '?'
+                      )}
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="absolute bottom-0 right-0 h-8 w-8 rounded-full shadow-lg"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingAvatar}
+                    >
+                      {uploadingAvatar ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                    </Button>
+                    {avatarPreview && (
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute -top-1 -right-1 h-6 w-6 rounded-full"
+                        onClick={removeAvatar}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      className="hidden"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-semibold">{currentUser.name}</h3>
+                    <p className="text-muted-foreground">{currentUser.email}</p>
+                  </div>
+                  <Button variant="outline" onClick={() => setEditProfileOpen(true)}>Editar Perfil</Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          {/* STATUS PWA */}
+          <Card className="border-none shadow-md">
+            <CardHeader><CardTitle className="text-sm font-bold flex items-center gap-2"><Smartphone className="h-4 w-4" /> Status do App</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              {!isStandalone ? (
+                <div className="p-4 bg-warning/10 rounded-xl border border-warning/20 space-y-2">
+                  <div className="flex items-center gap-2 text-warning">
+                    <AlertTriangle className="h-4 w-4" />
+                    <p className="text-xs font-bold">Ação Necessária no iPhone</p>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                    Para receber notificações em tempo real, use <strong>"Adicionar à Tela de Início"</strong> no Safari.
+                  </p>
+                </div>
+              ) : (
+                <div className="p-4 bg-success/10 rounded-xl border border-success/20 flex items-center gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-success" />
+                  <p className="text-xs font-bold text-success">App Instalado & Pronto</p>
+                </div>
+              )}
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Permissão:</span>
+                <Badge variant={permission === 'granted' ? 'default' : 'outline'} className={cn(permission === 'granted' ? 'bg-success' : '')}>
+                  {permission === 'granted' ? 'Ativada' : 'Pendente'}
+                </Badge>
               </div>
-              <Button variant="outline" onClick={() => setEditProfileOpen(true)}>Editar Perfil</Button>
-            </div>
+              <Button variant="outline" className="w-full text-xs h-9" onClick={requestPermission} disabled={permission === 'granted'}>
+                Solicitar Permissão
+              </Button>
+              <Button variant="ghost" className="w-full text-xs h-9" onClick={sendTestNotification}>
+                Enviar Notificação de Teste
+              </Button>
+            </CardContent>
+          </Card>
+
+          {isAdmin && (
+            <>
+              <Card className="border-none shadow-md">
+                <CardHeader><CardTitle className="text-sm font-bold flex items-center gap-2"><Wrench className="h-4 w-4" /> Manutenção</CardTitle></CardHeader>
+                <CardContent className="space-y-2">
+                  <Button variant="outline" className="w-full justify-start text-xs h-9" onClick={handleFixAccountMonths} disabled={isFixingAccountMonths}>
+                    {isFixingAccountMonths ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <RefreshCw className="h-3 w-3 mr-2" />} 
+                    Corrigir Competência Contas
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start text-xs h-9" onClick={handleRecalculateInvoices} disabled={isRecalculating}>
+                    {isRecalculating ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <RefreshCw className="h-3 w-3 mr-2" />} 
+                    Recalcular Faturas
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start text-xs h-9" onClick={handleFixDescriptions} disabled={isCleaning}>
+                    {isCleaning ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Sparkles className="h-3 w-3 mr-2" />} 
+                    Limpar Descrições (1/12)
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="border-destructive/20 shadow-md bg-destructive/5">
+                <CardHeader><CardTitle className="text-sm font-bold text-destructive flex items-center gap-2"><Trash2 className="h-4 w-4" /> Zona de Perigo</CardTitle></CardHeader>
+                <CardContent className="space-y-2">
+                  <Button variant="outline" className="w-full justify-start text-xs h-9 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => handleResetData(true)} disabled={isDeleting}>
+                    Resetar Lançamentos
+                  </Button>
+                  <Button variant="destructive" className="w-full justify-start text-xs h-9" onClick={() => handleResetData(false)} disabled={isDeleting}>
+                    Limpar Tudo na Nuvem
+                  </Button>
+                </CardContent>
+              </Card>
+            </>
           )}
-        </CardContent>
-      </Card>
-
-      {isAdmin && (
-        <>
-          <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><Wrench className="h-5 w-5" /> Manutenção da Família</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Corrigir Competência de Contas</Label>
-                  <p className="text-sm text-muted-foreground">Garante que lançamentos em conta fiquem no mês da própria data.</p>
-                </div>
-                <Button variant="outline" onClick={handleFixAccountMonths} disabled={isFixingAccountMonths}>
-                  {isFixingAccountMonths ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />} 
-                  Corrigir Contas
-                </Button>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Recalcular Faturas</Label>
-                  <p className="text-sm text-muted-foreground">Ajusta o mês da fatura de todos os lançamentos de cartão da sua família.</p>
-                </div>
-                <Button variant="outline" onClick={handleRecalculateInvoices} disabled={isRecalculating}>
-                  {isRecalculating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />} 
-                  Recalcular Faturas
-                </Button>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5"><Label>Limpar Descrições</Label><p className="text-sm text-muted-foreground">Remove o sufixo "(1/10)" das descrições da sua família.</p></div>
-                <Button variant="outline" onClick={handleFixDescriptions} disabled={isCleaning}>{isCleaning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />} Corrigir Descrições</Button>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5"><Label>Corrigir Datas de Parcelas</Label><p className="text-sm text-muted-foreground">Ajusta a data de cada parcela para o mês correto na sua família.</p></div>
-                <Button variant="outline" onClick={handleFixDates} disabled={isFixingDates}>{isFixingDates ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4 mr-2" />} Corrigir Datas</Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-destructive/50">
-            <CardHeader><CardTitle className="flex items-center gap-2 text-destructive"><Trash2 className="h-5 w-5" /> Zona de Perigo (Dados da Família)</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5"><Label>Resetar Lançamentos</Label><p className="text-sm text-muted-foreground">Apaga apenas o histórico de transações da sua família.</p></div>
-                <Button variant="outline" className="text-destructive border-destructive hover:bg-destructive/10" onClick={() => handleResetData(true)} disabled={isDeleting}>{isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Resetar Lançamentos'}</Button>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5"><Label>Limpar Todos os Dados</Label><p className="text-sm text-muted-foreground">Remove permanentemente tudo da sua família na nuvem.</p></div>
-                <Button variant="destructive" onClick={() => handleResetData(false)} disabled={isDeleting}>{isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Limpar Tudo na Nuvem'}</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      )}
+        </div>
+      </div>
 
       <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
         <DialogContent>
