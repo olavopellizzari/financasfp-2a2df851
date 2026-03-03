@@ -511,14 +511,14 @@ export function SettingsPage() {
                             <TooltipTrigger asChild>
                               <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
                             </TooltipTrigger>
-                            <TooltipContent className="max-w-xs p-4 space-y-2">
-                              <p className="font-bold text-xs uppercase">Como vincular:</p>
-                              <ol className="text-[10px] space-y-1 list-decimal pl-3">
-                                <li>Cadastre seu número com DDI e DDD (ex: 5511999999999).</li>
-                                <li>Crie um App no <strong>Meta for Developers</strong> (WhatsApp Business API).</li>
-                                <li>Configure o Webhook para a URL da sua Edge Function.</li>
-                                <li>Use o token de verificação: <code className="bg-muted px-1">financas_bot_token</code></li>
-                              </ol>
+                            <TooltipContent className="max-w-xs p-4 space-y-3">
+                              <p className="font-bold text-xs uppercase text-primary">Como vincular seu WhatsApp:</p>
+                              <div className="text-[10px] space-y-2">
+                                <p>1. Cadastre seu número abaixo com <strong>DDI (55)</strong> e <strong>DDD</strong>. Ex: <code className="bg-muted px-1">5511999999999</code></p>
+                                <p>2. Clique em <strong>Salvar Número</strong> para vincular sua conta.</p>
+                                <p>3. Envie mensagens para o número oficial do robô no formato: <br/><strong className="text-foreground">"Valor Descrição"</strong></p>
+                                <p className="italic text-muted-foreground">Exemplo: "50.00 Almoço" ou "2500.00 Salário"</p>
+                              </div>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
