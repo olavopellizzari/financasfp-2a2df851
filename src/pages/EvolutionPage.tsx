@@ -238,19 +238,31 @@ export function EvolutionPage() {
           <h1 className="text-3xl font-bold">Evolução & Ciclo</h1>
           <p className="text-muted-foreground">Gestão de limite diário e patrimônio automático</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-            <SelectTrigger className="w-[200px]"><Users className="h-4 w-4 mr-2" /><SelectValue placeholder="Usuário" /></SelectTrigger>
-            <SelectContent><SelectItem value="all">Família (Consolidado)</SelectItem>{users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
+            <SelectTrigger className="w-[160px] sm:w-[200px] shrink-0">
+              <Users className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Usuário" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Família (Consolidado)</SelectItem>
+              {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+            </SelectContent>
           </Select>
-          <Button onClick={() => {
-            if (selectedUserId !== 'all') {
-              setConfigForm(prev => ({ ...prev, userId: selectedUserId }));
-            } else {
-              setConfigForm(prev => ({ ...prev, userId: currentUser?.id || '' }));
-            }
-            setConfigDialogOpen(true);
-          }} className="gradient-primary"><Calculator className="h-4 w-4 mr-2" /> Configurar Ciclo</Button>
+          <Button 
+            onClick={() => {
+              if (selectedUserId !== 'all') {
+                setConfigForm(prev => ({ ...prev, userId: selectedUserId }));
+              } else {
+                setConfigForm(prev => ({ ...prev, userId: currentUser?.id || '' }));
+              }
+              setConfigDialogOpen(true);
+            }} 
+            className="gradient-primary px-3 sm:px-4 shrink-0"
+          >
+            <Calculator className="h-4 w-4 sm:mr-2" /> 
+            <span className="hidden sm:inline">Configurar Ciclo</span>
+          </Button>
         </div>
       </div>
 
@@ -349,25 +361,27 @@ export function EvolutionPage() {
       </div>
 
       {/* DIALOGS */}
-      <Dialog open={configDialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent><DialogHeader><DialogTitle>Configuração do Ciclo</DialogTitle></DialogHeader>
+      <Dialog open={configDialogOpen} onOpenChange={setConfigDialogOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl">
+          <DialogHeader><DialogTitle>Configuração do Ciclo</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2"><Label>Usuário</Label><Select value={configForm.userId} onValueChange={v => setConfigForm({...configForm, userId: v})}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-2"><Label>Salário Líquido</Label><Input type="number" value={configForm.netSalary} onChange={e => setConfigForm({...configForm, netSalary: e.target.value})} /></div>
             <div className="space-y-2"><Label>Meta de Economia</Label><Input type="number" value={configForm.savingsGoal} onChange={e => setConfigForm({...configForm, savingsGoal: e.target.value})} /></div>
             <div className="space-y-2"><Label>Dia de Fechamento</Label><Input type="number" value={configForm.cycleEndDay} onChange={e => setConfigForm({...configForm, cycleEndDay: e.target.value})} /></div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setConfigDialogOpen(false)}>Cancelar</Button><Button onClick={handleSaveConfig}>Salvar</Button></DialogFooter>
+          <DialogFooter className="gap-2"><Button variant="outline" onClick={() => setConfigDialogOpen(false)} className="flex-1">Cancelar</Button><Button onClick={handleSaveConfig} className="flex-1">Salvar</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent><DialogHeader><DialogTitle>Registro Manual</DialogTitle></DialogHeader>
+        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl">
+          <DialogHeader><DialogTitle>Registro Manual</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2"><Label>Mês</Label><Input type="month" value={snapshotForm.month} onChange={e => setSnapshotForm({...snapshotForm, month: e.target.value})} /></div>
             <div className="space-y-2"><Label>Saldo Total (Opcional)</Label><Input type="number" value={snapshotForm.totalBalance} onChange={e => setSnapshotForm({...snapshotForm, totalBalance: e.target.value})} placeholder="0.00" /></div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button><Button onClick={handleSaveSnapshot}>Registrar</Button></DialogFooter>
+          <DialogFooter className="gap-2"><Button variant="outline" onClick={() => setDialogOpen(false)} className="flex-1">Cancelar</Button><Button onClick={handleSaveSnapshot} className="flex-1">Registrar</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
