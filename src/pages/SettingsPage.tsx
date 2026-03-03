@@ -149,7 +149,7 @@ export function SettingsPage() {
         .update({
           name: profileForm.name,
           avatar_color: profileForm.avatarColor,
-          whatsapp_number: profileForm.whatsapp, // Salvando o número do WhatsApp
+          whatsapp_number: profileForm.whatsapp.replace(/\D/g, ''), // Remove caracteres não numéricos
           updated_at: new Date().toISOString()
         })
         .eq('id', currentUser.id);
@@ -166,8 +166,6 @@ export function SettingsPage() {
       setSavingProfile(false);
     }
   };
-
-  // ... (restante das funções de manutenção e reset mantidas iguais)
 
   const handleFixDescriptions = async () => {
     if (!currentUser?.family_id) return;
@@ -250,7 +248,7 @@ export function SettingsPage() {
         toast({ title: "Datas corrigidas!", description: `${totalUpdated} lançamentos foram ajustados.` });
         await refresh();
       } else {
-        toast({ title: "Tudo em ordem", description: "Não foram encontrados lançamentos com datas incorretas." });
+        toast({ title: "Tudo em ordem", description: "Não foram encontrados lançamentos com das incorretas." });
       }
     } catch (error: any) {
       toast({ title: "Erro na correção", description: error.message, variant: "destructive" });
@@ -512,7 +510,7 @@ export function SettingsPage() {
                   <div className="flex-1 space-y-1.5">
                     <Label className="text-[10px] uppercase font-bold text-muted-foreground">Seu Número (com DDD)</Label>
                     <Input 
-                      placeholder="Ex: 11999999999" 
+                      placeholder="Ex: 5511999999999" 
                       value={profileForm.whatsapp}
                       onChange={e => setProfileForm({...profileForm, whatsapp: e.target.value})}
                       className="h-10"
@@ -525,7 +523,7 @@ export function SettingsPage() {
               </div>
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                 <AlertTriangle className="w-3 h-3 text-warning" />
-                <span>O bot usará sua conta principal e a categoria "Outros" por padrão.</span>
+                <span>O bot usará sua conta corrente principal por padrão.</span>
               </div>
             </CardContent>
           </Card>
