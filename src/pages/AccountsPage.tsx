@@ -61,7 +61,7 @@ const BANKS = [
   { id: 'bradesco', name: 'Bradesco', color: '#cc092f', logo: '/bank-logos/bradesco.jpg' },
   { id: 'santander', name: 'Santander', color: '#ec0000', logo: '/bank-logos/santander.png' },
   { id: 'bb', name: 'Banco do Brasil', color: '#fcf800', logo: '/bank-logos/bb.png' },
-  { id: 'caixa', name: 'Caixa Econômica', color: '#005ca9', logo: '/bank-logos/caixa.jpg' },
+  { id: 'caixa', name: 'Caixa Econômica', color: '#005ca9', logo: '/bank-logos/caixa.png' },
   { id: 'inter', name: 'Banco Inter', color: '#ff7a00', logo: '/bank-logos/inter.png' },
   { id: 'c6', name: 'C6 Bank', color: '#212121', logo: '/bank-logos/c6.png' },
   { id: 'sicredi', name: 'Sicredi', color: '#3fb149', logo: '/bank-logos/sicredi.png' },
