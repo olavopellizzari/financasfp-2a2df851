@@ -57,8 +57,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const BANKS = [
   { id: 'nubank', name: 'NuBank', color: '#8a05be', logo: '/bank-logos/nubank.png' },
-  { id: 'itau', name: 'Itaú', color: '#ec7000', logo: '/bank-logos/itau.jpg' },
-  { id: 'bradesco', name: 'Bradesco', color: '#cc092f', logo: '/bank-logos/bradesco.jpg' },
+  { id: 'itau', name: 'Itaú', color: '#ec7000', logo: '/bank-logos/itau.png' },
+  { id: 'bradesco', name: 'Bradesco', color: '#cc092f', logo: '/bank-logos/bradesco.png' },
   { id: 'santander', name: 'Santander', color: '#ec0000', logo: '/bank-logos/santander.png' },
   { id: 'bb', name: 'Banco do Brasil', color: '#fcf800', logo: '/bank-logos/bb.png' },
   { id: 'caixa', name: 'Caixa Econômica', color: '#005ca9', logo: '/bank-logos/caixa.png' },
