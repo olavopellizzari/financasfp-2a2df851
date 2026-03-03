@@ -11,12 +11,14 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { 
   User, Trash2, Loader2, Sparkles, Wrench, Calendar, Bell, BellRing, 
   Smartphone, CheckCircle2, AlertTriangle, Zap, Camera, Upload, X, 
   RefreshCw, Clock, Wallet, CreditCard, ShieldAlert
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import { addMonths, format, parseISO } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
 
