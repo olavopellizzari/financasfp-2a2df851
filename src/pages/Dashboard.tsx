@@ -7,7 +7,6 @@ import { formatCurrency, Transaction } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { UserFilter } from '@/components/UserFilter';
-import { NotificationsPanel } from '@/components/NotificationsPanel';
 import { QuickWidget } from '@/components/QuickWidget';
 import { 
   Wallet, 
@@ -236,7 +235,6 @@ export function Dashboard() {
             className="w-[160px] sm:w-[200px] shrink-0" 
           />
           <Button variant="ghost" size="icon" onClick={() => setIsPrivate(!isPrivate)} className="shrink-0">{isPrivate ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}</Button>
-          <NotificationsPanel />
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
