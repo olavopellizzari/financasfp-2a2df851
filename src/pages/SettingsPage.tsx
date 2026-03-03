@@ -12,10 +12,16 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { 
   User, Trash2, Loader2, Sparkles, Wrench, Calendar, Bell, BellRing, 
   Smartphone, CheckCircle2, AlertTriangle, Zap, Camera, Upload, X, 
-  RefreshCw, Clock, Wallet, CreditCard, ShieldAlert
+  RefreshCw, Clock, Wallet, CreditCard, ShieldAlert, ChevronDown
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -486,186 +492,198 @@ export function SettingsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          {/* SEÇÃO DE ALERTAS */}
+          {/* SEÇÃO DE ALERTAS - AGORA COMO ACCORDION */}
           <Card className="border-none shadow-md overflow-hidden">
-            <CardHeader className="bg-primary/5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <BellRing className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-lg">Alertas & Notificações</CardTitle>
-                </div>
-                <Button 
-                  size="sm" 
-                  onClick={saveAlertSettings} 
-                  disabled={savingSettings || loadingSettings}
-                  className="gradient-primary"
-                >
-                  {savingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-                  Salvar Alertas
-                </Button>
-              </div>
-              <CardDescription>Configure como e quando você quer ser avisado.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6 space-y-8">
-              
-              {/* Gasto Diário */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-orange-500/10 text-orange-600">
-                      <Zap className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <Label className="text-base font-bold">Limite de Gasto Diário</Label>
-                      <p className="text-xs text-muted-foreground">Avisar quando os gastos do dia ultrapassarem um valor.</p>
-                    </div>
-                  </div>
-                  <Switch 
-                    checked={alertSettings.enable_spending_limit} 
-                    onCheckedChange={(v) => setAlertSettings({...alertSettings, enable_spending_limit: v})} 
-                  />
-                </div>
-                {alertSettings.enable_spending_limit && (
-                  <div className="pl-12 animate-scale-in">
-                    <div className="flex items-center gap-3 max-w-xs">
-                      <span className="text-sm font-bold text-muted-foreground">R$</span>
-                      <Input 
-                        type="number" 
-                        value={alertSettings.daily_spending_threshold} 
-                        onChange={(e) => setAlertSettings({...alertSettings, daily_spending_threshold: e.target.value})}
-                        placeholder="Ex: 200.00"
-                        className="h-10 font-bold"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <Separator />
-
-              {/* Lembrete de Fatura */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-purple-500/10 text-purple-600">
-                      <CreditCard className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <Label className="text-base font-bold">Lembrete de Faturas</Label>
-                      <p className="text-xs text-muted-foreground">Notificar antes do vencimento dos cartões.</p>
-                    </div>
-                  </div>
-                  <Switch 
-                    checked={alertSettings.invoice_reminder_alert} 
-                    onCheckedChange={(v) => setAlertSettings({...alertSettings, invoice_reminder_alert: v})} 
-                  />
-                </div>
-                {alertSettings.invoice_reminder_alert && (
-                  <div className="pl-12 animate-scale-in">
-                    <div className="flex items-center gap-3 max-w-xs">
-                      <Select 
-                        value={alertSettings.invoice_reminder_days} 
-                        onValueChange={(v) => setAlertSettings({...alertSettings, invoice_reminder_days: v})}
-                      >
-                        <SelectTrigger className="h-10 font-medium">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">1 dia antes</SelectItem>
-                          <SelectItem value="3">3 dias antes</SelectItem>
-                          <SelectItem value="5">5 dias antes</SelectItem>
-                          <SelectItem value="7">1 semana antes</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <Separator />
-
-              {/* Resumo de Saldo */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600">
-                    <Wallet className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <Label className="text-base font-bold">Resumo de Saldo</Label>
-                    <p className="text-xs text-muted-foreground">Receber um relatório do seu saldo atual.</p>
-                  </div>
-                </div>
-                <div className="pl-12 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Frequência</Label>
-                    <Select 
-                      value={alertSettings.balance_report_frequency} 
-                      onValueChange={(v) => setAlertSettings({...alertSettings, balance_report_frequency: v})}
-                    >
-                      <SelectTrigger className="h-10">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="off">Desativado</SelectItem>
-                        <SelectItem value="daily">Diariamente</SelectItem>
-                        <SelectItem value="weekly">Semanalmente (Segunda)</SelectItem>
-                        <SelectItem value="monthly">Mensalmente (Dia 1)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {alertSettings.balance_report_frequency !== 'off' && (
-                    <div className="space-y-1.5 animate-scale-in">
-                      <Label className="text-[10px] uppercase font-bold text-muted-foreground">Horário</Label>
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          type="time" 
-                          value={alertSettings.balance_report_time} 
-                          onChange={(e) => setAlertSettings({...alertSettings, balance_report_time: e.target.value})}
-                          className="h-10"
-                        />
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="alerts" className="border-none">
+                <CardHeader className="bg-primary/5 p-0">
+                  <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                    <div className="flex items-center gap-3 text-left">
+                      <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                        <BellRing className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">Alertas & Notificações</CardTitle>
+                        <CardDescription>Configure como e quando você quer ser avisado.</CardDescription>
                       </div>
                     </div>
-                  )}
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Saldo Baixo */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-destructive/10 text-destructive">
-                      <ShieldAlert className="h-5 w-5" />
+                  </AccordionTrigger>
+                </CardHeader>
+                <AccordionContent>
+                  <CardContent className="p-6 space-y-8">
+                    
+                    {/* Gasto Diário */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-orange-500/10 text-orange-600">
+                            <Zap className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <Label className="text-base font-bold">Limite de Gasto Diário</Label>
+                            <p className="text-xs text-muted-foreground">Avisar quando os gastos do dia ultrapassarem um valor.</p>
+                          </div>
+                        </div>
+                        <Switch 
+                          checked={alertSettings.enable_spending_limit} 
+                          onCheckedChange={(v) => setAlertSettings({...alertSettings, enable_spending_limit: v})} 
+                        />
+                      </div>
+                      {alertSettings.enable_spending_limit && (
+                        <div className="pl-12 animate-scale-in">
+                          <div className="flex items-center gap-3 max-w-xs">
+                            <span className="text-sm font-bold text-muted-foreground">R$</span>
+                            <Input 
+                              type="number" 
+                              value={alertSettings.daily_spending_threshold} 
+                              onChange={(e) => setAlertSettings({...alertSettings, daily_spending_threshold: e.target.value})}
+                              placeholder="Ex: 200.00"
+                              className="h-10 font-bold"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <Label className="text-base font-bold">Alerta de Saldo Baixo</Label>
-                      <p className="text-xs text-muted-foreground">Avisar quando o saldo total ficar abaixo de um valor.</p>
-                    </div>
-                  </div>
-                  <Switch 
-                    checked={alertSettings.enable_low_balance} 
-                    onCheckedChange={(v) => setAlertSettings({...alertSettings, enable_low_balance: v})} 
-                  />
-                </div>
-                {alertSettings.enable_low_balance && (
-                  <div className="pl-12 animate-scale-in">
-                    <div className="flex items-center gap-3 max-w-xs">
-                      <span className="text-sm font-bold text-muted-foreground">R$</span>
-                      <Input 
-                        type="number" 
-                        value={alertSettings.low_balance_alert_value} 
-                        onChange={(e) => setAlertSettings({...alertSettings, low_balance_alert_value: e.target.value})}
-                        placeholder="Ex: 100.00"
-                        className="h-10 font-bold border-destructive/30"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
 
-            </CardContent>
+                    <Separator />
+
+                    {/* Lembrete de Fatura */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-purple-500/10 text-purple-600">
+                            <CreditCard className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <Label className="text-base font-bold">Lembrete de Faturas</Label>
+                            <p className="text-xs text-muted-foreground">Notificar antes do vencimento dos cartões.</p>
+                          </div>
+                        </div>
+                        <Switch 
+                          checked={alertSettings.invoice_reminder_alert} 
+                          onCheckedChange={(v) => setAlertSettings({...alertSettings, invoice_reminder_alert: v})} 
+                        />
+                      </div>
+                      {alertSettings.invoice_reminder_alert && (
+                        <div className="pl-12 animate-scale-in">
+                          <div className="flex items-center gap-3 max-w-xs">
+                            <Select 
+                              value={alertSettings.invoice_reminder_days} 
+                              onValueChange={(v) => setAlertSettings({...alertSettings, invoice_reminder_days: v})}
+                            >
+                              <SelectTrigger className="h-10 font-medium">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="1">1 dia antes</SelectItem>
+                                <SelectItem value="3">3 dias antes</SelectItem>
+                                <SelectItem value="5">5 dias antes</SelectItem>
+                                <SelectItem value="7">1 semana antes</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <Separator />
+
+                    {/* Resumo de Saldo */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600">
+                          <Wallet className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <Label className="text-base font-bold">Resumo de Saldo</Label>
+                          <p className="text-xs text-muted-foreground">Receber um relatório do seu saldo atual.</p>
+                        </div>
+                      </div>
+                      <div className="pl-12 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-[10px] uppercase font-bold text-muted-foreground">Frequência</Label>
+                          <Select 
+                            value={alertSettings.balance_report_frequency} 
+                            onValueChange={(v) => setAlertSettings({...alertSettings, balance_report_frequency: v})}
+                          >
+                            <SelectTrigger className="h-10">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="off">Desativado</SelectItem>
+                              <SelectItem value="daily">Diariamente</SelectItem>
+                              <SelectItem value="weekly">Semanalmente (Segunda)</SelectItem>
+                              <SelectItem value="monthly">Mensalmente (Dia 1)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {alertSettings.balance_report_frequency !== 'off' && (
+                          <div className="space-y-1.5 animate-scale-in">
+                            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Horário</Label>
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-4 w-4 text-muted-foreground" />
+                              <Input 
+                                type="time" 
+                                value={alertSettings.balance_report_time} 
+                                onChange={(e) => setAlertSettings({...alertSettings, balance_report_time: e.target.value})}
+                                className="h-10"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Saldo Baixo */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-destructive/10 text-destructive">
+                            <ShieldAlert className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <Label className="text-base font-bold">Alerta de Saldo Baixo</Label>
+                            <p className="text-xs text-muted-foreground">Avisar quando o saldo total ficar abaixo de um valor.</p>
+                          </div>
+                        </div>
+                        <Switch 
+                          checked={alertSettings.enable_low_balance} 
+                          onCheckedChange={(v) => setAlertSettings({...alertSettings, enable_low_balance: v})} 
+                        />
+                      </div>
+                      {alertSettings.enable_low_balance && (
+                        <div className="pl-12 animate-scale-in">
+                          <div className="flex items-center gap-3 max-w-xs">
+                            <span className="text-sm font-bold text-muted-foreground">R$</span>
+                            <Input 
+                              type="number" 
+                              value={alertSettings.low_balance_alert_value} 
+                              onChange={(e) => setAlertSettings({...alertSettings, low_balance_alert_value: e.target.value})}
+                              placeholder="Ex: 100.00"
+                              className="h-10 font-bold border-destructive/30"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex justify-end pt-6">
+                      <Button 
+                        onClick={saveAlertSettings} 
+                        disabled={savingSettings || loadingSettings}
+                        className="gradient-primary w-full sm:w-auto"
+                      >
+                        {savingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                        Salvar Preferências
+                      </Button>
+                    </div>
+
+                  </CardContent>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </Card>
 
           {/* PERFIL */}
@@ -689,7 +707,7 @@ export function SettingsPage() {
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploadingAvatar}
                     >
-                      {uploadingAvatar ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                      {uploadingAvatar ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
                     </Button>
                     {avatarPreview && (
                       <Button
