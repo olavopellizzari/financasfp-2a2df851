@@ -75,18 +75,18 @@ export function TransactionsPage() {
 
   const filteredTransactions = useMemo(() => {
     return allTransactions.filter(tx => {
-      if (selectedUserId !== 'total') {
-        if (selectedUserId === 'all') {
-          // Para 'all', queremos transações de usuários da família ou compartilhadas
-          const isFamilyTransaction = users.some(u => u.id === tx.userId);
-          const isSharedAccount = tx.accountId ? allAccounts.some(a => a.id === tx.accountId && a.is_shared) : false;
-          const isSharedCard = tx.cardId ? allCards.some(c => c.id === tx.cardId && (c as any).is_shared) : false;
-          if (!isFamilyTransaction && !isSharedAccount && !isSharedCard) return false;
-        } else {
-          // Para um usuário específico, filtramos pelo userId da transação
-          if (tx.userId !== selectedUserId) {
-            return false;
-          }
+      if (selectedUserId === 'total') {
+        // Nenhuma filtragem por usuário, mostra todas as transações
+      } else if (selectedUserId === 'all') {
+        // Para 'all', queremos transações de usuários da família ou compartilhadas
+        const isFamilyTransaction = users.some(u => u.id === tx.userId);
+        const isSharedAccount = tx.accountId ? allAccounts.some(a => a.id === tx.accountId && a.is_shared) : false;
+        const isSharedCard = tx.cardId ? allCards.some(c => c.id === tx.cardId && (c as any).is_shared) : false;
+        if (!isFamilyTransaction && !isSharedAccount && !isSharedCard) return false;
+      } else {
+        // Para um usuário específico, filtramos estritamente pelo userId da transação
+        if (tx.userId !== selectedUserId) {
+          return false;
         }
       }
 
