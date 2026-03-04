@@ -197,7 +197,6 @@ export function CardsPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      // Validação crucial: se for compartilhado, o userId DEVE ser null para o banco
       const finalUserId = formData.privacyMode === 'shared' ? null : (formData.responsibleUserId || currentUser?.id);
       const isShared = formData.privacyMode !== 'private';
 
@@ -442,10 +441,16 @@ export function CardsPage() {
                                   </div>
                                   <div>
                                     <p className="text-sm font-medium leading-none">{tx.description}</p>
-                                    <p className="text-[10px] text-muted-foreground mt-1">
-                                      {safeFormatDate(tx.purchaseDate, 'dd/MM/yy')}
-                                      {tx.totalInstallments > 1 && ` • ${tx.installmentNumber}/${tx.totalInstallments}`}
-                                    </p>
+                                    <div className="flex flex-col mt-1">
+                                      <p className="text-[10px] text-muted-foreground">
+                                        {safeFormatDate(tx.purchaseDate, 'dd/MM/yy')}
+                                      </p>
+                                      {tx.totalInstallments && tx.totalInstallments > 1 && (
+                                        <p className="text-[10px] text-primary font-bold">
+                                          Parcela {tx.installmentNumber}/{tx.totalInstallments}
+                                        </p>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-3">
