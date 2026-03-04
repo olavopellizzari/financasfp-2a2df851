@@ -128,10 +128,13 @@ export function TransactionForm({
             <div className="space-y-2">
               <Label>Descrição</Label>
               <Input value={formData.description} onChange={e => {
-                              onDescriptionChange(e.target.value);
-                              const categoryId = matchCategory(e.target.value, categories);
-                              if (categoryId) {
-                                setFormData({ ...formData, categoryId });
+                              const newDescription = e.target.value;
+                              onDescriptionChange(newDescription); // Chama a função do pai
+                              const suggestedCategoryId = matchCategory(newDescription, categories, formData.type);
+                              if (suggestedCategoryId) {
+                                setFormData(prev => ({ ...prev, description: newDescription, categoryId: suggestedCategoryId }));
+                              } else {
+                                setFormData(prev => ({ ...prev, description: newDescription }));
                               }
                             }} placeholder="Ex: iFood, Aluguel..." required />
             </div>
