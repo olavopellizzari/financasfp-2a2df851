@@ -525,9 +525,9 @@ export function Dashboard() {
                           <p className="text-[10px] text-muted-foreground">
                             {format(new Date(tx.purchaseDate), 'dd/MM/yy')}
                           </p>
-                          {tx.installmentNumber && tx.totalInstallments && (
-                            <p className="text-[9px] text-primary font-medium">
-                              Parcela {tx.installmentNumber} de {tx.totalInstallments}
+                          {tx.totalInstallments && tx.totalInstallments > 1 && (
+                            <p className="text-[9px] text-primary font-bold">
+                              Parcela {tx.installmentNumber}/{tx.totalInstallments}
                             </p>
                           )}
                         </div>

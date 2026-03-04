@@ -295,9 +295,9 @@ export function InvoicesPage() {
                                     <td className="p-3">
                                       <div className="flex flex-col min-w-[100px]">
                                         <span className="font-semibold truncate max-w-[150px]">{tx.description}</span>
-                                        {tx.installmentNumber && (
-                                          <span className="text-[9px] text-muted-foreground">
-                                            Parcela {tx.installmentNumber}{tx.totalInstallments ? `/${tx.totalInstallments}` : ''}
+                                        {tx.totalInstallments && tx.totalInstallments > 1 && (
+                                          <span className="text-[9px] text-primary font-bold">
+                                            Parcela {tx.installmentNumber}/{tx.totalInstallments}
                                           </span>
                                         )}
                                       </div>

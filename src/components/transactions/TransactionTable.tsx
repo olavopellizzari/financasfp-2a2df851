@@ -81,9 +81,9 @@ export function TransactionTable({
                     <div className="p-2 rounded-lg bg-muted shrink-0"><Icon className={cn("w-4 h-4", typeInfo.color)} /></div>
                     <div className="flex flex-col min-w-[120px]">
                       <span className="font-semibold truncate max-w-[200px]">{tx.description}</span>
-                      {tx.installmentNumber && (
-                        <span className="text-[10px] text-muted-foreground font-medium mt-0.5">
-                          Parcela {tx.installmentNumber}{tx.totalInstallments ? ` de ${tx.totalInstallments}` : ''}
+                      {tx.totalInstallments && tx.totalInstallments > 1 && (
+                        <span className="text-[10px] text-primary font-bold mt-0.5">
+                          Parcela {tx.installmentNumber}/{tx.totalInstallments}
                         </span>
                       )}
                     </div>
