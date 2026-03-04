@@ -41,8 +41,8 @@ export function TransactionTable({
   };
 
   return (
-    <div className="overflow-x-auto"> {/* Adicionado overflow-x-auto aqui */}
-      <table className="w-full text-sm">
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-sm">
         <thead className="bg-muted/50 border-b">
           <tr>
             <th className="p-4 w-10">
@@ -57,7 +57,6 @@ export function TransactionTable({
             <th className="text-left p-4 font-semibold whitespace-nowrap min-w-[120px]">Usuário</th>
             <th className="text-right p-4 font-semibold whitespace-nowrap min-w-[100px]">Valor</th>
             <th className="text-center p-4 font-semibold whitespace-nowrap min-w-[100px]">Status</th>
-            {/* Ações individuais removidas para serem tratadas pelo TransactionActions */}
           </tr>
         </thead>
         <tbody className="divide-y">
