@@ -75,6 +75,8 @@ export function TransactionsPage() {
 
   const filteredTransactions = useMemo(() => {
     return allTransactions.filter(tx => {
+      console.log('tx:', tx);
+      console.log('selectedUserId:', selectedUserId);
       // Filtragem por usuário
       if (selectedUserId === 'total') {
         // 'total' significa todas as transações de todos os usuários
@@ -83,6 +85,8 @@ export function TransactionsPage() {
         // 'all' significa transações feitas em contas e cartões compartilhados
         const isSharedAccountTx = tx.accountId ? allAccounts.some(a => a.id === tx.accountId && a.is_shared) : false;
         const isSharedCardTx = tx.cardId ? allCards.some(c => c.id === tx.cardId && (c as any).is_shared) : false;
+        console.log('isSharedAccountTx:', isSharedAccountTx);
+        console.log('isSharedCardTx:', isSharedCardTx);
 
         if (!isSharedAccountTx && !isSharedCardTx) {
           return false;
@@ -91,6 +95,8 @@ export function TransactionsPage() {
         // Usuário específico: filtra transações feitas em contas/cartões exclusivos do usuário
         const isUserAccountTx = tx.accountId ? allAccounts.some(a => a.id === tx.accountId && a.user_id === selectedUserId && !a.is_shared) : false;
         const isUserCardTx = tx.cardId ? allCards.some(c => c.id === tx.cardId && c.user_id === selectedUserId && !(c as any).is_shared) : false;
+        console.log('isUserAccountTx:', isUserAccountTx);
+        console.log('isUserCardTx:', isUserCardTx);
 
         if (!isUserAccountTx && !isUserCardTx) {
           return false;
