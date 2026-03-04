@@ -77,12 +77,16 @@ export function TransactionsPage() {
     return allTransactions.filter(tx => {
       if (selectedUserId !== 'total') {
         if (selectedUserId === 'all') {
-          const account = allAccounts.find(a => a.id === tx.accountId);
-          const card = allCards.find(c => c.id === tx.cardId);
-          const isShared = !tx.userId || account?.is_shared || (card as any)?.is_shared;
-          if (!isShared) return false;
-        } else if (tx.userId !== selectedUserId) {
-          return false;
+          // Para 'all', queremos transações de usuários da família ou compartilhadas
+          const isFamilyTransaction = users.some(u => u.id === tx.userId);
+          const isSharedAccount = tx.accountId ? allAccounts.some(a => a.id === tx.accountId && a.is_shared) : false;
+          const isSharedCard = tx.cardId ? allCards.some(c => c.id === tx.cardId && (c as any).is_shared) : false;
+          if (!isFamilyTransaction && !isSharedAccount && !isSharedCard) return false;
+        } else {
+          // Para um usuário específico, filtramos pelo userId da transação
+          if (tx.userId !== selectedUserId) {
+            return false;
+          }
         }
       }
 
@@ -99,7 +103,7 @@ export function TransactionsPage() {
       
       return matchesSearch && matchesType;
     }).sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
-  }, [allTransactions, selectedMonthStr, searchQuery, filterType, isCardMode, selectedUserId, allAccounts, allCards]);
+  }, [allTransactions, selectedMonthStr, searchQuery, filterType, isCardMode, selectedUserId, allAccounts, allCards, users]);
 
   const monthStats = useMemo(() => {
     const income = filteredTransactions.filter(t => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
@@ -307,7 +311,7 @@ export function TransactionsPage() {
         <Card className="bg-muted"><CardContent className="p-4"><p className="text-xs text-muted-foreground">Saldo</p><p className="text-lg font-bold">{formatCurrency(monthStats.balance)}</p></CardContent></Card>
       </div>
 
-      <Card className="finance-card overflow-hidden">
+      <Card className="finance-card overflow-hidden"> {/* Removido overflow-x-hidden para permitir a rolagem da tabela interna */}
         <CardContent className="p-4 flex flex-col lg:flex-row gap-4 items-center justify-between">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><ChevronLeft className="h-4 w-4" /></Button>
