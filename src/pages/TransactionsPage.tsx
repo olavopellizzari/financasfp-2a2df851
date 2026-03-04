@@ -74,7 +74,6 @@ export function TransactionsPage() {
 
   const filteredTransactions = useMemo(() => {
     return allTransactions.filter(tx => {
-      // 1. Filtro de Usuário (Consolidado vs Individual)
       if (selectedUserId !== 'total') {
         if (selectedUserId === 'all') {
           const account = allAccounts.find(a => a.id === tx.accountId);
@@ -86,19 +85,14 @@ export function TransactionsPage() {
         }
       }
 
-      // 2. Filtro de Mês e Tipo de Visualização
       if (isCardMode) {
-        // No modo cartão, mostramos apenas créditos/estornos daquela fatura específica
         if (tx.type !== 'CREDIT' && tx.type !== 'REFUND') return false;
         if (tx.mesFatura !== selectedMonthStr) return false;
       } else {
-        // No modo geral, mostramos TUDO (incluindo cartões) que pertence ao mês selecionado
-        // Para cartões, usamos o mesFatura como referência de competência
         const txMonth = tx.cardId ? tx.mesFatura : tx.effectiveMonth;
         if (txMonth !== selectedMonthStr) return false;
       }
       
-      // 3. Filtros de Busca e Tipo
       const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = filterType === 'ALL' || tx.type === filterType;
       
@@ -211,9 +205,9 @@ export function TransactionsPage() {
         for (let i = 0; i < totalInstallments; i++) {
           const installmentDate = addMonths(formData.purchaseDate, i);
           const mesFatura = calculateMesFatura(installmentDate, formData.cardId);
-          const installmentDesc = totalInstallments > 1 
-            ? `${formData.description} (${i + 1}/${totalInstallments})` 
-            : formData.description;
+          
+          // A descrição agora é mantida limpa, sem o sufixo (x/y)
+          const installmentDesc = formData.description;
 
           await createTransaction({
             ...baseData,

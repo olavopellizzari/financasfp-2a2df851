@@ -149,7 +149,6 @@ export function Dashboard() {
       .reduce((sum, a) => sum + getAccountBalance(a.id), 0);
   }, [filteredAccounts, getAccountBalance]);
 
-  // Dados para o gráfico de fluxo (12 meses do ano atual)
   const fluxoData = useMemo(() => {
     const year = getYear(selectedMonth);
     const months = eachMonthOfInterval({
@@ -172,7 +171,6 @@ export function Dashboard() {
     });
   }, [userFilteredTransactions, selectedMonth]);
 
-  // Top 10 Despesas por Categoria
   const topExpensesData = useMemo(() => {
     const categoryMap: Record<string, number> = {};
     
@@ -194,7 +192,6 @@ export function Dashboard() {
   const COLORS = ['#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#f97316', '#eab308', '#14b8a6', '#6366f1', '#ef4444', '#94a3b8'];
 
   const lastTransactions = useMemo(() => {
-    // Agrupar transações parceladas pelo installmentGroupId
     const groupedTransactions = new Map<string, Transaction[]>();
     userFilteredTransactions.forEach(tx => {
       if (tx.installmentGroupId) {
@@ -203,7 +200,6 @@ export function Dashboard() {
         }
         groupedTransactions.get(tx.installmentGroupId)?.push(tx);
       } else {
-        // Adicionar transações não parceladas diretamente
         groupedTransactions.set(tx.id, [tx]);
       }
     });
@@ -211,19 +207,16 @@ export function Dashboard() {
     const processedTransactions: Transaction[] = [];
     groupedTransactions.forEach(txs => {
       if (txs.length > 1) {
-        // É uma transação parcelada
         const firstTx = txs.reduce((prev, current) => 
           (prev.installmentNumber || 0) < (current.installmentNumber || 0) ? prev : current
         );
         const totalAmount = txs.reduce((sum, t) => sum + t.amount, 0);
         processedTransactions.push({
           ...firstTx,
-          originalAmount: totalAmount, // Valor total da compra
-          description: firstTx.description.replace(/\s*\(\d+\/\d+\)$/, '').trim(), // Remover "(x/y)"
+          originalAmount: totalAmount,
           isParcelled: true,
         } as Transaction);
       } else {
-        // Não é parcelada ou é uma única parcela
         processedTransactions.push(txs[0]);
       }
     });
@@ -331,7 +324,6 @@ export function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Fluxo de Lançamentos */}
         <Card className="lg:col-span-2 border-none shadow-sm overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
@@ -396,7 +388,6 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Resumo de Lançamentos */}
         <Card className="border-none shadow-sm">
           <CardHeader>
             <CardTitle className="text-sm font-bold">Resumo de Lançamentos</CardTitle>
@@ -427,7 +418,6 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Gastos por Cartão */}
         <Card className="border-none shadow-sm">
           <CardHeader>
             <CardTitle className="text-sm font-bold flex items-center gap-2">
@@ -453,7 +443,6 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Top 10 Despesas */}
         <Card className="border-none shadow-sm">
           <CardHeader>
             <CardTitle className="text-sm font-bold flex items-center gap-2">
@@ -515,7 +504,6 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Últimas Transações */}
         <Card className="border-none shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
@@ -533,12 +521,16 @@ export function Dashboard() {
                       <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-lg">{cat?.icon || '💰'}</div>
                       <div className="min-w-0">
                         <p className="text-xs font-bold truncate max-w-[120px]">{tx.description}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {format(new Date(tx.purchaseDate), 'dd/MM/yy')}
-                          {tx.isParcelled && tx.installmentNumber && tx.totalInstallments && (
-                            ` • ${tx.installmentNumber}/${tx.totalInstallments} (${formatCurrency(tx.originalAmount! / tx.totalInstallments)})`
+                        <div className="flex flex-col">
+                          <p className="text-[10px] text-muted-foreground">
+                            {format(new Date(tx.purchaseDate), 'dd/MM/yy')}
+                          </p>
+                          {tx.installmentNumber && tx.totalInstallments && (
+                            <p className="text-[9px] text-primary font-medium">
+                              Parcela {tx.installmentNumber} de {tx.totalInstallments}
+                            </p>
                           )}
-                        </p>
+                        </div>
                       </div>
                     </div>
                     <span className={cn("text-xs font-bold", tx.type === 'INCOME' || tx.type === 'REFUND' ? "text-income" : "text-expense")}>
