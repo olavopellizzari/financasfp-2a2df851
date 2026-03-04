@@ -32,7 +32,6 @@ export function TransactionsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<TransactionType | 'ALL'>('ALL');
   
-  // Alterado para 'total' por padrão para que o usuário veja tudo da família ao entrar
   const [selectedUserId, setSelectedUserId] = useState<string>('total');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -75,11 +74,8 @@ export function TransactionsPage() {
 
   const filteredTransactions = useMemo(() => {
     return allTransactions.filter(tx => {
-      // Filtro por usuário (se não for 'total', filtra pelo ID)
       if (selectedUserId !== 'total') {
         if (selectedUserId === 'all') {
-          // Se for 'Contas da Família', mostramos apenas o que não tem user_id (compartilhado)
-          // ou o que pertence a contas/cartões compartilhados sem dono específico
           const isShared = !tx.userId || allAccounts.find(a => a.id === tx.accountId)?.is_shared || allCards.find(c => c.id === tx.cardId)?.is_shared;
           if (!isShared) return false;
         } else if (tx.userId !== selectedUserId) {
@@ -87,7 +83,6 @@ export function TransactionsPage() {
         }
       }
 
-      // Filtro por tipo de transação (cartão vs conta)
       if (isCardMode) {
         if (tx.type !== 'CREDIT' && tx.type !== 'REFUND') return false;
         if (tx.mesFatura !== selectedMonthStr) return false;
@@ -96,10 +91,7 @@ export function TransactionsPage() {
         if (tx.effectiveMonth !== selectedMonthStr) return false;
       }
       
-      // Filtro por termo de busca
       const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      // Filtro por tipo de transação selecionado no dropdown
       const matchesType = filterType === 'ALL' || tx.type === filterType;
       
       return matchesSearch && matchesType;
@@ -204,14 +196,30 @@ export function TransactionsPage() {
         });
       } else if (formData.type === 'CREDIT' || formData.type === 'REFUND') {
         if (!formData.cardId) throw new Error('Selecione um cartão para lançamentos de cartão.');
-        const mesFatura = calculateMesFatura(formData.purchaseDate, formData.cardId);
-        await createTransaction({
-          ...baseData,
-          cardId: formData.cardId,
-          effectiveMonth: mesFatura,
-          mes_fatura: mesFatura,
-          accountId: null,
-        });
+        
+        const totalInstallments = parseInt(formData.installments) || 1;
+        const groupId = totalInstallments > 1 ? generateId() : null;
+
+        for (let i = 0; i < totalInstallments; i++) {
+          const installmentDate = addMonths(formData.purchaseDate, i);
+          const mesFatura = calculateMesFatura(installmentDate, formData.cardId);
+          const installmentDesc = totalInstallments > 1 
+            ? `${formData.description} (${i + 1}/${totalInstallments})` 
+            : formData.description;
+
+          await createTransaction({
+            ...baseData,
+            description: installmentDesc,
+            purchaseDate: installmentDate,
+            cardId: formData.cardId,
+            effectiveMonth: mesFatura,
+            mes_fatura: mesFatura,
+            accountId: null,
+            installmentGroupId: groupId,
+            installmentNumber: i + 1,
+            totalInstallments: totalInstallments
+          });
+        }
       } else {
         if (!formData.accountId) throw new Error('Selecione uma conta para este lançamento.');
         await createTransaction({
@@ -225,7 +233,7 @@ export function TransactionsPage() {
       toast({ title: 'Salvo com sucesso!' });
       await refresh();
     } catch (e: any) {
-      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+      toast({ title: 'Erro', description: e.message, variant: "destructive" });
     } finally {
       setIsSaving(false);
     }

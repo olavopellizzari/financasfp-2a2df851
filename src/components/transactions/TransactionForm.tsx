@@ -113,7 +113,7 @@ export function TransactionForm({
                   </PopoverContent>
                 </Popover>
               </div>
-              <div className="space-y-2"><Label>Valor</Label><Input type="number" step="0.01" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} placeholder="0,00" required /></div>
+              <div className="space-y-2"><Label>Valor {formData.type === 'CREDIT' && formData.installments > 1 ? 'da Parcela' : ''}</Label><Input type="number" step="0.01" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} placeholder="0,00" required /></div>
             </div>
 
             <div className="space-y-2">
@@ -152,15 +152,25 @@ export function TransactionForm({
                 </div>
                 {!editingTransaction && (
                   <div className="space-y-2">
-                    <Label>Repetir</Label>
-                    <Select value={formData.recurrence} onValueChange={(v: any) => setFormData({ ...formData, recurrence: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Não repetir</SelectItem>
-                        <SelectItem value="custom">Repetir X vezes</SelectItem>
-                        <SelectItem value="monthly">Mensal (Fixo)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label>{formData.type === 'CREDIT' ? 'Parcelas' : 'Repetir'}</Label>
+                    {formData.type === 'CREDIT' ? (
+                      <Input 
+                        type="number" 
+                        min="1" 
+                        max="96" 
+                        value={formData.installments} 
+                        onChange={e => setFormData({ ...formData, installments: e.target.value })} 
+                      />
+                    ) : (
+                      <Select value={formData.recurrence} onValueChange={(v: any) => setFormData({ ...formData, recurrence: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Não repetir</SelectItem>
+                          <SelectItem value="custom">Repetir X vezes</SelectItem>
+                          <SelectItem value="monthly">Mensal (Fixo)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                 )}
               </div>
