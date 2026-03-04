@@ -22,6 +22,7 @@ import {
 import { db, Notification, Debt, formatCurrency, generateId } from '@/lib/db';
 import { supabase } from '@/integrations/supabase/client';
 import { addDays, isBefore, differenceInDays, format, setDate, parse, addMonths, isSameDay, startOfDay } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export function NotificationsPanel() {
   const { currentUser } = useAuth();

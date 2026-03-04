@@ -69,14 +69,17 @@ export function usePushNotifications() {
         const registration = await navigator.serviceWorker.ready;
         
         // Disparo local via Service Worker (funciona mesmo com a aba em background)
-        registration.showNotification('Finanças 🚀', {
+        // Usamos 'any' para evitar erro de compilação com a propriedade 'vibrate' que é válida no SW mas pode não estar no tipo base
+        const options: any = {
           body: 'Teste de notificação concluído com sucesso! Seus alertas estão ativos.',
           icon: '/app-icon.svg',
           badge: '/app-icon.svg',
           tag: 'test-notification',
           vibrate: [200, 100, 200],
           data: { url: '/' }
-        });
+        };
+
+        registration.showNotification('Finanças 🚀', options);
         
         toast({ title: "Comando enviado!", description: "Verifique sua central de notificações." });
       } catch (error) {
