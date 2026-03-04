@@ -16,15 +16,16 @@ import {
   Calendar,
   Check,
   Trash2,
-  User
+  Zap,
+  TrendingDown
 } from 'lucide-react';
-import { db, Notification, Debt, Card as CardType, formatCurrency, generateId } from '@/lib/db';
-import { addDays, isBefore, isAfter, differenceInDays, format, setDate, parse } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { db, Notification, Debt, formatCurrency, generateId } from '@/lib/db';
+import { supabase } from '@/integrations/supabase/client';
+import { addDays, isBefore, differenceInDays, format, setDate, parse, addMonths, isSameDay, startOfDay } from 'date-fns';
 
 export function NotificationsPanel() {
   const { currentUser } = useAuth();
-  const { cards, invoices } = useFinance();
+  const { cards, invoices, allTransactions } = useFinance();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -33,7 +34,7 @@ export function NotificationsPanel() {
       loadNotifications();
       generateNotifications();
     }
-  }, [currentUser?.id, cards, invoices]);
+  }, [currentUser?.id, cards, invoices, allTransactions]);
 
   const loadNotifications = async () => {
     if (!currentUser) return;
@@ -47,19 +48,18 @@ export function NotificationsPanel() {
   const generateNotifications = async () => {
     if (!currentUser) return;
 
-    const today = new Date();
-    const in3Days = addDays(today, 3);
+    const today = startOfDay(new Date());
     const existingNotifications = await db.getAll<Notification>('notifications');
     const newNotifications: Notification[] = [];
 
-    // Card due date notifications (3 days before)
+    // 1. Notificações de Vencimento de Cartão (3 dias antes)
     for (const card of cards) {
       const currentMonth = format(today, 'yyyy-MM');
       const monthDate = parse(currentMonth, 'yyyy-MM', new Date());
       
       let dueDate = setDate(monthDate, card.due_day);
       if (isBefore(dueDate, today)) {
-        dueDate = addDays(dueDate, 30); // Next month
+        dueDate = addMonths(dueDate, 1);
       }
 
       const daysUntilDue = differenceInDays(dueDate, today);
@@ -69,15 +69,15 @@ export function NotificationsPanel() {
         const exists = existingNotifications.some(n => n.id === notificationId);
         
         if (!exists) {
-          const invoice = invoices.find(i => i.card_id === card.id && i.month === currentMonth);
+          const invoice = invoices.find(i => i.card_id === card.id && i.month === format(dueDate, 'yyyy-MM'));
           const amount = invoice?.total_amount || 0;
 
           newNotifications.push({
             id: notificationId,
             userId: currentUser.id,
             type: 'card_due',
-            title: `Fatura ${card.name} vence em ${daysUntilDue} dias`,
-            message: amount > 0 ? `Valor: ${formatCurrency(amount)}` : 'Sem fatura registrada',
+            title: `Fatura ${card.name} vence em ${daysUntilDue === 0 ? 'hoje' : daysUntilDue + ' dias'}`,
+            message: amount > 0 ? `Valor aproximado: ${formatCurrency(amount)}` : 'Verifique os lançamentos do mês.',
             entityType: 'card',
             entityId: card.id,
             dueDate,
@@ -88,13 +88,14 @@ export function NotificationsPanel() {
       }
     }
 
-    // Debt due notifications
+    // 2. Notificações de Dívidas
     const debts = await db.getAll<Debt>('debts');
-    for (const debt of debts.filter(d => d.user_id === currentUser.id && d.is_active)) {
-      const daysUntilDue = differenceInDays(new Date(debt.due_date), today);
+    for (const debt of debts.filter(d => (d.user_id === currentUser.id || !d.user_id) && d.is_active)) {
+      const debtDueDate = parse(debt.due_date, 'yyyy-MM-dd', new Date());
+      const daysUntilDue = differenceInDays(debtDueDate, today);
       
       if (daysUntilDue <= 3 && daysUntilDue >= 0) {
-        const notificationId = `debt_due_${debt.id}_${format(new Date(debt.due_date), 'yyyy-MM-dd')}`;
+        const notificationId = `debt_due_${debt.id}_${debt.due_date}`;
         const exists = existingNotifications.some(n => n.id === notificationId);
         
         if (!exists) {
@@ -102,11 +103,11 @@ export function NotificationsPanel() {
             id: notificationId,
             userId: currentUser.id,
             type: 'debt_due',
-            title: `Dívida "${debt.name}" vence em ${daysUntilDue} dias`,
-            message: `Parcela: ${formatCurrency(debt.monthly_payment)}`,
+            title: `Dívida "${debt.name}" vence em ${daysUntilDue === 0 ? 'hoje' : daysUntilDue + ' dias'}`,
+            message: `Valor da parcela: ${formatCurrency(debt.monthly_payment)}`,
             entityType: 'debt',
             entityId: debt.id,
-            dueDate: new Date(debt.due_date),
+            dueDate: debtDueDate,
             isRead: false,
             createdAt: new Date()
           });
@@ -114,7 +115,47 @@ export function NotificationsPanel() {
       }
     }
 
-    // Save new notifications
+    // 3. Alerta de Limite de Gasto Diário (Baseado em Configurações)
+    try {
+      const { data: settings } = await supabase
+        .from('notification_settings')
+        .select('daily_spending_threshold, enable_spending_limit')
+        .eq('user_id', currentUser.id)
+        .single();
+
+      if (settings?.enable_spending_limit && settings.daily_spending_threshold > 0) {
+        const todayTxs = allTransactions.filter(t => 
+          t.userId === currentUser.id && 
+          isSameDay(parse(t.purchaseDate, 'yyyy-MM-dd', new Date()), today) &&
+          (t.type === 'EXPENSE' || t.type === 'CREDIT')
+        );
+        
+        const totalToday = todayTxs.reduce((sum, t) => sum + t.amount, 0);
+        
+        if (totalToday > settings.daily_spending_threshold) {
+          const notificationId = `limit_reached_${format(today, 'yyyy-MM-dd')}`;
+          const exists = existingNotifications.some(n => n.id === notificationId);
+          
+          if (!exists) {
+            newNotifications.push({
+              id: notificationId,
+              userId: currentUser.id,
+              type: 'limit_reached',
+              title: `Limite diário atingido! ⚠️`,
+              message: `Você gastou ${formatCurrency(totalToday)} hoje. Seu limite é ${formatCurrency(settings.daily_spending_threshold)}.`,
+              entityType: 'system',
+              entityId: 'limit',
+              isRead: false,
+              createdAt: new Date()
+            });
+          }
+        }
+      }
+    } catch (e) {
+      // Silencioso se as configurações não existirem
+    }
+
+    // Salvar novas notificações
     for (const notification of newNotifications) {
       await db.add('notifications', notification);
     }
@@ -158,11 +199,11 @@ export function NotificationsPanel() {
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'card_due':
-        return <CreditCard className="h-4 w-4 text-credit" />;
+        return <CreditCard className="h-4 w-4 text-purple-500" />;
       case 'debt_due':
-        return <AlertTriangle className="h-4 w-4 text-warning" />;
-      case 'recurring':
-        return <Calendar className="h-4 w-4 text-primary" />;
+        return <TrendingDown className="h-4 w-4 text-orange-500" />;
+      case 'limit_reached':
+        return <Zap className="h-4 w-4 text-yellow-500" />;
       default:
         return <Bell className="h-4 w-4" />;
     }
@@ -175,7 +216,7 @@ export function NotificationsPanel() {
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
             <Badge 
-              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-destructive"
+              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-destructive border-2 border-background"
             >
               {unreadCount}
             </Badge>
@@ -184,45 +225,45 @@ export function NotificationsPanel() {
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
         <div className="flex items-center justify-between p-4 border-b">
-          <h3 className="font-semibold">Notificações</h3>
+          <h3 className="font-bold text-sm">Notificações</h3>
           {notifications.length > 0 && (
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={handleMarkAllAsRead}>
-                <Check className="h-4 w-4 mr-1" />
-                Ler todas
-              </Button>
-            </div>
+            <Button variant="ghost" size="sm" onClick={handleMarkAllAsRead} className="h-7 text-[10px] uppercase font-bold">
+              Ler todas
+            </Button>
           )}
         </div>
-        <ScrollArea className="h-[300px]">
+        <ScrollArea className="h-[350px]">
           {notifications.length > 0 ? (
             <div className="divide-y">
               {notifications.map(notification => (
                 <div 
                   key={notification.id}
-                  className={`p-4 hover:bg-muted/50 transition-colors ${!notification.isRead ? 'bg-primary/5' : ''}`}
+                  className={cn(
+                    "p-4 hover:bg-muted/50 transition-colors relative group",
+                    !notification.isRead ? 'bg-primary/5' : ''
+                  )}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-full bg-muted">
+                    <div className="p-2 rounded-lg bg-muted shrink-0">
                       {getNotificationIcon(notification.type)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm ${!notification.isRead ? 'font-semibold' : ''}`}>
+                      <p className={cn("text-xs leading-tight", !notification.isRead ? 'font-bold' : 'font-medium')}>
                         {notification.title}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
                         {notification.message}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-[9px] text-muted-foreground/60 mt-2 uppercase font-bold">
                         {format(new Date(notification.createdAt), "dd/MM 'às' HH:mm")}
                       </p>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       {!notification.isRead && (
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-6 w-6"
+                          className="h-6 w-6 rounded-full"
                           onClick={() => handleMarkAsRead(notification.id)}
                         >
                           <Check className="h-3 w-3" />
@@ -231,7 +272,7 @@ export function NotificationsPanel() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-6 w-6"
+                        className="h-6 w-6 rounded-full text-destructive"
                         onClick={() => handleDelete(notification.id)}
                       >
                         <Trash2 className="h-3 w-3" />
@@ -242,22 +283,23 @@ export function NotificationsPanel() {
               ))}
             </div>
           ) : (
-            <div className="p-8 text-center">
-              <Bell className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">Nenhuma notificação</p>
+            <div className="p-12 text-center">
+              <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
+                <Bell className="h-6 w-6 text-muted-foreground/40" />
+              </div>
+              <p className="text-xs text-muted-foreground font-medium">Nenhum alerta no momento</p>
             </div>
           )}
         </ScrollArea>
         {notifications.length > 0 && (
-          <div className="p-2 border-t">
+          <div className="p-2 border-t bg-muted/20">
             <Button 
               variant="ghost" 
               size="sm" 
-              className="w-full text-destructive hover:text-destructive"
+              className="w-full text-[10px] uppercase font-bold text-destructive hover:bg-destructive/10"
               onClick={handleClearAll}
             >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Limpar todas
+              Limpar Histórico
             </Button>
           </div>
         )}
