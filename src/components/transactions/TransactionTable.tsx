@@ -57,7 +57,7 @@ export function TransactionTable({
             <th className="text-left p-4 font-semibold whitespace-nowrap min-w-[120px]">Usuário</th>
             <th className="text-right p-4 font-semibold whitespace-nowrap min-w-[100px]">Valor</th>
             <th className="text-center p-4 font-semibold whitespace-nowrap min-w-[100px]">Status</th>
-            <th className="text-right p-4 font-semibold whitespace-nowrap min-w-[120px]">Ações</th>
+            {/* Ações individuais removidas para serem tratadas pelo TransactionActions */}
           </tr>
         </thead>
         <tbody className="divide-y">
@@ -107,13 +107,6 @@ export function TransactionTable({
                   <button onClick={() => onTogglePaid(tx)} className={cn("flex items-center gap-1 mx-auto px-2 py-1 rounded-full text-[10px] font-bold uppercase transition-all", tx.isPaid ? "bg-income/10 text-income" : "bg-warning/10 text-warning border border-warning/20")}>
                     {tx.isPaid ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />} {tx.isPaid ? "Pago" : "Pendente"}
                   </button>
-                </td>
-                <td className="p-4 text-right whitespace-nowrap">
-                  <div className="flex justify-end gap-1">
-                    <Button size="icon" variant="ghost" onClick={() => onTogglePaid(tx)} className="h-8 w-8">{tx.isPaid ? <RotateCcw className="w-4 h-4" /> : <Check className="w-4 h-4" />}</Button>
-                    <Button size="icon" variant="ghost" onClick={() => onEdit(tx)} className="h-8 w-8"><Pencil className="w-4 h-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => onDelete(tx)} className="h-8 w-8 text-destructive"><Trash2 className="w-4 h-4" /></Button>
-                  </div>
                 </td>
               </tr>
             );

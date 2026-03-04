@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { UserFilter } from '@/components/UserFilter';
 import { TransactionForm } from '@/components/transactions/TransactionForm';
 import { TransactionTable } from '@/components/transactions/TransactionTable';
+import { TransactionActions } from '@/components/transactions/TransactionActions'; // Importar o novo componente
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, ArrowUpRight, ArrowDownRight, Wallet, ChevronLeft, ChevronRight, Filter, X, Trash2 } from 'lucide-react';
@@ -34,7 +35,7 @@ export function TransactionsPage() {
   
   const [selectedUserId, setSelectedUserId] = useState<string>('total');
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedIds, setSelectedIds] = new useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set()); // Usar useState para o Set
 
   const [formData, setFormData] = useState({
     userId: currentUser?.id || '',
@@ -144,17 +145,28 @@ export function TransactionsPage() {
       notes: tx.notes || ''
     });
     setIsDialogOpen(true);
+    setSelectedIds(new Set()); // Limpa a seleção ao editar
   };
 
-  const handleDelete = async (tx: Transaction) => {
-    if (window.confirm('Excluir este lançamento?')) {
-      await deleteTransaction(tx.id);
-      toast({ title: 'Excluído!' });
+  const handleDelete = async (txIds: string[]) => {
+    if (window.confirm(`Excluir ${txIds.length} lançamento(s)?`)) {
+      try {
+        for (const id of txIds) {
+          await deleteTransaction(id);
+        }
+        toast({ title: 'Excluído!', description: `${txIds.length} lançamento(s) removido(s).` });
+        setSelectedIds(new Set()); // Limpa a seleção após exclusão
+        await refresh();
+      } catch (error: any) {
+        toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
+      }
     }
   };
 
   const handleTogglePaid = async (tx: Transaction) => {
     await updateTransaction(tx.id, { isPaid: !tx.isPaid });
+    toast({ title: 'Status atualizado!', description: `Lançamento marcado como ${tx.isPaid ? 'Pendente' : 'Pago'}.` });
+    setSelectedIds(new Set()); // Limpa a seleção após alterar status
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -182,7 +194,19 @@ export function TransactionsPage() {
         mes_fatura: null
       };
 
-      if (formData.type === 'TRANSFER') {
+      if (editingTransaction) {
+        await updateTransaction(editingTransaction.id, {
+          ...baseData,
+          amount: totalAmount, // Ao editar, o valor é o total
+          purchaseDate: format(formData.purchaseDate, 'yyyy-MM-dd'),
+          effectiveDate: format(formData.purchaseDate, 'yyyy-MM-dd'),
+          effectiveMonth: selectedMonthStr,
+          mes_fatura: formData.cardId ? calculateMesFatura(formData.purchaseDate, formData.cardId) : null,
+          accountId: formData.accountId,
+          cardId: formData.cardId,
+        });
+        toast({ title: 'Lançamento atualizado!' });
+      } else if (formData.type === 'TRANSFER') {
         await createTransaction({
           ...baseData,
           type: 'EXPENSE',
@@ -200,6 +224,7 @@ export function TransactionsPage() {
           description: `Transferência de ${users.find(u => u.id === formData.userId)?.name || 'Outra Conta'}`,
           isPaid: true
         });
+        toast({ title: 'Transferência criada!' });
       } else if (formData.type === 'CREDIT' || formData.type === 'REFUND') {
         if (!formData.cardId) throw new Error('Selecione um cartão para lançamentos de cartão.');
         
@@ -225,6 +250,7 @@ export function TransactionsPage() {
             totalInstallments: totalInstallments
           });
         }
+        toast({ title: 'Lançamento(s) de cartão criado(s)!' });
       } else {
         if (!formData.accountId) throw new Error('Selecione uma conta para este lançamento.');
         await createTransaction({
@@ -232,10 +258,11 @@ export function TransactionsPage() {
           accountId: formData.accountId,
           cardId: null,
         });
+        toast({ title: 'Lançamento criado!' });
       }
 
       setIsDialogOpen(false);
-      toast({ title: 'Salvo com sucesso!' });
+      setSelectedIds(new Set()); // Limpa a seleção após salvar
       await refresh();
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: "destructive" });
@@ -251,6 +278,10 @@ export function TransactionsPage() {
   const availableCards = useMemo(() => {
     return allCards.filter(c => c.user_id === formData.userId || (c as any).is_shared);
   }, [allCards, formData.userId]);
+
+  const selectedTransactions = useMemo(() => {
+    return filteredTransactions.filter(tx => selectedIds.has(tx.id));
+  }, [filteredTransactions, selectedIds]);
 
   return (
     <div className="space-y-6 animate-fade-in w-full max-w-full">
@@ -291,13 +322,29 @@ export function TransactionsPage() {
       </Card>
 
       <Card className="finance-card overflow-hidden">
-        <CardContent className="p-0 overflow-x-auto"> {/* Adicionado overflow-x-auto aqui */}
+        <CardContent className="p-0">
           <TransactionTable 
             transactions={filteredTransactions} 
             selectedIds={selectedIds} 
-            onToggleSelect={(id) => { const n = new Set(selectedIds); n.has(id) ? n.delete(id) : n.add(id); setSelectedIds(n); }}
-            onToggleSelectAll={() => setSelectedIds(selectedIds.size === filteredTransactions.length ? new Set() : new Set(filteredTransactions.map(t => t.id)))}
-            onEdit={handleEdit} onDelete={handleDelete} onTogglePaid={handleTogglePaid}
+            onToggleSelect={(id) => { 
+              const newSelectedIds = new Set(selectedIds);
+              if (newSelectedIds.has(id)) {
+                newSelectedIds.delete(id);
+              } else {
+                newSelectedIds.add(id);
+              }
+              setSelectedIds(newSelectedIds);
+            }}
+            onToggleSelectAll={() => {
+              if (selectedIds.size === filteredTransactions.length) {
+                setSelectedIds(new Set());
+              } else {
+                setSelectedIds(new Set(filteredTransactions.map(t => t.id)));
+              }
+            }}
+            onEdit={handleEdit} 
+            onDelete={(tx) => handleDelete([tx.id])} // Adaptação para exclusão individual
+            onTogglePaid={handleTogglePaid}
             getCategoryById={getCategoryById} users={users as any}
           />
         </CardContent>
@@ -308,6 +355,14 @@ export function TransactionsPage() {
         formData={formData} setFormData={setFormData} onSubmit={handleSubmit} isSaving={isSaving}
         users={users as any} availableAccounts={availableAccounts} availableCards={availableCards} categories={categories}
         onDescriptionChange={(desc) => setFormData({ ...formData, description: desc })}
+      />
+
+      <TransactionActions
+        selectedTransactions={selectedTransactions}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onTogglePaid={handleTogglePaid}
+        onClearSelection={() => setSelectedIds(new Set())}
       />
     </div>
   );
