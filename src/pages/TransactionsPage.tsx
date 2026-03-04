@@ -321,7 +321,7 @@ export function TransactionsPage() {
         </CardContent>
       </Card>
 
-      <Card className="finance-card overflow-hidden">
+      <Card className="finance-card overflow-hidden"> {/* Adicionado overflow-hidden aqui */}
         <CardContent className="p-0">
           <TransactionTable 
             transactions={filteredTransactions} 
