@@ -74,23 +74,31 @@ export function TransactionsPage() {
 
   const filteredTransactions = useMemo(() => {
     return allTransactions.filter(tx => {
+      // 1. Filtro de Usuário (Consolidado vs Individual)
       if (selectedUserId !== 'total') {
         if (selectedUserId === 'all') {
-          const isShared = !tx.userId || allAccounts.find(a => a.id === tx.accountId)?.is_shared || allCards.find(c => c.id === tx.cardId)?.is_shared;
+          const account = allAccounts.find(a => a.id === tx.accountId);
+          const card = allCards.find(c => c.id === tx.cardId);
+          const isShared = !tx.userId || account?.is_shared || (card as any)?.is_shared;
           if (!isShared) return false;
         } else if (tx.userId !== selectedUserId) {
           return false;
         }
       }
 
+      // 2. Filtro de Mês e Tipo de Visualização
       if (isCardMode) {
+        // No modo cartão, mostramos apenas créditos/estornos daquela fatura específica
         if (tx.type !== 'CREDIT' && tx.type !== 'REFUND') return false;
         if (tx.mesFatura !== selectedMonthStr) return false;
       } else {
-        if (tx.type === 'CREDIT' || tx.type === 'REFUND') return false;
-        if (tx.effectiveMonth !== selectedMonthStr) return false;
+        // No modo geral, mostramos TUDO (incluindo cartões) que pertence ao mês selecionado
+        // Para cartões, usamos o mesFatura como referência de competência
+        const txMonth = tx.cardId ? tx.mesFatura : tx.effectiveMonth;
+        if (txMonth !== selectedMonthStr) return false;
       }
       
+      // 3. Filtros de Busca e Tipo
       const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = filterType === 'ALL' || tx.type === filterType;
       
