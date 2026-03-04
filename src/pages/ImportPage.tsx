@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useCallback } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -75,20 +75,38 @@ export function ImportPage() {
   };
 
   const suggestCategory = useCallback((description: string, transactionType: TransactionType): string => {
+    console.log("Sugestão de categoria para:", description, "Tipo:", transactionType);
     const desc = normalize(description);
+    
+    // Filtrar categorias relevantes (receita/despesa)
     const relevantCategories = categories.filter(c => 
-      (transactionType === 'INCOME' || transactionType === 'REFUND') ? (c.type === 'income' || c.kind === 'receita') : (c.type === 'expense' || c.kind === 'despesa')
+      (transactionType === 'INCOME' || transactionType === 'REFUND') 
+        ? (c.type === 'income' || c.kind === 'receita') 
+        : (c.type === 'expense' || c.kind === 'despesa')
     );
 
+    // Tentar encontrar categoria por palavra-chave
     for (const [keyword, catNameNormalized] of Object.entries(CATEGORY_KEYWORDS)) {
       if (desc.includes(keyword)) {
         const cat = relevantCategories.find(c => normalize(c.name) === catNameNormalized);
-        if (cat) return cat.id;
+        if (cat) {
+          console.log(`Encontrado por palavra-chave '${keyword}': ${cat.name}`);
+          return cat.id;
+        }
       }
     }
+    
     // Fallback para categoria genérica se nenhuma for encontrada
     const defaultCatName = (transactionType === 'INCOME' || transactionType === 'REFUND') ? 'outras receitas' : 'outras despesas';
-    return relevantCategories.find(c => normalize(c.name) === defaultCatName)?.id || '';
+    const defaultCategory = relevantCategories.find(c => normalize(c.name) === defaultCatName);
+    
+    if (defaultCategory) {
+      console.log("Usando categoria padrão:", defaultCategory.name);
+      return defaultCategory.id;
+    }
+
+    console.log("Nenhuma categoria sugerida.");
+    return ''; // Retorna vazio se não encontrar nenhuma
   }, [categories]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -171,6 +189,7 @@ export function ImportPage() {
 
         const transactionType: TransactionType = isRefund ? 'REFUND' : (importType === 'card' ? 'CREDIT' : 'EXPENSE');
         const suggestedCategoryId = suggestCategory(description, transactionType);
+        console.log("Suggested Category ID for", description, ":", suggestedCategoryId);
 
         result.push({
           date, description, amount, userName,
