@@ -54,7 +54,6 @@ export function TransactionTable({
             <th className="text-left p-4 font-semibold whitespace-nowrap min-w-[80px]">Data</th>
             <th className="text-left p-4 font-semibold whitespace-nowrap min-w-[200px]">Descrição</th>
             <th className="text-left p-4 font-semibold whitespace-nowrap min-w-[120px]">Categoria</th>
-            <th className="text-left p-4 font-semibold whitespace-nowrap min-w-[120px]">Usuário</th>
             <th className="text-right p-4 font-semibold whitespace-nowrap min-w-[100px]">Valor</th>
             <th className="text-center p-4 font-semibold whitespace-nowrap min-w-[100px]">Status</th>
           </tr>
@@ -89,14 +88,6 @@ export function TransactionTable({
                   </div>
                 </td>
                 <td className="p-4 whitespace-nowrap"><Badge variant="outline" className="font-normal">{category?.icon} {category?.name || 'Sem Categoria'}</Badge></td>
-                <td className="p-4 whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] text-white font-bold shrink-0" style={{ backgroundColor: txUser?.avatar_color || '#94a3b8' }}>
-                      {txUser?.name.charAt(0).toUpperCase() || '?'}
-                    </div>
-                    <span className="text-xs truncate max-w-[80px]">{txUser?.name || 'Sistema'}</span>
-                  </div>
-                </td>
                 <td className="p-4 text-right font-semibold whitespace-nowrap">
                   <span className={cn(typeInfo.color)}>
                     {tx.type === 'INCOME' || tx.type === 'REFUND' ? '+' : '-'} {formatCurrency(tx.amount)}
