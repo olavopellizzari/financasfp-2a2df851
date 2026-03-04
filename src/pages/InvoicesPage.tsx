@@ -22,7 +22,6 @@ export function InvoicesPage() {
   const { currentUser, isCurrentUserAdmin, users } = useAuth();
   const navigate = useNavigate();
   
-  // Padrão: Mês atual
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [selectedCardId, setSelectedCardId] = useState<string>('all');
   
@@ -51,9 +50,6 @@ export function InvoicesPage() {
 
   const generatedInvoices = useMemo(() => {
     const invoiceMap = new Map<string, { cardId: string; userId: string; month: string; total: number; transactions: Transaction[] }>();
-    
-    // Correção: Sempre usar allTransactions para faturas, pois a fatura pertence ao cartão (família)
-    // e não apenas ao usuário individual. O filtro de visibilidade já é feito no nível dos cards.
     const txSource = allTransactions;
 
     const creditTransactions = txSource.filter(t => 
@@ -94,7 +90,6 @@ export function InvoicesPage() {
       const generated = generatedInvoices.find(g => g.cardId === card.id);
       const existing = invoices.find(i => i.card_id === card.id && i.month === selectedMonth);
       
-      // Datas baseadas no mês da fatura
       const closingDate = setDate(invoiceMonthDate, card.closing_day);
       const dueDate = setDate(invoiceMonthDate, card.due_day);
 
@@ -300,8 +295,10 @@ export function InvoicesPage() {
                                     <td className="p-3">
                                       <div className="flex flex-col min-w-[100px]">
                                         <span className="font-semibold truncate max-w-[150px]">{tx.description}</span>
-                                        {tx.totalInstallments && tx.totalInstallments > 1 && (
-                                          <span className="text-[9px] text-muted-foreground">Parcela {tx.installmentNumber}/{tx.totalInstallments}</span>
+                                        {tx.installmentNumber && (
+                                          <span className="text-[9px] text-muted-foreground">
+                                            Parcela {tx.installmentNumber}{tx.totalInstallments ? `/${tx.totalInstallments}` : ''}
+                                          </span>
                                         )}
                                       </div>
                                     </td>
@@ -335,7 +332,6 @@ export function InvoicesPage() {
         )}
       </div>
 
-      {/* Diálogo de Pagamento */}
       <Dialog open={payDialogOpen} onOpenChange={setPayDialogOpen}>
         <DialogContent className="max-w-[90vw] sm:max-w-md rounded-2xl">
           <DialogHeader><DialogTitle>Pagar Fatura</DialogTitle></DialogHeader>
@@ -347,7 +343,6 @@ export function InvoicesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Diálogo de Configuração do Cartão */}
       <Dialog open={configDialogOpen} onOpenChange={setConfigDialogOpen}>
         <DialogContent className="max-w-[90vw] sm:max-w-md rounded-2xl">
           <DialogHeader>

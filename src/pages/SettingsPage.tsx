@@ -59,7 +59,6 @@ export function SettingsPage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Estados para Alertas
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
   const [alertSettings, setAlertSettings] = useState({
@@ -109,7 +108,7 @@ export function SettingsPage() {
           low_balance_alert_value: data.low_balance_alert_value.toString(),
           enable_spending_limit: data.enable_spending_limit,
           enable_low_balance: data.enable_low_balance,
-          invoice_reminder_alert: true // Default
+          invoice_reminder_alert: true
         });
       }
     } catch (e) {
@@ -156,7 +155,7 @@ export function SettingsPage() {
         .update({
           name: profileForm.name,
           avatar_color: profileForm.avatarColor,
-          whatsapp_number: profileForm.whatsapp.replace(/\D/g, ''), // Remove caracteres não numéricos
+          whatsapp_number: profileForm.whatsapp.replace(/\D/g, ''),
           updated_at: new Date().toISOString()
         })
         .eq('id', currentUser.id);
@@ -349,7 +348,7 @@ export function SettingsPage() {
       let updatedCount = 0;
 
       for (const tx of accountTxs) {
-        const correctMonth = tx.purchaseDate.substring(0, 7); // yyyy-MM
+        const correctMonth = tx.purchaseDate.substring(0, 7);
         
         if (tx.effectiveMonth !== correctMonth) {
           const { error } = await supabase
@@ -534,7 +533,6 @@ export function SettingsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          {/* WHATSAPP BOT */}
           <Card className="border-none shadow-md overflow-hidden">
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="whatsapp" className="border-none">
@@ -597,7 +595,6 @@ export function SettingsPage() {
             </Accordion>
           </Card>
 
-          {/* SEÇÃO DE ALERTAS */}
           <Card className="border-none shadow-md overflow-hidden">
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="alerts" className="border-none">
@@ -616,8 +613,6 @@ export function SettingsPage() {
                 </CardHeader>
                 <AccordionContent>
                   <CardContent className="p-6 space-y-8">
-                    
-                    {/* Gasto Diário */}
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -652,7 +647,6 @@ export function SettingsPage() {
 
                     <Separator />
 
-                    {/* Lembrete de Fatura */}
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -693,7 +687,6 @@ export function SettingsPage() {
 
                     <Separator />
 
-                    {/* Resumo de Saldo */}
                     <div className="space-y-4">
                       <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600">
@@ -741,7 +734,6 @@ export function SettingsPage() {
 
                     <Separator />
 
-                    {/* Saldo Baixo */}
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -791,7 +783,6 @@ export function SettingsPage() {
             </Accordion>
           </Card>
 
-          {/* PERFIL */}
           <Card className="border-none shadow-md">
             <CardHeader><CardTitle className="flex items-center gap-2"><User className="h-5 w-5" /> Perfil</CardTitle></CardHeader>
             <CardContent className="space-y-4">
@@ -844,7 +835,6 @@ export function SettingsPage() {
         </div>
 
         <div className="space-y-6">
-          {/* STATUS PWA */}
           <Card className="border-none shadow-md">
             <CardHeader><CardTitle className="text-sm font-bold flex items-center gap-2"><Smartphone className="h-4 w-4" /> Status do App</CardTitle></CardHeader>
             <CardContent className="space-y-4">
@@ -913,8 +903,7 @@ export function SettingsPage() {
                     Limpar Tudo na Nuvem
                   </Button>
                 </CardContent>
-              </Card>
-            </>
+              </>
           )}
         </div>
       </div>

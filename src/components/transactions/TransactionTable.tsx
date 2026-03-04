@@ -81,7 +81,11 @@ export function TransactionTable({
                     <div className="p-2 rounded-lg bg-muted shrink-0"><Icon className={cn("w-4 h-4", typeInfo.color)} /></div>
                     <div className="flex flex-col min-w-[120px]">
                       <span className="font-semibold truncate max-w-[200px]">{tx.description}</span>
-                      {tx.installmentGroupId && <Badge variant="secondary" className="w-fit text-[10px] h-4 px-1">Parcela {tx.installmentNumber}/{tx.totalInstallments}</Badge>}
+                      {tx.installmentNumber && (
+                        <Badge variant="secondary" className="w-fit text-[10px] h-4 px-1">
+                          Parcela {tx.installmentNumber}{tx.totalInstallments ? `/${tx.totalInstallments}` : ''}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </td>
