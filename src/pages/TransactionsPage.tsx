@@ -80,15 +80,19 @@ export function TransactionsPage() {
         // 'total' significa todas as transações de todos os usuários
         // Nenhuma filtragem adicional por usuário aqui
       } else if (selectedUserId === 'all') {
-        // 'all' significa transações de todos os membros da família
-        const isFamilyMemberTx = users.some(u => u.id === tx.userId);
-        
-        if (!isFamilyMemberTx) {
+        // 'all' significa transações feitas em contas e cartões compartilhados
+        const isSharedAccountTx = tx.accountId ? allAccounts.some(a => a.id === tx.accountId && a.is_shared) : false;
+        const isSharedCardTx = tx.cardId ? allCards.some(c => c.id === tx.cardId && (c as any).is_shared) : false;
+
+        if (!isSharedAccountTx && !isSharedCardTx) {
           return false;
         }
       } else {
-        // Usuário específico: filtra estritamente pelo userId da transação
-        if (tx.userId !== selectedUserId) {
+        // Usuário específico: filtra transações feitas em contas/cartões exclusivos do usuário
+        const isUserAccountTx = tx.accountId ? allAccounts.some(a => a.id === tx.accountId && a.user_id === selectedUserId && !a.is_shared) : false;
+        const isUserCardTx = tx.cardId ? allCards.some(c => c.id === tx.cardId && c.user_id === selectedUserId && !(c as any).is_shared) : false;
+
+        if (!isUserAccountTx && !isUserCardTx) {
           return false;
         }
       }
