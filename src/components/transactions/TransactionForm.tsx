@@ -150,29 +150,27 @@ export function TransactionForm({
                     </PopoverContent>
                   </Popover>
                 </div>
-                {!editingTransaction && (
-                  <div className="space-y-2">
-                    <Label>{formData.type === 'CREDIT' ? 'Parcelas' : 'Repetir'}</Label>
-                    {formData.type === 'CREDIT' ? (
-                      <Input 
-                        type="number" 
-                        min="1" 
-                        max="96" 
-                        value={formData.installments} 
-                        onChange={e => setFormData({ ...formData, installments: e.target.value })} 
-                      />
-                    ) : (
-                      <Select value={formData.recurrence} onValueChange={(v: any) => setFormData({ ...formData, recurrence: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Não repetir</SelectItem>
-                          <SelectItem value="custom">Repetir X vezes</SelectItem>
-                          <SelectItem value="monthly">Mensal (Fixo)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label>{formData.type === 'CREDIT' ? 'Parcelas' : 'Repetir'}</Label>
+                  {formData.type === 'CREDIT' ? (
+                    <Input 
+                      type="number" 
+                      min="1" 
+                      max="96" 
+                      value={formData.installments} 
+                      onChange={e => setFormData({ ...formData, installments: e.target.value })} 
+                    />
+                  ) : (
+                    <Select value={formData.recurrence} onValueChange={(v: any) => setFormData({ ...formData, recurrence: v })} disabled={!!editingTransaction}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Não repetir</SelectItem>
+                        <SelectItem value="custom">Repetir X vezes</SelectItem>
+                        <SelectItem value="monthly">Mensal (Fixo)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
               </div>
             )}
 

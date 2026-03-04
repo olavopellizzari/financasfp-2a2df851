@@ -28,7 +28,7 @@ import {
   User, Trash2, Loader2, Sparkles, Wrench, Calendar, Bell, BellRing, 
   Smartphone, CheckCircle2, AlertTriangle, Zap, Camera, Upload, X, 
   RefreshCw, Clock, Wallet, CreditCard, ShieldAlert, MessageSquare,
-  HelpCircle
+  HelpCircle, ListChecks
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -171,6 +171,46 @@ export function SettingsPage() {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const handleEnforceInstallmentSuffix = async () => {
+    if (!currentUser?.family_id) return;
+    const familyUserIds = users.map(u => u.id);
+    if (!confirm('Isso adicionará o sufixo (1/12) em todos os lançamentos parcelados da família que não o possuem. Deseja continuar?')) return;
+    
+    setIsCleaning(true);
+    try {
+      const toUpdate = allTransactions.filter(t => 
+        t.installmentNumber && 
+        t.totalInstallments && 
+        !t.description.includes(`(${t.installmentNumber}/${t.totalInstallments})`)
+      );
+      
+      if (toUpdate.length === 0) {
+        toast({ title: "Tudo certo!", description: "Todos os lançamentos já possuem o sufixo correto." });
+        return;
+      }
+
+      let count = 0;
+      for (const tx of toUpdate) {
+        const cleanDesc = tx.description.replace(/\s*\(\d+\s*\/\s*\d+\)$/, '').trim();
+        const newDescription = `${cleanDesc} (${tx.installmentNumber}/${tx.totalInstallments})`;
+        const { error } = await supabase
+          .from('transactions')
+          .update({ description: newDescription })
+          .eq('id', tx.id)
+          .in('user_id', familyUserIds);
+        
+        if (!error) count++;
+      }
+
+      toast({ title: "Sucesso!", description: `${count} lançamentos foram atualizados.` });
+      await refresh();
+    } catch (error: any) {
+      toast({ title: "Erro na atualização", description: error.message, variant: "destructive" });
+    } finally {
+      setIsCleaning(false);
     }
   };
 
@@ -844,6 +884,10 @@ export function SettingsPage() {
               <Card className="border-none shadow-md">
                 <CardHeader><CardTitle className="text-sm font-bold flex items-center gap-2"><Wrench className="h-4 w-4" /> Manutenção</CardTitle></CardHeader>
                 <CardContent className="space-y-2">
+                  <Button variant="outline" className="w-full justify-start text-xs h-9" onClick={handleEnforceInstallmentSuffix} disabled={isCleaning}>
+                    {isCleaning ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <ListChecks className="h-3 w-3 mr-2" />} 
+                    Adicionar Sufixos (1/12)
+                  </Button>
                   <Button variant="outline" className="w-full justify-start text-xs h-9" onClick={handleFixAccountMonths} disabled={isFixingAccountMonths}>
                     {isFixingAccountMonths ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <RefreshCw className="h-3 w-3 mr-2" />} 
                     Corrigir Competência Contas
