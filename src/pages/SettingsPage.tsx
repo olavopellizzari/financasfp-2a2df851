@@ -903,7 +903,8 @@ export function SettingsPage() {
                     Limpar Tudo na Nuvem
                   </Button>
                 </CardContent>
-              </>
+              </Card>
+            </>
           )}
         </div>
       </div>
