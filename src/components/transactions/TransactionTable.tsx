@@ -41,7 +41,7 @@ export function TransactionTable({
   };
 
   return (
-    <div className="table-container">
+    <div className="table-container overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="bg-muted/50 border-b">
           <tr>
@@ -51,13 +51,13 @@ export function TransactionTable({
                 onCheckedChange={onToggleSelectAll} 
               />
             </th>
-            <th className="text-left p-4 font-semibold whitespace-nowrap">Data</th>
-            <th className="text-left p-4 font-semibold whitespace-nowrap">Descrição</th>
-            <th className="text-left p-4 font-semibold whitespace-nowrap">Categoria</th>
-            <th className="text-left p-4 font-semibold whitespace-nowrap">Usuário</th>
-            <th className="text-right p-4 font-semibold whitespace-nowrap">Valor</th>
-            <th className="text-center p-4 font-semibold whitespace-nowrap">Status</th>
-            <th className="text-right p-4 font-semibold whitespace-nowrap">Ações</th>
+            <th className="text-left p-4 font-semibold whitespace-nowrap min-w-[80px]">Data</th>
+            <th className="text-left p-4 font-semibold whitespace-nowrap min-w-[200px]">Descrição</th>
+            <th className="text-left p-4 font-semibold whitespace-nowrap min-w-[120px]">Categoria</th>
+            <th className="text-left p-4 font-semibold whitespace-nowrap min-w-[120px]">Usuário</th>
+            <th className="text-right p-4 font-semibold whitespace-nowrap min-w-[100px]">Valor</th>
+            <th className="text-center p-4 font-semibold whitespace-nowrap min-w-[100px]">Status</th>
+            <th className="text-right p-4 font-semibold whitespace-nowrap min-w-[120px]">Ações</th>
           </tr>
         </thead>
         <tbody className="divide-y">
@@ -70,9 +70,9 @@ export function TransactionTable({
             return (
               <tr key={tx.id} className={cn("hover:bg-muted/30 transition-colors group", selectedIds.has(tx.id) && "bg-primary/5")}>
                 <td className="p-4"><Checkbox checked={selectedIds.has(tx.id)} onCheckedChange={() => onToggleSelect(tx.id)} /></td>
-                <td className="p-4">
+                <td className="p-4 whitespace-nowrap">
                   <div className="flex flex-col">
-                    <span className="font-medium whitespace-nowrap">{formatLocal(tx.purchaseDate, 'dd/MM/yy')}</span>
+                    <span className="font-medium">{formatLocal(tx.purchaseDate, 'dd/MM/yy')}</span>
                     <span className="text-[10px] text-muted-foreground uppercase">{formatLocal(tx.purchaseDate, 'EEEE')}</span>
                   </div>
                 </td>
@@ -85,8 +85,8 @@ export function TransactionTable({
                     </div>
                   </div>
                 </td>
-                <td className="p-4"><Badge variant="outline" className="font-normal whitespace-nowrap">{category?.icon} {category?.name || 'Sem Categoria'}</Badge></td>
-                <td className="p-4">
+                <td className="p-4 whitespace-nowrap"><Badge variant="outline" className="font-normal">{category?.icon} {category?.name || 'Sem Categoria'}</Badge></td>
+                <td className="p-4 whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] text-white font-bold shrink-0" style={{ backgroundColor: txUser?.avatar_color || '#94a3b8' }}>
                       {txUser?.name.charAt(0).toUpperCase() || '?'}
@@ -94,17 +94,17 @@ export function TransactionTable({
                     <span className="text-xs truncate max-w-[80px]">{txUser?.name || 'Sistema'}</span>
                   </div>
                 </td>
-                <td className="p-4 text-right font-semibold">
-                  <span className={cn("whitespace-nowrap", typeInfo.color)}>
+                <td className="p-4 text-right font-semibold whitespace-nowrap">
+                  <span className={cn(typeInfo.color)}>
                     {tx.type === 'INCOME' || tx.type === 'REFUND' ? '+' : '-'} {formatCurrency(tx.amount)}
                   </span>
                 </td>
-                <td className="p-4 text-center">
+                <td className="p-4 text-center whitespace-nowrap">
                   <button onClick={() => onTogglePaid(tx)} className={cn("flex items-center gap-1 mx-auto px-2 py-1 rounded-full text-[10px] font-bold uppercase transition-all", tx.isPaid ? "bg-income/10 text-income" : "bg-warning/10 text-warning border border-warning/20")}>
                     {tx.isPaid ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />} {tx.isPaid ? "Pago" : "Pendente"}
                   </button>
                 </td>
-                <td className="p-4 text-right">
+                <td className="p-4 text-right whitespace-nowrap">
                   <div className="flex justify-end gap-1">
                     <Button size="icon" variant="ghost" onClick={() => onTogglePaid(tx)} className="h-8 w-8">{tx.isPaid ? <RotateCcw className="w-4 h-4" /> : <Check className="w-4 h-4" />}</Button>
                     <Button size="icon" variant="ghost" onClick={() => onEdit(tx)} className="h-8 w-8"><Pencil className="w-4 h-4" /></Button>
