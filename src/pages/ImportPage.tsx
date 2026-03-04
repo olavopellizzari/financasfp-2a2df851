@@ -35,15 +35,23 @@ const MONTH_MAP: Record<string, number> = {
   'julho': 6, 'agosto': 7, 'setembro': 8, 'outubro': 9, 'novembro': 10, 'dezembro': 11
 };
 
+// Mapeamento de palavras-chave para nomes de categorias (normalizados)
 const CATEGORY_KEYWORDS: Record<string, string> = {
-  'ifood': 'Delivery (iFood/Rappi)', 'uber eats': 'Delivery (iFood/Rappi)', 'rappi': 'Delivery (iFood/Rappi)',
-  'koch': 'Supermercado Mensal', 'giassi': 'Supermercado Mensal', 'angeloni': 'Supermercado Mensal', 'bistek': 'Supermercado Mensal',
-  'fort': 'Supermercado Mensal', 'mercado': 'Supermercado Mensal', 'supermercado': 'Supermercado Mensal',
-  'uber': 'Apps (Uber/99)', '99app': 'Apps (Uber/99)', 'posto': 'Combustível (Gasolina)', 'gasolina': 'Combustível (Gasolina)',
-  'shell': 'Combustível (Gasolina)', 'ipiranga': 'Combustível (Gasolina)', 'farmacia': 'Farmácia & Remédios', 'droga': 'Farmácia & Remédios',
-  'panvel': 'Farmácia & Remédios', 'raia': 'Farmácia & Remédios', 'netflix': 'Streaming (Netflix/HBO)', 'spotify': 'Spotify / Música',
-  'academia': 'Academia & Crossfit', 'restaurante': 'Restaurantes & Jantares', 'padaria': 'Cafés & Lanches', 'açougue': 'Supermercado Mensal',
-  'pix': 'Outras Despesas'
+  'ifood': 'delivery', 'uber eats': 'delivery', 'rappi': 'delivery',
+  'koch': 'supermercado', 'giassi': 'supermercado', 'angeloni': 'supermercado', 'bistek': 'supermercado',
+  'fort': 'supermercado', 'mercado': 'supermercado', 'supermercado': 'supermercado',
+  'uber': 'uber / 99', '99app': 'uber / 99', 'posto': 'combustivel', 'gasolina': 'combustivel',
+  'shell': 'combustivel', 'ipiranga': 'combustivel', 'farmacia': 'farmacia', 'droga': 'farmacia',
+  'panvel': 'farmacia', 'raia': 'farmacia', 'netflix': 'streaming', 'spotify': 'streaming',
+  'academia': 'academia / esportes', 'restaurante': 'restaurantes', 'padaria': 'lanches / cafe', 'açougue': 'supermercado',
+  'pix': 'outras despesas', 'aluguel': 'aluguel / prestacao', 'condominio': 'condominio', 'energia': 'energia eletrica',
+  'agua': 'agua / saneamento', 'internet': 'internet / tv', 'manutencao casa': 'manutencao casa',
+  'manutencao carro': 'manutencao carro', 'seguro': 'seguro / ipva', 'plano de saude': 'plano de saude',
+  'medico': 'medicos / dentistas', 'cinema': 'cinema / eventos', 'beleza': 'beleza / higiene',
+  'vestuario': 'vestuario', 'curso': 'cursos / educacao', 'livro': 'livros', 'pet': 'pets',
+  'presente': 'presentes / doacoes', 'doacao': 'presentes / doacoes', 'tarifa bancaria': 'tarifas bancarias',
+  'imposto': 'impostos', 'salario': 'salario', 'pro-labore': 'pro-labore', 'dividendos': 'dividendos',
+  'vendas': 'vendas', 'reembolso': 'reembolsos', 'outras receitas': 'outras receitas'
 };
 
 export function ImportPage() {
@@ -66,16 +74,22 @@ export function ImportPage() {
     return checking ? checking.id : (userAccounts[0]?.id || '');
   };
 
-  const suggestCategory = (description: string): string => {
+  const suggestCategory = useCallback((description: string, transactionType: TransactionType): string => {
     const desc = normalize(description);
-    for (const [keyword, catName] of Object.entries(CATEGORY_KEYWORDS)) {
+    const relevantCategories = categories.filter(c => 
+      (transactionType === 'INCOME' || transactionType === 'REFUND') ? (c.type === 'income' || c.kind === 'receita') : (c.type === 'expense' || c.kind === 'despesa')
+    );
+
+    for (const [keyword, catNameNormalized] of Object.entries(CATEGORY_KEYWORDS)) {
       if (desc.includes(keyword)) {
-        const cat = categories.find(c => normalize(c.name) === normalize(catName));
+        const cat = relevantCategories.find(c => normalize(c.name) === catNameNormalized);
         if (cat) return cat.id;
       }
     }
-    return '';
-  };
+    // Fallback para categoria genérica se nenhuma for encontrada
+    const defaultCatName = (transactionType === 'INCOME' || transactionType === 'REFUND') ? 'outras receitas' : 'outras despesas';
+    return relevantCategories.find(c => normalize(c.name) === defaultCatName)?.id || '';
+  }, [categories]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -155,10 +169,13 @@ export function ImportPage() {
         let targetAccountId = '';
         if (importType === 'account' && matchedUserId) targetAccountId = findUserAccount(matchedUserId);
 
+        const transactionType: TransactionType = isRefund ? 'REFUND' : (importType === 'card' ? 'CREDIT' : 'EXPENSE');
+        const suggestedCategoryId = suggestCategory(description, transactionType);
+
         result.push({
           date, description, amount, userName,
-          type: isRefund ? 'REFUND' : (importType === 'card' ? 'CREDIT' : 'EXPENSE'),
-          matchedUserId, targetAccountId, suggestedCategoryId: suggestCategory(description), installments
+          type: transactionType,
+          matchedUserId, targetAccountId, suggestedCategoryId, installments
         });
       }
 
@@ -194,8 +211,8 @@ export function ImportPage() {
           let effectiveMonthStr = format(dateForIteration, 'yyyy-MM');
           let currentMesFatura = null;
 
-          if (importType === 'card') {
-            currentMesFatura = calculateMesFatura(dateForIteration, globalTargetId);
+          if (importType === 'card' && finalCardId) {
+            currentMesFatura = calculateMesFatura(dateForIteration, finalCardId);
             effectiveMonthStr = currentMesFatura;
           }
 
@@ -212,7 +229,7 @@ export function ImportPage() {
             userId: item.matchedUserId || currentUser?.id || '',
             accountId: finalAccountId,
             cardId: finalCardId,
-            categoryId: item.suggestedCategoryId || '',
+            categoryId: item.suggestedCategoryId || '', // Usar a categoria sugerida
             installmentGroupId: groupId,
             installmentNumber: currentInstallmentNum,
             totalInstallments: totalInstallments,
@@ -297,6 +314,7 @@ export function ImportPage() {
                   </div>
                   <div className="flex items-center gap-4">
                     <Badge variant="outline" className="h-5 text-[10px]">{users.find(u => u.id === item.matchedUserId)?.name || item.userName}</Badge>
+                    <Badge variant="secondary" className="h-5 text-[10px]">{categories.find(c => c.id === item.suggestedCategoryId)?.name || 'Sem Categoria'}</Badge>
                     <span className={cn("font-bold", item.type === 'REFUND' ? "text-income" : "text-expense")}>R$ {item.amount.toFixed(2)}</span>
                   </div>
                 </div>
