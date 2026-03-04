@@ -138,7 +138,7 @@ export function TransactionsPage() {
       isPaid: tx.isPaid,
       recurrence: tx.isRecurring ? 'monthly' : 'none', // Simplificado para edição
       destinationUserId: '', // Não aplicável diretamente na edição de uma única transação
-      destinationAccountId: '', // Não aplicável diretamente na edição de uma única transação
+      destinationAccountId: '', // Não aplicável diretamente na edição da única transação
       notes: tx.notes || ''
     });
     setIsDialogOpen(true);
@@ -238,7 +238,7 @@ export function TransactionsPage() {
   }, [allCards, formData.userId]);
 
   return (
-    <div className="space-y-6 animate-fade-in w-full max-w-full overflow-x-hidden">
+    <div className="space-y-6 animate-fade-in w-full max-w-full"> {/* Removido overflow-x-hidden */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">{isCardMode ? 'Lançamentos de Cartão' : 'Lançamentos'}</h1>
         <div className="flex items-center gap-3">
@@ -246,7 +246,7 @@ export function TransactionsPage() {
             value={selectedUserId} 
             onChange={setSelectedUserId} 
             showTotalOption={true}
-            className="w-[180px]" 
+            className="w-full sm:w-[180px] shrink-0" // Ajustado para ser mais flexível
           />
           <Button onClick={handleOpenDialog} className="gradient-primary shadow-primary px-3 sm:px-4">
             <Plus className="w-4 h-4 sm:mr-2" /> 
@@ -268,9 +268,9 @@ export function TransactionsPage() {
             <span className="text-sm font-bold min-w-[120px] text-center capitalize">{format(currentMonth, 'MMMM yyyy', { locale: ptBR })}</span>
             <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}><ChevronRight className="h-4 w-4" /></Button>
           </div>
-          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-            <div className="relative flex-1 min-w-[200px]"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" /></div>
-            <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}><SelectTrigger className="w-[140px]"><Filter className="w-4 h-4 mr-2" /><SelectValue placeholder="Tipo" /></SelectTrigger><SelectContent><SelectItem value="ALL">Todos</SelectItem><SelectItem value="INCOME">Receita</SelectItem><SelectItem value="EXPENSE">Despesa</SelectItem><SelectItem value="CREDIT">Cartão</SelectItem><SelectItem value="REFUND">Estorno</SelectItem></SelectContent></Select>
+          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto"> {/* Adicionado flex-wrap */}
+            <div className="relative flex-1 min-w-[150px] sm:min-w-[200px]"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" /></div> {/* Ajustado min-w */}
+            <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}><SelectTrigger className="w-full sm:w-[140px]"><Filter className="w-4 h-4 mr-2" /><SelectValue placeholder="Tipo" /></SelectTrigger><SelectContent><SelectItem value="ALL">Todos</SelectItem><SelectItem value="INCOME">Receita</SelectItem><SelectItem value="EXPENSE">Despesa</SelectItem><SelectItem value="CREDIT">Cartão</SelectItem><SelectItem value="REFUND">Estorno</SelectItem></SelectContent></Select>
           </div>
         </CardContent>
       </Card>
