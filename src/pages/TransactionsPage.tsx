@@ -34,7 +34,7 @@ export function TransactionsPage() {
   
   const [selectedUserId, setSelectedUserId] = useState<string>('total');
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = new useState<Set<string>>(new Set());
 
   const [formData, setFormData] = useState({
     userId: currentUser?.id || '',
@@ -161,10 +161,14 @@ export function TransactionsPage() {
     e.preventDefault();
     setIsSaving(true);
     try {
+      const totalAmount = parseFloat(formData.amount);
+      const totalInstallments = parseInt(formData.installments) || 1;
+      const installmentAmount = totalAmount / totalInstallments;
+
       const baseData = {
         userId: formData.userId,
         type: formData.type,
-        amount: parseFloat(formData.amount),
+        amount: installmentAmount, // Valor da parcela
         description: formData.description,
         purchaseDate: formData.purchaseDate,
         categoryId: formData.categoryId,
@@ -199,7 +203,6 @@ export function TransactionsPage() {
       } else if (formData.type === 'CREDIT' || formData.type === 'REFUND') {
         if (!formData.cardId) throw new Error('Selecione um cartão para lançamentos de cartão.');
         
-        const totalInstallments = parseInt(formData.installments) || 1;
         const groupId = totalInstallments > 1 ? generateId() : null;
 
         for (let i = 0; i < totalInstallments; i++) {
@@ -273,7 +276,7 @@ export function TransactionsPage() {
         <Card className="bg-muted"><CardContent className="p-4"><p className="text-xs text-muted-foreground">Saldo</p><p className="text-lg font-bold">{formatCurrency(monthStats.balance)}</p></CardContent></Card>
       </div>
 
-      <Card className="finance-card">
+      <Card className="finance-card overflow-hidden">
         <CardContent className="p-4 flex flex-col lg:flex-row gap-4 items-center justify-between">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><ChevronLeft className="h-4 w-4" /></Button>

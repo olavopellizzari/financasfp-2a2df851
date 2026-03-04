@@ -225,7 +225,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       account_id: data.accountId || null, 
       card_id: data.cardId || null,
       category_id: data.categoryId || null, 
-      amount: data.amount, 
+      amount: data.amount, // Já deve vir o valor da parcela
       description: data.description, 
       type: data.type,
       status: data.status || 'confirmed', 
@@ -234,7 +234,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       effective_month: effectiveMonth, 
       mes_fatura: mesFatura,
       installment_number: data.installmentNumber, 
-      total_installments: data.total_installments,
+      total_installments: data.totalInstallments,
       installment_group_id: data.installmentGroupId, 
       is_recurring: data.isRecurring, 
       is_paid: data.isPaid, 
@@ -393,6 +393,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       start_date: data.start_date,
       due_date: data.due_date,
       monthly_payment: data.monthly_payment,
+      installments_count: data.installments_count,
+      frequency: data.frequency,
       is_active: data.is_active,
       notes: data.notes
     });
