@@ -33,7 +33,7 @@ export function TransactionsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<TransactionType | 'ALL'>('ALL');
   
-  const [selectedUserId, setSelectedUserId] = useState<string>('total');
+  const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'total');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set()); // Usar useState para o Set
 
@@ -75,21 +75,27 @@ export function TransactionsPage() {
 
   const filteredTransactions = useMemo(() => {
     return allTransactions.filter(tx => {
+      // Filtragem por usuário
       if (selectedUserId === 'total') {
-        // Nenhuma filtragem por usuário, mostra todas as transações
+        // 'total' significa todas as transações de todos os usuários
+        // Nenhuma filtragem adicional por usuário aqui
       } else if (selectedUserId === 'all') {
-        // Para 'all', queremos transações de usuários da família ou compartilhadas
-        const isFamilyTransaction = users.some(u => u.id === tx.userId);
-        const isSharedAccount = tx.accountId ? allAccounts.some(a => a.id === tx.accountId && a.is_shared) : false;
-        const isSharedCard = tx.cardId ? allCards.some(c => c.id === tx.cardId && (c as any).is_shared) : false;
-        if (!isFamilyTransaction && !isSharedAccount && !isSharedCard) return false;
+        // 'all' significa transações de todos os membros da família (incluindo compartilhadas)
+        const isFamilyMemberTx = users.some(u => u.id === tx.userId);
+        const isSharedAccountTx = tx.accountId ? allAccounts.some(a => a.id === tx.accountId && a.is_shared) : false;
+        const isSharedCardTx = tx.cardId ? allCards.some(c => c.id === tx.cardId && (c as any).is_shared) : false;
+        
+        if (!isFamilyMemberTx && !isSharedAccountTx && !isSharedCardTx) {
+          return false;
+        }
       } else {
-        // Para um usuário específico, filtramos estritamente pelo userId da transação
+        // Usuário específico: filtra estritamente pelo userId da transação
         if (tx.userId !== selectedUserId) {
           return false;
         }
       }
 
+      // Filtragem por mês e modo (cartão/conta)
       if (isCardMode) {
         if (tx.type !== 'CREDIT' && tx.type !== 'REFUND') return false;
         if (tx.mesFatura !== selectedMonthStr) return false;
@@ -98,6 +104,7 @@ export function TransactionsPage() {
         if (txMonth !== selectedMonthStr) return false;
       }
       
+      // Filtragem por pesquisa e tipo
       const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = filterType === 'ALL' || tx.type === filterType;
       
