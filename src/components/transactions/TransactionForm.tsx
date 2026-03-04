@@ -1,7 +1,8 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Transaction, TransactionType, Account, Card as CardType, Category, User } from '@/lib/db';
+import { matchCategory } from '@/lib/category-matcher';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
@@ -126,7 +127,13 @@ export function TransactionForm({
 
             <div className="space-y-2">
               <Label>Descrição</Label>
-              <Input value={formData.description} onChange={e => onDescriptionChange(e.target.value)} placeholder="Ex: iFood, Aluguel..." required />
+              <Input value={formData.description} onChange={e => {
+                              onDescriptionChange(e.target.value);
+                              const categoryId = matchCategory(e.target.value, categories);
+                              if (categoryId) {
+                                setFormData({ ...formData, categoryId });
+                              }
+                            }} placeholder="Ex: iFood, Aluguel..." required />
             </div>
 
             {formData.type !== 'TRANSFER' && (
