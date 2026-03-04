@@ -221,7 +221,7 @@ export function TransactionsPage() {
           userId: formData.destinationUserId,
           accountId: formData.destinationAccountId,
           categoryId: categories.find(c => c.name === 'Transferência')?.id || '',
-          description: `Transferência de ${users.find(u => u.id === formData.userId)?.name || 'Outra Conta'}`,
+          description: `Transferência de ${users.find(u => u.id === formData.destinationUserId)?.name || 'Outra Conta'}`,
           isPaid: true
         });
         toast({ title: 'Transferência criada!' });
@@ -321,7 +321,7 @@ export function TransactionsPage() {
         </CardContent>
       </Card>
 
-      <Card className="finance-card overflow-hidden"> {/* Adicionado overflow-hidden aqui */}
+      <Card className="finance-card overflow-hidden"> {/* Removido overflow-x-hidden para permitir a rolagem da tabela interna */}
         <CardContent className="p-0">
           <TransactionTable 
             transactions={filteredTransactions} 

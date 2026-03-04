@@ -41,7 +41,7 @@ export function TransactionTable({
   };
 
   return (
-    <div className="table-container overflow-x-auto">
+    <div className="overflow-x-auto"> {/* Adicionado overflow-x-auto aqui */}
       <table className="w-full text-sm">
         <thead className="bg-muted/50 border-b">
           <tr>
