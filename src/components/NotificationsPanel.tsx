@@ -17,16 +17,17 @@ import {
   Check,
   Trash2,
   Zap,
-  TrendingDown
+  TrendingDown,
+  Wallet
 } from 'lucide-react';
 import { db, Notification, Debt, formatCurrency, generateId } from '@/lib/db';
 import { supabase } from '@/integrations/supabase/client';
-import { addDays, isBefore, differenceInDays, format, setDate, parse, addMonths, isSameDay, startOfDay } from 'date-fns';
+import { addDays, isBefore, differenceInDays, format, setDate, parse, addMonths, isSameDay, startOfDay, isAfter } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 export function NotificationsPanel() {
   const { currentUser } = useAuth();
-  const { cards, invoices, allTransactions } = useFinance();
+  const { cards, invoices, allTransactions, allAccounts, getAccountBalance } = useFinance();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -50,6 +51,7 @@ export function NotificationsPanel() {
     if (!currentUser) return;
 
     const today = startOfDay(new Date());
+    const now = new Date();
     const existingNotifications = await db.getAll<Notification>('notifications');
     const newNotifications: Notification[] = [];
 
@@ -116,49 +118,89 @@ export function NotificationsPanel() {
       }
     }
 
-    // 3. Alerta de Limite de Gasto Diário (Baseado em Configurações)
+    // 3. Alerta de Limite de Gasto Diário e Resumo de Saldo
     try {
       const { data: settings } = await supabase
         .from('notification_settings')
-        .select('daily_spending_threshold, enable_spending_limit')
+        .select('*')
         .eq('user_id', currentUser.id)
         .single();
 
-      if (settings?.enable_spending_limit && settings.daily_spending_threshold > 0) {
-        const todayTxs = allTransactions.filter(t => 
-          t.userId === currentUser.id && 
-          isSameDay(parse(t.purchaseDate, 'yyyy-MM-dd', new Date()), today) &&
-          (t.type === 'EXPENSE' || t.type === 'CREDIT')
-        );
-        
-        const totalToday = todayTxs.reduce((sum, t) => sum + t.amount, 0);
-        
-        if (totalToday > settings.daily_spending_threshold) {
-          const notificationId = `limit_reached_${format(today, 'yyyy-MM-dd')}`;
-          const exists = existingNotifications.some(n => n.id === notificationId);
+      if (settings) {
+        // Limite Diário
+        if (settings.enable_spending_limit && settings.daily_spending_threshold > 0) {
+          const todayTxs = allTransactions.filter(t => 
+            t.userId === currentUser.id && 
+            isSameDay(parse(t.purchaseDate, 'yyyy-MM-dd', new Date()), today) &&
+            (t.type === 'EXPENSE' || t.type === 'CREDIT')
+          );
           
-          if (!exists) {
-            newNotifications.push({
-              id: notificationId,
-              userId: currentUser.id,
-              type: 'limit_reached',
-              title: `Limite diário atingido! ⚠️`,
-              message: `Você gastou ${formatCurrency(totalToday)} hoje. Seu limite é ${formatCurrency(settings.daily_spending_threshold)}.`,
-              entityType: 'system',
-              entityId: 'limit',
-              isRead: false,
-              createdAt: new Date()
-            });
+          const totalToday = todayTxs.reduce((sum, t) => sum + t.amount, 0);
+          
+          if (totalToday > settings.daily_spending_threshold) {
+            const notificationId = `limit_reached_${format(today, 'yyyy-MM-dd')}`;
+            if (!existingNotifications.some(n => n.id === notificationId)) {
+              newNotifications.push({
+                id: notificationId,
+                userId: currentUser.id,
+                type: 'limit_reached',
+                title: `Limite diário atingido! ⚠️`,
+                message: `Você gastou ${formatCurrency(totalToday)} hoje. Seu limite é ${formatCurrency(settings.daily_spending_threshold)}.`,
+                entityType: 'system',
+                entityId: 'limit',
+                isRead: false,
+                createdAt: new Date()
+              });
+            }
+          }
+        }
+
+        // Resumo de Saldo (Triggered on App Open if time passed)
+        if (settings.balance_report_frequency !== 'off') {
+          const [hour, minute] = settings.balance_report_time.split(':').map(Number);
+          const reportTime = new Date();
+          reportTime.setHours(hour, minute, 0, 0);
+
+          if (isAfter(now, reportTime)) {
+            const notificationId = `balance_summary_${format(today, 'yyyy-MM-dd')}`;
+            if (!existingNotifications.some(n => n.id === notificationId)) {
+              const totalBalance = allAccounts
+                .filter(a => (a.user_id === currentUser.id || a.is_shared) && a.active !== false && !a.exclude_from_totals)
+                .reduce((sum, a) => sum + getAccountBalance(a.id), 0);
+
+              newNotifications.push({
+                id: notificationId,
+                userId: currentUser.id,
+                type: 'balance_summary',
+                title: `Resumo de Saldo do Dia 💰`,
+                message: `Seu saldo total disponível hoje é ${formatCurrency(totalBalance)}.`,
+                entityType: 'system',
+                entityId: 'balance',
+                isRead: false,
+                createdAt: new Date()
+              });
+            }
           }
         }
       }
     } catch (e) {
-      // Silencioso se as configurações não existirem
+      // Silencioso
     }
 
     // Salvar novas notificações
     for (const notification of newNotifications) {
       await db.add('notifications', notification);
+      
+      // Se estiver no PWA, tenta disparar o push nativo também
+      if ('serviceWorker' in navigator && Notification.permission === 'granted') {
+        const reg = await navigator.serviceWorker.ready;
+        reg.showNotification(notification.title, {
+          body: notification.message,
+          icon: '/app-icon.svg',
+          badge: '/app-icon.svg',
+          tag: notification.id
+        });
+      }
     }
 
     if (newNotifications.length > 0) {
@@ -205,6 +247,8 @@ export function NotificationsPanel() {
         return <TrendingDown className="h-4 w-4 text-orange-500" />;
       case 'limit_reached':
         return <Zap className="h-4 w-4 text-yellow-500" />;
+      case 'balance_summary':
+        return <Wallet className="h-4 w-4 text-green-500" />;
       default:
         return <Bell className="h-4 w-4" />;
     }
