@@ -51,7 +51,10 @@ export function InvoicesPage() {
 
   const generatedInvoices = useMemo(() => {
     const invoiceMap = new Map<string, { cardId: string; userId: string; month: string; total: number; transactions: Transaction[] }>();
-    const txSource = isAdmin ? allTransactions : transactions;
+    
+    // Correção: Sempre usar allTransactions para faturas, pois a fatura pertence ao cartão (família)
+    // e não apenas ao usuário individual. O filtro de visibilidade já é feito no nível dos cards.
+    const txSource = allTransactions;
 
     const creditTransactions = txSource.filter(t => 
       t.cardId && 
@@ -75,7 +78,7 @@ export function InvoicesPage() {
     });
 
     return Array.from(invoiceMap.values());
-  }, [transactions, allTransactions, isAdmin, selectedMonth]);
+  }, [allTransactions, selectedMonth]);
 
   const displayInvoices = useMemo(() => {
     const result: Array<{
@@ -349,7 +352,7 @@ export function InvoicesPage() {
         <DialogContent className="max-w-[90vw] sm:max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle>Configurar Cartão</DialogTitle>
-            <DialogDescription className="text-xs">Ajuste as datas e responsáveis pelo pagamento.</DialogDescription>
+            <DialogDescription className="text-xs">Ajuste as das e responsáveis pelo pagamento.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSaveCardConfig} className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
