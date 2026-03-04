@@ -89,11 +89,11 @@ export interface Transaction {
   notes: string;
   isRecurring: boolean;
   createdAt: Date;
-  isParcelled?: boolean; // Adicionado para o Dashboard
-  originalAmount?: number; // Adicionado para o Dashboard
+  isParcelled?: boolean;
+  originalAmount?: number;
 }
 
-export interface Notification {
+export interface AppNotification {
   id: string;
   userId: string;
   type: string;

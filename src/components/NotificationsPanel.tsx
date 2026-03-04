@@ -20,7 +20,7 @@ import {
   TrendingDown,
   Wallet
 } from 'lucide-react';
-import { db, Notification, Debt, formatCurrency, generateId } from '@/lib/db';
+import { db, AppNotification, Debt, formatCurrency, generateId } from '@/lib/db';
 import { supabase } from '@/integrations/supabase/client';
 import { addDays, isBefore, differenceInDays, format, setDate, parse, addMonths, isSameDay, startOfDay, isAfter } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils';
 export function NotificationsPanel() {
   const { currentUser } = useAuth();
   const { cards, invoices, allTransactions, allAccounts, getAccountBalance } = useFinance();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export function NotificationsPanel() {
 
   const loadNotifications = async () => {
     if (!currentUser) return;
-    const allNotifications = await db.getAll<Notification>('notifications');
+    const allNotifications = await db.getAll<AppNotification>('notifications');
     const userNotifications = allNotifications
       .filter(n => n.userId === currentUser.id)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -52,8 +52,8 @@ export function NotificationsPanel() {
 
     const today = startOfDay(new Date());
     const now = new Date();
-    const existingNotifications = await db.getAll<Notification>('notifications');
-    const newNotifications: Notification[] = [];
+    const existingNotifications = await db.getAll<AppNotification>('notifications');
+    const newNotifications: AppNotification[] = [];
 
     // 1. Notificações de Vencimento de Cartão (3 dias antes)
     for (const card of cards) {
