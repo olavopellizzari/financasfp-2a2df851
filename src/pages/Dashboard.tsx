@@ -243,6 +243,30 @@ export function Dashboard() {
     return Object.values(activity).sort((a, b) => b.amount - a.amount);
   }, [launchTransactions, allCards]);
 
+  const chartData = useMemo(() => {
+    if (chartView === 'mensal') {
+      // Dados diários para o mês selecionado
+      const daysInMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0).getDate();
+      const dailyData = Array.from({ length: daysInMonth }, (_, i) => {
+        const day = i + 1;
+        const dayStr = format(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), day), 'yyyy-MM-dd');
+        const txs = launchTransactions.filter(t => t.purchaseDate === dayStr && t.status !== 'cancelled');
+        const income = txs.filter(t => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
+        const expenses = txs.filter(t => t.type === 'EXPENSE' || t.type === 'CREDIT').reduce((s, t) => s + t.amount, 0);
+        const refunds = txs.filter(t => t.type === 'REFUND').reduce((s, t) => s + t.amount, 0);
+        return {
+          name: day.toString(),
+          receitas: income,
+          despesas: expenses - refunds
+        };
+      });
+      return dailyData;
+    } else {
+      // Dados mensais para o ano selecionado (já calculados em fluxoData)
+      return fluxoData;
+    }
+  }, [chartView, selectedMonth, launchTransactions, fluxoData]);
+
   return (
     <div className="space-y-6 animate-fade-in w-full max-w-full overflow-x-hidden">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -351,7 +375,7 @@ export function Dashboard() {
           <CardContent>
             <div className="h-[250px] sm:h-[300px] w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={fluxoData}>
+                <BarChart data={chartData}>
                   <XAxis 
                     dataKey="name" 
                     axisLine={false} 
