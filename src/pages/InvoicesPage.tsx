@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CreditCard, Calendar, DollarSign, CheckCircle, AlertCircle, Clock, ChevronLeft, ChevronRight, Settings2, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { CreditCard, Calendar, DollarSign, CheckCircle, AlertCircle, Clock, ChevronLeft, ChevronRight, Settings2, Loader2, Pencil, Trash2, ChevronDown, ChevronUp, List } from 'lucide-react';
 import { formatCurrency, getCurrentMonth, Invoice, Card as CardType, generateId, Transaction } from '@/lib/db';
 import { toast } from '@/hooks/use-toast';
 import { db } from '@/lib/db';
@@ -24,6 +24,7 @@ export function InvoicesPage() {
   
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [selectedCardId, setSelectedCardId] = useState<string>('all');
+  const [expandedInvoices, setExpandedInvoices] = useState<Set<string>>(new Set());
   
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
@@ -46,6 +47,16 @@ export function InvoicesPage() {
   const safeParseMonth = (monthStr: string) => {
     const parsed = parse(monthStr, 'yyyy-MM', new Date());
     return isValid(parsed) ? parsed : new Date();
+  };
+
+  const toggleInvoiceDetails = (id: string) => {
+    const newSet = new Set(expandedInvoices);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setExpandedInvoices(newSet);
   };
 
   const generatedInvoices = useMemo(() => {
@@ -269,61 +280,71 @@ export function InvoicesPage() {
 
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-[10px] sm:text-sm font-bold uppercase tracking-widest text-muted-foreground">Detalhamento</h4>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-[10px] sm:text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-primary p-0 h-auto"
+                        onClick={() => toggleInvoiceDetails(invoice.id)}
+                      >
+                        {expandedInvoices.has(invoice.id) ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
+                        Detalhamento
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => handlePayInvoice(invoice)} disabled={invoice.status === 'paid' || invoice.total === 0} className="h-8 text-xs"><DollarSign className="h-3.5 w-3.5 mr-1" />{invoice.status === 'paid' ? 'Paga' : 'Pagar'}</Button>
                     </div>
                     
-                    <div className="bg-muted/30 rounded-xl sm:rounded-2xl overflow-hidden">
-                      <div className="table-container max-h-[300px]">
-                        {invoice.transactions.length > 0 ? (
-                          <table className="w-full text-xs">
-                            <thead className="bg-muted/50 sticky top-0">
-                              <tr>
-                                <th className="text-left p-3 font-bold uppercase whitespace-nowrap">Data</th>
-                                <th className="text-left p-3 font-bold uppercase whitespace-nowrap">Descrição</th>
-                                <th className="text-left p-3 font-bold uppercase whitespace-nowrap">Categoria</th>
-                                <th className="text-right p-3 font-bold uppercase whitespace-nowrap">Valor</th>
-                                <th className="p-3"></th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border/50">
-                              {invoice.transactions.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()).map(tx => {
-                                const cat = getCategoryById(tx.categoryId);
-                                return (
-                                  <tr key={tx.id} className="hover:bg-muted/50 transition-colors group">
-                                    <td className="p-3 whitespace-nowrap">{format(new Date(tx.purchaseDate), 'dd/MM/yy')}</td>
-                                    <td className="p-3">
-                                      <div className="flex flex-col min-w-[100px]">
-                                        <span className="font-semibold truncate max-w-[150px]">{tx.description}</span>
-                                        {tx.totalInstallments && tx.totalInstallments > 1 && (
-                                          <span className="text-[9px] text-primary font-bold">
-                                            Parcela {tx.installmentNumber}/{tx.totalInstallments}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </td>
-                                    <td className="p-3"><Badge variant="outline" className="font-normal text-[9px] whitespace-nowrap">{cat?.icon} {cat?.name}</Badge></td>
-                                    <td className="p-3 text-right font-bold whitespace-nowrap">
-                                      <span className={cn(tx.type === 'REFUND' ? 'text-income' : 'text-expense')}>
-                                        {tx.type === 'REFUND' ? '+' : '-'} {formatCurrency(tx.amount)}
-                                      </span>
-                                    </td>
-                                    <td className="p-3 text-right">
-                                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigate(`/transactions?edit=${tx.id}`)}><Pencil className="h-3 w-3" /></Button>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteTx(tx.id)}><Trash2 className="h-3 w-3" /></Button>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        ) : (
-                          <div className="p-8 text-center text-muted-foreground text-xs">Nenhum lançamento nesta fatura.</div>
-                        )}
+                    {expandedInvoices.has(invoice.id) && (
+                      <div className="bg-muted/30 rounded-xl sm:rounded-2xl overflow-hidden animate-slide-up">
+                        <div className="table-container max-h-[300px] overflow-y-auto">
+                          {invoice.transactions.length > 0 ? (
+                            <table className="w-full text-xs">
+                              <thead className="bg-muted/50 sticky top-0 z-10">
+                                <tr>
+                                  <th className="text-left p-3 font-bold uppercase whitespace-nowrap">Data</th>
+                                  <th className="text-left p-3 font-bold uppercase whitespace-nowrap">Descrição</th>
+                                  <th className="text-left p-3 font-bold uppercase whitespace-nowrap">Categoria</th>
+                                  <th className="text-right p-3 font-bold uppercase whitespace-nowrap">Valor</th>
+                                  <th className="p-3"></th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-border/50">
+                                {invoice.transactions.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()).map(tx => {
+                                  const cat = getCategoryById(tx.categoryId);
+                                  return (
+                                    <tr key={tx.id} className="hover:bg-muted/50 transition-colors group">
+                                      <td className="p-3 whitespace-nowrap">{format(new Date(tx.purchaseDate), 'dd/MM/yy')}</td>
+                                      <td className="p-3">
+                                        <div className="flex flex-col min-w-[100px]">
+                                          <span className="font-semibold truncate max-w-[150px]">{tx.description}</span>
+                                          {tx.totalInstallments && tx.totalInstallments > 1 && (
+                                            <span className="text-[9px] text-primary font-bold">
+                                              Parcela {tx.installmentNumber}/{tx.totalInstallments}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </td>
+                                      <td className="p-3"><Badge variant="outline" className="font-normal text-[9px] whitespace-nowrap">{cat?.icon} {cat?.name}</Badge></td>
+                                      <td className="p-3 text-right font-bold whitespace-nowrap">
+                                        <span className={cn(tx.type === 'REFUND' ? 'text-income' : 'text-expense')}>
+                                          {tx.type === 'REFUND' ? '+' : '-'} {formatCurrency(tx.amount)}
+                                        </span>
+                                      </td>
+                                      <td className="p-3 text-right">
+                                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigate(`/transactions?edit=${tx.id}`)}><Pencil className="h-3 w-3" /></Button>
+                                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteTx(tx.id)}><Trash2 className="h-3 w-3" /></Button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          ) : (
+                            <div className="p-8 text-center text-muted-foreground text-xs">Nenhum lançamento nesta fatura.</div>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
