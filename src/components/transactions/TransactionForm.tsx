@@ -15,6 +15,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { Check, ChevronsUpDown, CalendarIcon, Loader2, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/db';
 
 interface TransactionFormProps {
   isOpen: boolean;
@@ -38,6 +39,10 @@ export function TransactionForm({
   
   const sortedCategories = [...categories].sort((a, b) => a.name.localeCompare(b.name));
   const [categoryPopoverOpen, setCategoryPopoverOpen] = React.useState(false);
+
+  const parsedAmount = parseFloat(formData.amount) || 0;
+  const parsedInstallments = parseInt(formData.installments) || 1;
+  const installmentValue = parsedInstallments > 0 ? parsedAmount / parsedInstallments : 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -113,7 +118,10 @@ export function TransactionForm({
                   </PopoverContent>
                 </Popover>
               </div>
-              <div className="space-y-2"><Label>Valor {formData.type === 'CREDIT' && formData.installments > 1 ? 'da Parcela' : ''}</Label><Input type="number" step="0.01" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} placeholder="0,00" required /></div>
+              <div className="space-y-2">
+                <Label>Valor {formData.type === 'CREDIT' && formData.installments > 1 ? 'Total' : ''}</Label>
+                <Input type="number" step="0.01" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} placeholder="0,00" required />
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -171,6 +179,17 @@ export function TransactionForm({
                     </Select>
                   )}
                 </div>
+              </div>
+            )}
+
+            {formData.type === 'CREDIT' && parsedInstallments > 1 && (
+              <div className="space-y-2 animate-fade-in">
+                <Label>Valor da Parcela</Label>
+                <Input 
+                  value={formatCurrency(installmentValue)} 
+                  readOnly 
+                  className="font-bold text-lg bg-muted/50 border-dashed" 
+                />
               </div>
             )}
 
