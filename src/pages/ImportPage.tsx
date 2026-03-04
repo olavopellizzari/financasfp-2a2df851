@@ -74,40 +74,61 @@ export function ImportPage() {
     return checking ? checking.id : (userAccounts[0]?.id || '');
   };
 
+  // Mapeamento de categorias para busca rápida
+  const normalizedCategoryMap = useMemo(() => {
+    const map = new Map<string, { id: string; type: string; kind?: string }>();
+    categories.forEach(cat => {
+      map.set(normalize(cat.name), { id: cat.id, type: cat.type, kind: cat.kind });
+    });
+    return map;
+  }, [categories]);
+
   const suggestCategory = useCallback((description: string, transactionType: TransactionType): string => {
-    console.log("Sugestão de categoria para:", description, "Tipo:", transactionType);
+    console.log("--- Sugestão de categoria ---");
+    console.log("Descrição original:", description);
+    console.log("Tipo de transação:", transactionType);
     const desc = normalize(description);
+    console.log("Descrição normalizada:", desc);
     
     // Filtrar categorias relevantes (receita/despesa)
-    const relevantCategories = categories.filter(c => 
-      (transactionType === 'INCOME' || transactionType === 'REFUND') 
-        ? (c.type === 'income' || c.kind === 'receita') 
-        : (c.type === 'expense' || c.kind === 'despesa')
-    );
+    const relevantCategoryNames = new Set<string>();
+    if (transactionType === 'INCOME' || transactionType === 'REFUND') {
+      normalizedCategoryMap.forEach((cat, name) => {
+        if (cat.type === 'income' || cat.kind === 'receita') relevantCategoryNames.add(name);
+      });
+    } else {
+      normalizedCategoryMap.forEach((cat, name) => {
+        if (cat.type === 'expense' || cat.kind === 'despesa') relevantCategoryNames.add(name);
+      });
+    }
+    console.log("Nomes de categorias relevantes:", Array.from(relevantCategoryNames));
 
     // Tentar encontrar categoria por palavra-chave
     for (const [keyword, catNameNormalized] of Object.entries(CATEGORY_KEYWORDS)) {
       if (desc.includes(keyword)) {
-        const cat = relevantCategories.find(c => normalize(c.name) === catNameNormalized);
-        if (cat) {
-          console.log(`Encontrado por palavra-chave '${keyword}': ${cat.name}`);
-          return cat.id;
+        console.log(`Palavra-chave '${keyword}' encontrada na descrição.`);
+        if (relevantCategoryNames.has(catNameNormalized)) {
+          const catId = normalizedCategoryMap.get(catNameNormalized)?.id;
+          console.log(`Categoria sugerida: '${catNameNormalized}' (ID: ${catId})`);
+          return catId || '';
+        } else {
+          console.log(`Categoria '${catNameNormalized}' não é relevante para o tipo de transação.`);
         }
       }
     }
     
     // Fallback para categoria genérica se nenhuma for encontrada
     const defaultCatName = (transactionType === 'INCOME' || transactionType === 'REFUND') ? 'outras receitas' : 'outras despesas';
-    const defaultCategory = relevantCategories.find(c => normalize(c.name) === defaultCatName);
-    
-    if (defaultCategory) {
-      console.log("Usando categoria padrão:", defaultCategory.name);
-      return defaultCategory.id;
+    console.log("Tentando categoria padrão:", defaultCatName);
+    if (relevantCategoryNames.has(defaultCatName)) {
+      const catId = normalizedCategoryMap.get(defaultCatName)?.id;
+      console.log(`Usando categoria padrão: '${defaultCatName}' (ID: ${catId})`);
+      return catId || '';
     }
 
     console.log("Nenhuma categoria sugerida.");
     return ''; // Retorna vazio se não encontrar nenhuma
-  }, [categories]);
+  }, [normalizedCategoryMap]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -189,8 +210,7 @@ export function ImportPage() {
 
         const transactionType: TransactionType = isRefund ? 'REFUND' : (importType === 'card' ? 'CREDIT' : 'EXPENSE');
         const suggestedCategoryId = suggestCategory(description, transactionType);
-        console.log("Suggested Category ID for", description, ":", suggestedCategoryId);
-
+        
         result.push({
           date, description, amount, userName,
           type: transactionType,
