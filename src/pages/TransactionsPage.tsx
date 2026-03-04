@@ -291,14 +291,16 @@ export function TransactionsPage() {
       </Card>
 
       <Card className="finance-card overflow-hidden">
-        <TransactionTable 
-          transactions={filteredTransactions} 
-          selectedIds={selectedIds} 
-          onToggleSelect={(id) => { const n = new Set(selectedIds); n.has(id) ? n.delete(id) : n.add(id); setSelectedIds(n); }}
-          onToggleSelectAll={() => setSelectedIds(selectedIds.size === filteredTransactions.length ? new Set() : new Set(filteredTransactions.map(t => t.id)))}
-          onEdit={handleEdit} onDelete={handleDelete} onTogglePaid={handleTogglePaid}
-          getCategoryById={getCategoryById} users={users as any}
-        />
+        <CardContent className="p-0 overflow-x-auto"> {/* Adicionado overflow-x-auto aqui */}
+          <TransactionTable 
+            transactions={filteredTransactions} 
+            selectedIds={selectedIds} 
+            onToggleSelect={(id) => { const n = new Set(selectedIds); n.has(id) ? n.delete(id) : n.add(id); setSelectedIds(n); }}
+            onToggleSelectAll={() => setSelectedIds(selectedIds.size === filteredTransactions.length ? new Set() : new Set(filteredTransactions.map(t => t.id)))}
+            onEdit={handleEdit} onDelete={handleDelete} onTogglePaid={handleTogglePaid}
+            getCategoryById={getCategoryById} users={users as any}
+          />
+        </CardContent>
       </Card>
 
       <TransactionForm 
