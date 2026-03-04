@@ -297,12 +297,16 @@ export function InvoicesPage() {
                                     <td className="p-3">
                                       <div className="flex flex-col min-w-[100px]">
                                         <span className="font-semibold truncate max-w-[150px]">{tx.description}</span>
-                                        {tx.totalInstallments > 1 && <span className="text-[9px] text-muted-foreground">Parcela {tx.installmentNumber}/{tx.totalInstallments}</span>}
+                                        {tx.totalInstallments && tx.totalInstallments > 1 && (
+                                          <span className="text-[9px] text-muted-foreground">Parcela {tx.installmentNumber}/{tx.totalInstallments}</span>
+                                        )}
                                       </div>
                                     </td>
                                     <td className="p-3"><Badge variant="outline" className="font-normal text-[9px] whitespace-nowrap">{cat?.icon} {cat?.name}</Badge></td>
-                                    <td className={cn("p-3 text-right font-bold whitespace-nowrap", tx.type === 'REFUND' ? 'text-income' : 'text-expense')}>
-                                      {tx.type === 'REFUND' ? '+' : '-'} {formatCurrency(tx.amount)}
+                                    <td className="p-3 text-right font-bold whitespace-nowrap">
+                                      <span className={cn(tx.type === 'REFUND' ? 'text-income' : 'text-expense')}>
+                                        {tx.type === 'REFUND' ? '+' : '-'} {formatCurrency(tx.amount)}
+                                      </span>
                                     </td>
                                     <td className="p-3 text-right">
                                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
