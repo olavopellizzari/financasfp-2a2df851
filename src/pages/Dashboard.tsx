@@ -218,11 +218,9 @@ export function Dashboard() {
         const totalAmount = txs.reduce((sum, t) => sum + t.amount, 0);
         processedTransactions.push({
           ...firstTx,
-          amount: totalAmount, // Valor total da compra
+          originalAmount: totalAmount, // Valor total da compra
           description: firstTx.description.replace(/\s*\(\d+\/\d+\)$/, '').trim(), // Remover "(x/y)"
           isParcelled: true,
-          installmentNumber: firstTx.installmentNumber,
-          totalInstallments: firstTx.totalInstallments
         } as Transaction);
       } else {
         // Não é parcelada ou é uma única parcela
@@ -273,13 +271,13 @@ export function Dashboard() {
           <Button variant="ghost" size="icon" onClick={() => setIsPrivate(!isPrivate)} className="shrink-0">{isPrivate ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}</Button>
           
           <DropdownMenu>
-            <DropdownTrigger asChild>
+            <DropdownMenuTrigger asChild>
               <Button className="gradient-primary shadow-primary shrink-0 px-3 sm:px-4">
                 <Plus className="w-4 h-4 sm:mr-2" /> 
                 <span className="hidden sm:inline">Novo</span> 
                 <ChevronDown className="ml-2 h-4 w-4 opacity-50 hidden sm:inline" />
               </Button>
-            </DropdownTrigger>
+            </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem onClick={() => navigate('/transactions')} className="gap-2 cursor-pointer">
                 <ArrowDownRight className="w-4 h-4 text-expense" /> Lançamento em Conta
@@ -441,7 +439,7 @@ export function Dashboard() {
               {cardActivity.length > 0 ? cardActivity.map((card, idx) => (
                 <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-sm" style={{ backgroundColor: card.color }}>
+                    <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-white shadow-sm" style={{ backgroundColor: card.color }}>
                       <CreditCard className="w-4 h-4" />
                     </div>
                     <span className="text-sm font-medium">{card.name}</span>
@@ -538,13 +536,13 @@ export function Dashboard() {
                         <p className="text-[10px] text-muted-foreground">
                           {format(new Date(tx.purchaseDate), 'dd/MM/yy')}
                           {tx.isParcelled && tx.installmentNumber && tx.totalInstallments && (
-                            ` • ${tx.installmentNumber}/${tx.totalInstallments} (${formatCurrency(tx.amount / tx.totalInstallments)})`
+                            ` • ${tx.installmentNumber}/${tx.totalInstallments} (${formatCurrency(tx.originalAmount! / tx.totalInstallments)})`
                           )}
                         </p>
                       </div>
                     </div>
                     <span className={cn("text-xs font-bold", tx.type === 'INCOME' || tx.type === 'REFUND' ? "text-income" : "text-expense")}>
-                      {tx.type === 'INCOME' || tx.type === 'REFUND' ? '+' : '-'} {isPrivate ? '••••' : formatCurrency(tx.amount)}
+                      {tx.type === 'INCOME' || tx.type === 'REFUND' ? '+' : '-'} {isPrivate ? '••••' : formatCurrency(tx.originalAmount || tx.amount)}
                     </span>
                   </div>
                 );
