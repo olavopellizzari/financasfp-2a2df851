@@ -112,7 +112,7 @@ export function TransactionTable({
                   <div className="flex justify-end gap-1">
                     <Button size="icon" variant="ghost" onClick={() => onTogglePaid(tx)} className="h-8 w-8">{tx.isPaid ? <RotateCcw className="w-4 h-4" /> : <Check className="w-4 h-4" />}</Button>
                     <Button size="icon" variant="ghost" onClick={() => onEdit(tx)} className="h-8 w-8"><Pencil className="w-4 h-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => onDelete(tx)} className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => onDelete(tx)} className="h-8 w-8 text-destructive"><Trash2 className="w-4 h-4" /></Button>
                   </div>
                 </td>
               </tr>
