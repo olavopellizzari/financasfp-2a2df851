@@ -71,20 +71,31 @@ export function TransactionsPage() {
 
   const filteredTransactions = useMemo(() => {
     return allTransactions.filter(tx => {
-      // Filtragem por usuário
+      // 1. Filtragem por usuário/família (Lógica sincronizada com Dashboard)
       if (selectedUserId !== 'total') {
         if (selectedUserId === 'all') {
-          const isSharedAccountTx = tx.accountId ? allAccounts.some(a => a.id === tx.accountId && a.is_shared) : false;
-          const isSharedCardTx = tx.cardId ? allCards.some(c => c.id === tx.cardId && (c as any).is_shared) : false;
-          if (!isSharedAccountTx && !isSharedCardTx) return false;
+          // Filtro "Contas da Família": Apenas o que está em contas/cartões compartilhados sem dono
+          const familyAccountIds = new Set(allAccounts.filter(a => a.is_shared && !a.user_id).map(a => a.id));
+          const familyCardIds = new Set(allCards.filter(c => (c as any).is_shared && !c.user_id).map(c => c.id));
+          
+          const isFamilyEntity = (tx.accountId && familyAccountIds.has(tx.accountId)) || 
+                                (tx.cardId && familyCardIds.has(tx.cardId));
+          
+          if (!isFamilyEntity) return false;
         } else {
-          const isUserAccountTx = tx.accountId ? allAccounts.some(a => a.id === tx.accountId && a.user_id === selectedUserId && !a.is_shared) : false;
-          const isUserCardTx = tx.cardId ? allCards.some(c => c.id === tx.cardId && c.user_id === selectedUserId && !(c as any).is_shared) : false;
-          if (!isUserAccountTx && !isUserCardTx && tx.userId !== selectedUserId) return false;
+          // Filtro de Usuário Específico: O que pertence às contas dele OU o que ele mesmo lançou
+          const userAccountIds = new Set(allAccounts.filter(a => a.user_id === selectedUserId).map(a => a.id));
+          const userCardIds = new Set(allCards.filter(c => c.user_id === selectedUserId).map(c => c.id));
+          
+          const belongsToUser = (tx.accountId && userAccountIds.has(tx.accountId)) || 
+                               (tx.cardId && userCardIds.has(tx.cardId)) ||
+                               (tx.userId === selectedUserId);
+          
+          if (!belongsToUser) return false;
         }
       }
 
-      // Filtragem por modo (cartão/conta)
+      // 2. Filtragem por modo (cartão/conta)
       if (isCardMode) {
         if (!tx.cardId) return false;
         if (tx.mesFatura !== selectedMonthStr) return false;
@@ -93,6 +104,7 @@ export function TransactionsPage() {
         if (tx.effectiveMonth !== selectedMonthStr) return false;
       }
       
+      // 3. Busca e Tipo
       const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = filterType === 'ALL' || tx.type === filterType;
       
@@ -157,7 +169,7 @@ export function TransactionsPage() {
         setSelectedIds(new Set());
         await refresh();
       } catch (error: any) {
-        toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
+        toast({ title: 'Erro ao excluir', description: error.message, variant: "destructive" });
       }
     }
   };
