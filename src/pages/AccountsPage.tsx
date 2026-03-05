@@ -224,12 +224,14 @@ export function AccountsPage() {
     const bankInfo = BANKS.find(b => b.id === account.bank) || BANKS.find(b => b.id === 'outro')!;
     const [imgError, setImgError] = useState(false);
     
+    // Permissão de escrita: Apenas se for conta da família (sem dono) ou se o dono for o usuário logado
+    const canWrite = !account.user_id || account.user_id === currentUser?.id;
+    
     return (
       <Card key={account.id} className={cn("finance-card group relative overflow-hidden", account.exclude_from_totals && "border-dashed opacity-80")}>
         <CardContent className="p-5">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
-              {/* Logo Container - Vazado (sem fundo branco) e com cores originais */}
               <div className="w-12 h-12 flex items-center justify-center shrink-0">
                 {bankInfo.logo && !imgError ? (
                   <img 
@@ -255,24 +257,26 @@ export function AccountsPage() {
               </div>
             </div>
             
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-muted">
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => openEditDialog(account)}>
-                  <Pencil className="w-4 h-4 mr-2" /> Editar
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleArchive(account)}>
-                  <Archive className="w-4 h-4 mr-2" /> {account.active ? 'Arquivar' : 'Restaurar'}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleDelete(account.id)} className="text-destructive focus:text-destructive">
-                  <Trash2 className="w-4 h-4 mr-2" /> Excluir
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {canWrite && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-muted">
+                    <MoreVertical className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => openEditDialog(account)}>
+                    <Pencil className="w-4 h-4 mr-2" /> Editar
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleArchive(account)}>
+                    <Archive className="w-4 h-4 mr-2" /> {account.active ? 'Arquivar' : 'Restaurar'}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleDelete(account.id)} className="text-destructive focus:text-destructive">
+                    <Trash2 className="w-4 h-4 mr-2" /> Excluir
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
 
           <div className="mt-6 flex items-end justify-between">

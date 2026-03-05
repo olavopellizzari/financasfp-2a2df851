@@ -128,8 +128,8 @@ export function TransactionsPage() {
       description: '',
       purchaseDate: new Date(),
       categoryId: '',
-      accountId: allAccounts.find(a => a.user_id === currentUser?.id || a.is_shared)?.id || '',
-      cardId: isCardMode ? (allCards.find(c => c.user_id === currentUser?.id || (c as any).is_shared)?.id || '') : '',
+      accountId: allAccounts.find(a => a.user_id === currentUser?.id || (a.is_shared && !a.user_id))?.id || '',
+      cardId: isCardMode ? (allCards.find(c => c.user_id === currentUser?.id || ((c as any).is_shared && !c.user_id))?.id || '') : '',
       installments: '1',
       isPaid: !isCardMode, // Cartão nasce pendente
       recurrence: 'none',
@@ -139,6 +139,18 @@ export function TransactionsPage() {
   };
 
   const handleEdit = (tx: Transaction) => {
+    // Verificar permissão de escrita
+    const account = tx.accountId ? allAccounts.find(a => a.id === tx.accountId) : null;
+    const card = tx.cardId ? allCards.find(c => c.id === tx.cardId) : null;
+    
+    const isExclusiveToOther = (account?.user_id && account.user_id !== currentUser?.id) || 
+                               (card?.user_id && card.user_id !== currentUser?.id);
+
+    if (isExclusiveToOther) {
+      toast({ title: "Acesso Negado", description: "Você não pode alterar lançamentos de contas exclusivas de outros usuários.", variant: "destructive" });
+      return;
+    }
+
     setEditingTransaction(tx);
     setFormData({ 
       userId: tx.userId,
@@ -160,12 +172,27 @@ export function TransactionsPage() {
   };
 
   const handleDelete = async (txIds: string[]) => {
-    if (window.confirm(`Excluir ${txIds.length} lançamento(s)?`)) {
+    // Filtrar apenas os que o usuário pode deletar
+    const allowedIds = txIds.filter(id => {
+      const tx = allTransactions.find(t => t.id === id);
+      if (!tx) return false;
+      const account = tx.accountId ? allAccounts.find(a => a.id === tx.accountId) : null;
+      const card = tx.cardId ? allCards.find(c => c.id === tx.cardId) : null;
+      return !(account?.user_id && account.user_id !== currentUser?.id) && 
+             !(card?.user_id && card.user_id !== currentUser?.id);
+    });
+
+    if (allowedIds.length === 0) {
+      toast({ title: "Ação não permitida", description: "Nenhum dos lançamentos selecionados pode ser excluído por você.", variant: "destructive" });
+      return;
+    }
+
+    if (window.confirm(`Excluir ${allowedIds.length} lançamento(s)?`)) {
       try {
-        for (const id of txIds) {
+        for (const id of allowedIds) {
           await deleteTransaction(id);
         }
-        toast({ title: 'Excluído!', description: `${txIds.length} lançamento(s) removido(s).` });
+        toast({ title: 'Excluído!', description: `${allowedIds.length} lançamento(s) removido(s).` });
         setSelectedIds(new Set());
         await refresh();
       } catch (error: any) {
@@ -175,6 +202,15 @@ export function TransactionsPage() {
   };
 
   const handleTogglePaid = async (tx: Transaction) => {
+    const account = tx.accountId ? allAccounts.find(a => a.id === tx.accountId) : null;
+    const card = tx.cardId ? allCards.find(c => c.id === tx.cardId) : null;
+    
+    if ((account?.user_id && account.user_id !== currentUser?.id) || 
+        (card?.user_id && card.user_id !== currentUser?.id)) {
+      toast({ title: "Acesso Negado", description: "Você não pode alterar o status de lançamentos em contas exclusivas de outros usuários.", variant: "destructive" });
+      return;
+    }
+
     await updateTransaction(tx.id, { isPaid: !tx.isPaid });
     toast({ title: 'Status atualizado!', description: `Lançamento marcado como ${tx.isPaid ? 'Pendente' : 'Pago'}.` });
   };
@@ -277,12 +313,18 @@ export function TransactionsPage() {
   };
 
   const availableAccounts = useMemo(() => {
-    return allAccounts.filter(a => a.user_id === formData.userId || a.is_shared);
-  }, [allAccounts, formData.userId]);
+    // Apenas contas que o usuário pode ESCREVER:
+    // 1. Contas da família (compartilhadas e sem dono)
+    // 2. Suas próprias contas (privadas ou exclusivas)
+    return allAccounts.filter(a => (a.is_shared && !a.user_id) || a.user_id === currentUser?.id);
+  }, [allAccounts, currentUser?.id]);
 
   const availableCards = useMemo(() => {
-    return allCards.filter(c => c.user_id === formData.userId || (c as any).is_shared);
-  }, [allCards, formData.userId]);
+    // Apenas cartões que o usuário pode ESCREVER:
+    // 1. Cartões da família (compartilhados e sem dono)
+    // 2. Seus próprios cartões (privados ou exclusivos)
+    return allCards.filter(c => ((c as any).is_shared && !c.user_id) || c.user_id === currentUser?.id);
+  }, [allCards, currentUser?.id]);
 
   const selectedTransactions = useMemo(() => {
     return filteredTransactions.filter(tx => selectedIds.has(tx.id));

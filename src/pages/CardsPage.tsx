@@ -301,6 +301,9 @@ export function CardsPage() {
           const isPrivate = !isShared;
           const isExclusive = isShared && card.user_id;
           
+          // Permissão de escrita: Apenas se for cartão da família (sem dono) ou se o dono for o usuário logado
+          const canWrite = !card.user_id || card.user_id === currentUser?.id;
+          
           return (
             <div key={card.id} className="space-y-4">
               <div 
@@ -341,17 +344,19 @@ export function CardsPage() {
                     <div className="flex flex-col items-end gap-2">
                       <div className="flex items-center gap-2">
                         <Cpu className="w-10 h-10 opacity-50 rotate-90" />
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full" onClick={(e) => e.stopPropagation()}>
-                              <MoreVertical className="h-5 w-5" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleOpenEdit(card)}><Pencil className="w-4 h-4 mr-2" /> Editar</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDelete(card.id)} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Excluir</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        {canWrite && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full" onClick={(e) => e.stopPropagation()}>
+                                <MoreVertical className="h-5 w-5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleOpenEdit(card)}><Pencil className="w-4 h-4 mr-2" /> Editar</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDelete(card.id)} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Excluir</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                       </div>
                       {isExpanded ? <ChevronUp className="w-5 h-5 opacity-50" /> : <ChevronDown className="w-5 h-5 opacity-50" />}
                     </div>
@@ -433,6 +438,9 @@ export function CardsPage() {
                         {card.transactions.length > 0 ? (
                           card.transactions.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()).map(tx => {
                             const cat = getCategoryById(tx.categoryId);
+                            // Permissão de escrita no lançamento: Apenas se o usuário for o dono do cartão
+                            const canEditTx = canWrite;
+                            
                             return (
                               <div key={tx.id} className="flex items-center justify-between group p-2 rounded-xl hover:bg-muted/50 transition-colors">
                                 <div className="flex items-center gap-3">
@@ -457,24 +465,26 @@ export function CardsPage() {
                                   <span className={cn("text-sm font-bold", tx.type === 'REFUND' ? 'text-income' : 'text-expense')}>
                                     {tx.type === 'REFUND' ? '+' : '-'} {formatCurrency(tx.amount)}
                                   </span>
-                                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      className="h-7 w-7 text-muted-foreground hover:text-primary"
-                                      onClick={(e) => { e.stopPropagation(); handleEditTransaction(tx); }}
-                                    >
-                                      <Pencil className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                      onClick={(e) => { e.stopPropagation(); handleDeleteTransaction(tx); }}
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </div>
+                                  {canEditTx && (
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                        onClick={(e) => { e.stopPropagation(); handleEditTransaction(tx); }}
+                                      >
+                                        <Pencil className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteTransaction(tx); }}
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             );
