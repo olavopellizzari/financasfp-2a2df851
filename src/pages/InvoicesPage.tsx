@@ -182,13 +182,14 @@ export function InvoicesPage() {
       const newPaidAmount = invoice.paid + amount;
       const isFullyPaid = newPaidAmount >= invoice.total;
       
-      // 1. Salvar status da fatura no Supabase
+      // 1. Salvar status da fatura no Supabase incluindo household_id
       const { error: invError } = await supabase
         .from('invoices')
         .upsert({
           id: invoice.id.startsWith('temp-') ? undefined : invoice.id,
           card_id: invoice.card.id,
           user_id: currentUser?.id,
+          household_id: currentUser?.family_id, // Crucial para RLS
           month: invoice.month,
           closing_date: format(invoice.closingDate, 'yyyy-MM-dd'),
           due_date: format(invoice.dueDate, 'yyyy-MM-dd'),

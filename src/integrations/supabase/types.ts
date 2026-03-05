@@ -62,6 +62,54 @@ export type Database = {
           },
         ]
       }
+      invoices: {
+        Row: {
+          id: string
+          card_id: string
+          user_id: string | null
+          household_id: string | null
+          month: string
+          closing_date: string
+          due_date: string
+          total_amount: number
+          paid_amount: number
+          status: string
+          paid_from_account_id: string | null
+          paid_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          card_id: string
+          user_id?: string | null
+          household_id?: string | null
+          month: string
+          closing_date: string
+          due_date: string
+          total_amount: number
+          paid_amount?: number
+          status: string
+          paid_from_account_id?: string | null
+          paid_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          card_id?: string
+          user_id?: string | null
+          household_id?: string | null
+          month?: string
+          closing_date?: string
+          due_date?: string
+          total_amount?: number
+          paid_amount?: number
+          status?: string
+          paid_from_account_id?: string | null
+          paid_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       card_purchases: {
         Row: {
           account_id: string | null
