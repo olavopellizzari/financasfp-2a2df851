@@ -67,7 +67,6 @@ export type Database = {
           id: string
           card_id: string
           user_id: string | null
-          household_id: string | null
           month: string
           closing_date: string
           due_date: string
@@ -82,7 +81,6 @@ export type Database = {
           id?: string
           card_id: string
           user_id?: string | null
-          household_id?: string | null
           month: string
           closing_date: string
           due_date: string
@@ -97,7 +95,6 @@ export type Database = {
           id?: string
           card_id?: string
           user_id?: string | null
-          household_id?: string | null
           month?: string
           closing_date?: string
           due_date?: string
@@ -280,7 +277,7 @@ export type Database = {
         }
         Update: {
           id?: string
-          user_id?: string
+          user_id?: string | null
           account_id?: string | null
           card_id?: string | null
           category_id?: string | null
