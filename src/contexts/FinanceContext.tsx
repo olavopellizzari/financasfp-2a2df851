@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { 
@@ -15,7 +15,7 @@ import {
   generateId
 } from '@/lib/db';
 import { format, addMonths, getDate, isValid, parseISO } from 'date-fns';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface FinanceContextType {
   accounts: Account[];
@@ -119,12 +119,17 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   });
 
   const { data: allBudgets = [] } = useQuery({
-    queryKey: ['budgets', familyUserIds],
+    queryKey: ['budgets', familyId, familyUserIds],
     queryFn: async () => {
-      const { data } = await supabase.from('budgets').select('*').in('user_id', familyUserIds);
+      if (!familyId) return [];
+      // Busca orçamentos dos usuários OU orçamentos da família (user_id is null)
+      const { data } = await supabase
+        .from('budgets')
+        .select('*')
+        .or(`user_id.in.(${familyUserIds.join(',')}),and(user_id.is.null,household_id.eq.${familyId})`);
       return (data || []) as Budget[];
     },
-    enabled: familyUserIds.length > 0
+    enabled: !!familyId
   });
 
   const { data: invoices = [] } = useQuery({
@@ -149,7 +154,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     queryKey: ['debts', familyUserIds],
     queryFn: async () => {
       if (familyUserIds.length === 0) return [];
-      // Busca dívidas dos usuários da família OU dívidas sem user_id (compartilhadas)
       const { data } = await supabase
         .from('debts')
         .select('*')
@@ -262,7 +266,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       mes_fatura: mesFatura,
       installment_number: data.installmentNumber, 
       total_installments: data.totalInstallments,
-      installment_group_id: data.installmentGroupId, 
+      installment_group_id: data.installment_group_id, 
       is_recurring: data.isRecurring, 
       is_paid: data.isPaid, 
       notes: data.notes
@@ -388,7 +392,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const saveBudget = async (data: any) => {
     const { error } = await supabase.from('budgets').upsert({
       id: data.id,
-      user_id: data.userId, 
+      user_id: data.userId || null, 
+      household_id: familyId,
       month: data.month, 
       income: data.income,
       savings_goal: data.savingsGoal, 

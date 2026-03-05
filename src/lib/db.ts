@@ -120,7 +120,8 @@ export interface AuditLog {
 
 export interface Budget {
   id: string;
-  user_id: string;
+  user_id: string | null;
+  household_id: string;
   month: string;
   income: number;
   expenses?: number;
