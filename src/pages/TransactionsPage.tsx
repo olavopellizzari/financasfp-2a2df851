@@ -12,6 +12,13 @@ import { TransactionForm } from '@/components/transactions/TransactionForm';
 import { TransactionTable } from '@/components/transactions/TransactionTable';
 import { TransactionActions } from '@/components/transactions/TransactionActions';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { Plus, Search, Wallet, CreditCard, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { format, addMonths, subMonths, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
