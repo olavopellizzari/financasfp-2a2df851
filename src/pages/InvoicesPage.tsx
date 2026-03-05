@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 
 export function InvoicesPage() {
-  const { cards, transactions, accounts, invoices, refresh, allTransactions, allCards, updateCard, allAccounts, getAccountBalance, getCategoryById, deleteTransaction } = useFinance();
+  const { cards, transactions, accounts, invoices, refresh, allTransactions, allCards, updateCard, allAccounts, getAccountBalance, getCategoryById, deleteTransaction, createTransaction } = useFinance();
   const { currentUser, isCurrentUserAdmin, users } = useAuth();
   const navigate = useNavigate();
   
@@ -181,15 +181,22 @@ export function InvoicesPage() {
 
   const handleConfirmPayment = async () => {
     if (!selectedInvoice || !paymentAccountId || !paymentAmount) return;
+    setIsLoading(true);
     try {
       const amount = parseFloat(paymentAmount);
       const invoice = selectedInvoice;
       const newPaidAmount = invoice.paid_amount + amount;
+      const isFullyPaid = newPaidAmount >= invoice.total_amount;
+      
       const updatedInvoice: Invoice = {
-        ...invoice, paid_amount: newPaidAmount, status: newPaidAmount >= invoice.total_amount ? 'paid' : 'partial',
-        paid_from_account_id: paymentAccountId, paid_at: new Date() as any
+        ...invoice, 
+        paid_amount: newPaidAmount, 
+        status: isFullyPaid ? 'paid' : 'partial',
+        paid_from_account_id: paymentAccountId, 
+        paid_at: new Date().toISOString() as any
       };
 
+      // Persistir status da fatura localmente
       if (invoice.id.startsWith('temp-')) {
         updatedInvoice.id = generateId();
         await db.add('invoices', updatedInvoice);
@@ -197,35 +204,31 @@ export function InvoicesPage() {
         await db.put('invoices', updatedInvoice);
       }
 
-      const monthDate = safeParseMonth(invoice.month);
-      const cardName = cards.find(c => c.id === invoice.card_id)?.name || 'Cartão';
+      const card = cards.find(c => c.id === invoice.card_id);
+      const cardName = card?.name || 'Cartão';
       
-      // Lançamento automático na conta como "Fatura Paga"
-      await db.add('transactions', {
-        id: generateId(), 
-        type: 'EXPENSE', 
-        amount, 
-        description: `Fatura Paga: ${cardName} - ${format(monthDate, 'MMMM/yyyy', { locale: ptBR })}`,
-        purchaseDate: new Date().toISOString().split('T')[0], 
-        effectiveDate: invoice.due_date, 
-        effectiveMonth: format(new Date(invoice.due_date), 'yyyy-MM'), 
-        mesFatura: null, 
-        status: 'confirmed', 
-        isPaid: true, 
-        userId: currentUser?.id || '', 
-        accountId: paymentAccountId, 
-        cardId: null, 
-        categoryId: '', 
-        notes: '', 
-        isRecurring: false, 
-        createdAt: new Date()
+      // Lançamento automático na conta como "Pagamento de Fatura de Cartão"
+      await createTransaction({
+        type: 'EXPENSE',
+        amount: amount,
+        description: `Pagamento de Fatura de Cartão - ${cardName}`,
+        purchaseDate: new Date(),
+        effectiveDate: new Date(),
+        userId: currentUser?.id || '',
+        accountId: paymentAccountId,
+        categoryId: '', // Pode ser deixado vazio ou mapeado para uma categoria de sistema
+        isPaid: true,
+        status: 'confirmed',
+        notes: `Referente à fatura de ${format(safeParseMonth(invoice.month), 'MMMM/yyyy', { locale: ptBR })}`
       });
       
-      toast({ title: 'Pagamento registrado!' });
+      toast({ title: 'Pagamento registrado!', description: 'A fatura foi marcada como paga e o lançamento foi gerado na sua conta.' });
       setPayDialogOpen(false);
       await refresh();
-    } catch (error) {
-      toast({ title: 'Erro', variant: 'destructive' });
+    } catch (error: any) {
+      toast({ title: 'Erro ao processar pagamento', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -378,7 +381,9 @@ export function InvoicesPage() {
             <div className="space-y-2"><Label>Conta para débito</Label><Select value={paymentAccountId} onValueChange={setPaymentAccountId}><SelectTrigger><SelectValue placeholder="Selecione a conta" /></SelectTrigger><SelectContent>{accounts.filter(a => a.active !== false).map(account => <SelectItem key={account.id} value={account.id}>{account.name} - {formatCurrency(getAccountBalance(account.id))}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-2"><Label>Valor do pagamento</Label><Input type="number" step="0.01" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} placeholder="0,00" /></div>
           </div>
-          <DialogFooter className="gap-2"><Button variant="outline" onClick={() => setPayDialogOpen(false)} className="flex-1">Cancelar</Button><Button onClick={handleConfirmPayment} className="flex-1">Confirmar</Button></DialogFooter>
+          <DialogFooter className="gap-2"><Button variant="outline" onClick={() => setPayDialogOpen(false)} className="flex-1">Cancelar</Button><Button onClick={handleConfirmPayment} className="flex-1" disabled={isLoading}>
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : 'Confirmar'}
+          </Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
