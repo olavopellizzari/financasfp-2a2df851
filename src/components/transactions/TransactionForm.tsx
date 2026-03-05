@@ -51,12 +51,17 @@ export function TransactionForm({
   const parsedInstallments = parseInt(formData.installments) || 1;
   const installmentValue = parsedInstallments > 0 ? parsedAmount / parsedInstallments : 0;
 
+  const handleTypeChange = (newType: TransactionType) => {
+    // Lançamentos de cartão (CREDIT) nascem pendentes. Outros nascem pagos.
+    const isPaid = newType !== 'CREDIT';
+    setFormData({ ...formData, type: newType, isPaid });
+  };
+
   const handleDescriptionChange = async (newDescription: string) => {
-    onDescriptionChange(newDescription); // Chama a função do pai para atualizar a descrição
+    onDescriptionChange(newDescription);
 
     let suggestedCategoryId = '';
 
-    // 1. Tentar encontrar no histórico do usuário (IndexedDB)
     if (currentUser?.id && newDescription.trim()) {
       const mapping = await getMerchantCategoryMapping(currentUser.id, newDescription);
       if (mapping) {
@@ -64,7 +69,6 @@ export function TransactionForm({
       }
     }
 
-    // 2. Se não encontrou no histórico, usar a lógica de palavras-chave
     if (!suggestedCategoryId) {
       suggestedCategoryId = matchCategory(newDescription, categories, formData.type) || '';
     }
@@ -72,7 +76,7 @@ export function TransactionForm({
     if (suggestedCategoryId && suggestedCategoryId !== formData.categoryId) {
       setFormData(prev => ({ ...prev, description: newDescription, categoryId: suggestedCategoryId }));
       setShowSuggestionAnimation(true);
-      setTimeout(() => setShowSuggestionAnimation(false), 1500); // Esconde a animação após 1.5s
+      setTimeout(() => setShowSuggestionAnimation(false), 1500);
     } else {
       setFormData(prev => ({ ...prev, description: newDescription }));
       setShowSuggestionAnimation(false);
@@ -83,7 +87,7 @@ export function TransactionForm({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl">
         <DialogHeader><DialogTitle>{editingTransaction ? 'Editar Lançamento' : 'Novo Lançamento'}</DialogTitle></DialogHeader>
-        <Tabs value={formData.type} onValueChange={(v: any) => setFormData({ ...formData, type: v, isPaid: v === 'INCOME' || v === 'TRANSFER' || v === 'REFUND' })}>
+        <Tabs value={formData.type} onValueChange={(v: any) => handleTypeChange(v)}>
           <TabsList className="grid grid-cols-5 w-full overflow-x-auto">
             <TabsTrigger value="INCOME" className="text-[10px] sm:text-xs">Receita</TabsTrigger>
             <TabsTrigger value="EXPENSE" className="text-[10px] sm:text-xs">Despesa</TabsTrigger>

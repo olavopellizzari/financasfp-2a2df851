@@ -198,9 +198,27 @@ export function InvoicesPage() {
       }
 
       const monthDate = safeParseMonth(invoice.month);
+      const cardName = cards.find(c => c.id === invoice.card_id)?.name || 'Cartão';
+      
+      // Lançamento automático na conta como "Fatura Paga"
       await db.add('transactions', {
-        id: generateId(), type: 'EXPENSE', amount, description: `Pagamento fatura ${cards.find(c => c.id === invoice.card_id)?.name} - ${format(monthDate, 'MMMM/yyyy', { locale: ptBR })}`,
-        purchaseDate: new Date(), effectiveDate: invoice.due_date, effectiveMonth: format(invoice.due_date, 'yyyy-MM'), mesFatura: null, status: 'confirmed', isPaid: true, userId: currentUser?.id || '', accountId: paymentAccountId, cardId: null, invoiceId: updatedInvoice.id, categoryId: '', merchantId: null, tagIds: [], installmentGroupId: null, installmentNumber: null, totalInstallments: null, notes: '', importBatchId: null, isRecurring: false, recurrenceType: null, recurrenceCount: null, createdAt: new Date(), updatedAt: new Date()
+        id: generateId(), 
+        type: 'EXPENSE', 
+        amount, 
+        description: `Fatura Paga: ${cardName} - ${format(monthDate, 'MMMM/yyyy', { locale: ptBR })}`,
+        purchaseDate: new Date().toISOString().split('T')[0], 
+        effectiveDate: invoice.due_date, 
+        effectiveMonth: format(new Date(invoice.due_date), 'yyyy-MM'), 
+        mesFatura: null, 
+        status: 'confirmed', 
+        isPaid: true, 
+        userId: currentUser?.id || '', 
+        accountId: paymentAccountId, 
+        cardId: null, 
+        categoryId: '', 
+        notes: '', 
+        isRecurring: false, 
+        createdAt: new Date()
       });
       
       toast({ title: 'Pagamento registrado!' });

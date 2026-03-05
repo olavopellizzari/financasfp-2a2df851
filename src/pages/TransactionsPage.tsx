@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, Transaction, TransactionType, generateId } from '@/lib/db';
@@ -10,13 +10,11 @@ import { Input } from '@/components/ui/input';
 import { UserFilter } from '@/components/UserFilter';
 import { TransactionForm } from '@/components/transactions/TransactionForm';
 import { TransactionTable } from '@/components/transactions/TransactionTable';
-import { TransactionActions } from '@/components/transactions/TransactionActions'; // Importar o novo componente
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, ArrowUpRight, ArrowDownRight, Wallet, ChevronLeft, ChevronRight, Filter, X, Trash2 } from 'lucide-react';
-import { format, addMonths, subMonths, isValid, parseISO, startOfDay, isAfter, isSameDay } from 'date-fns';
+import { TransactionActions } from '@/components/transactions/TransactionActions';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, Search, Wallet, CreditCard, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { format, addMonths, subMonths, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { useSearchParams } from 'react-router-dom';
 
@@ -25,7 +23,9 @@ export function TransactionsPage() {
   const { allTransactions, allAccounts, allCards, categories, calculateMesFatura, createTransaction, updateTransaction, deleteTransaction, getCategoryById, refresh } = useFinance();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  const isCardMode = searchParams.get('type') === 'card';
+  const activeTab = searchParams.get('view') || 'accounts';
+  const isCardMode = activeTab === 'cards';
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -35,7 +35,7 @@ export function TransactionsPage() {
   
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'total');
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set()); // Usar useState para o Set
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const [formData, setFormData] = useState({
     userId: currentUser?.id || '',
@@ -60,65 +60,38 @@ export function TransactionsPage() {
     }
   }, [currentUser?.id]);
 
-  useEffect(() => {
-    setFormData(prev => ({ ...prev, type: (isCardMode ? 'CREDIT' : 'EXPENSE') as TransactionType }));
-  }, [isCardMode]);
-
-  useEffect(() => {
-    const cardIdFromUrl = searchParams.get('cardId');
-    if (isCardMode && cardIdFromUrl) {
-      setFormData(prev => ({ ...prev, cardId: cardIdFromUrl }));
-    }
-  }, [isCardMode, searchParams]);
-
   const selectedMonthStr = useMemo(() => format(currentMonth, 'yyyy-MM'), [currentMonth]);
 
   const filteredTransactions = useMemo(() => {
     return allTransactions.filter(tx => {
-      console.log('tx:', tx);
-      console.log('selectedUserId:', selectedUserId);
       // Filtragem por usuário
-      if (selectedUserId === 'total') {
-        // 'total' significa todas as transações de todos os usuários
-        // Nenhuma filtragem adicional por usuário aqui
-      } else if (selectedUserId === 'all') {
-        // 'all' significa transações feitas em contas e cartões compartilhados
-        const isSharedAccountTx = tx.accountId ? allAccounts.some(a => a.id === tx.accountId && a.is_shared) : false;
-        const isSharedCardTx = tx.cardId ? allCards.some(c => c.id === tx.cardId && (c as any).is_shared) : false;
-        console.log('isSharedAccountTx:', isSharedAccountTx);
-        console.log('isSharedCardTx:', isSharedCardTx);
-
-        if (!isSharedAccountTx && !isSharedCardTx) {
-          return false;
-        }
-      } else {
-        // Usuário específico: filtra transações feitas em contas/cartões exclusivos do usuário
-        const isUserAccountTx = tx.accountId ? allAccounts.some(a => a.id === tx.accountId && a.user_id === selectedUserId && !a.is_shared) : false;
-        const isUserCardTx = tx.cardId ? allCards.some(c => c.id === tx.cardId && c.user_id === selectedUserId && !(c as any).is_shared) : false;
-        console.log('isUserAccountTx:', isUserAccountTx);
-        console.log('isUserCardTx:', isUserCardTx);
-
-        if (!isUserAccountTx && !isUserCardTx) {
-          return false;
+      if (selectedUserId !== 'total') {
+        if (selectedUserId === 'all') {
+          const isSharedAccountTx = tx.accountId ? allAccounts.some(a => a.id === tx.accountId && a.is_shared) : false;
+          const isSharedCardTx = tx.cardId ? allCards.some(c => c.id === tx.cardId && (c as any).is_shared) : false;
+          if (!isSharedAccountTx && !isSharedCardTx) return false;
+        } else {
+          const isUserAccountTx = tx.accountId ? allAccounts.some(a => a.id === tx.accountId && a.user_id === selectedUserId && !a.is_shared) : false;
+          const isUserCardTx = tx.cardId ? allCards.some(c => c.id === tx.cardId && c.user_id === selectedUserId && !(c as any).is_shared) : false;
+          if (!isUserAccountTx && !isUserCardTx && tx.userId !== selectedUserId) return false;
         }
       }
 
-      // Filtragem por mês e modo (cartão/conta)
+      // Filtragem por modo (cartão/conta)
       if (isCardMode) {
-        if (tx.type !== 'CREDIT' && tx.type !== 'REFUND') return false;
+        if (!tx.cardId) return false;
         if (tx.mesFatura !== selectedMonthStr) return false;
       } else {
-        const txMonth = tx.cardId ? tx.mesFatura : tx.effectiveMonth;
-        if (txMonth !== selectedMonthStr) return false;
+        if (tx.cardId) return false;
+        if (tx.effectiveMonth !== selectedMonthStr) return false;
       }
       
-      // Filtragem por pesquisa e tipo
       const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = filterType === 'ALL' || tx.type === filterType;
       
       return matchesSearch && matchesType;
     }).sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
-  }, [allTransactions, selectedMonthStr, searchQuery, filterType, isCardMode, selectedUserId, allAccounts, allCards, users]);
+  }, [allTransactions, selectedMonthStr, searchQuery, filterType, isCardMode, selectedUserId, allAccounts, allCards]);
 
   const monthStats = useMemo(() => {
     const income = filteredTransactions.filter(t => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
@@ -131,6 +104,7 @@ export function TransactionsPage() {
     setEditingTransaction(null);
     setFormData(prev => ({
       ...prev,
+      type: isCardMode ? 'CREDIT' : 'EXPENSE',
       amount: '',
       description: '',
       purchaseDate: new Date(),
@@ -138,7 +112,7 @@ export function TransactionsPage() {
       accountId: allAccounts.find(a => a.user_id === currentUser?.id || a.is_shared)?.id || '',
       cardId: isCardMode ? (allCards.find(c => c.user_id === currentUser?.id || (c as any).is_shared)?.id || '') : '',
       installments: '1',
-      isPaid: false,
+      isPaid: !isCardMode, // Cartão nasce pendente
       recurrence: 'none',
       notes: ''
     }));
@@ -164,7 +138,6 @@ export function TransactionsPage() {
       notes: tx.notes || ''
     });
     setIsDialogOpen(true);
-    setSelectedIds(new Set()); // Limpa a seleção ao editar
   };
 
   const handleDelete = async (txIds: string[]) => {
@@ -174,7 +147,7 @@ export function TransactionsPage() {
           await deleteTransaction(id);
         }
         toast({ title: 'Excluído!', description: `${txIds.length} lançamento(s) removido(s).` });
-        setSelectedIds(new Set()); // Limpa a seleção após exclusão
+        setSelectedIds(new Set());
         await refresh();
       } catch (error: any) {
         toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
@@ -185,7 +158,6 @@ export function TransactionsPage() {
   const handleTogglePaid = async (tx: Transaction) => {
     await updateTransaction(tx.id, { isPaid: !tx.isPaid });
     toast({ title: 'Status atualizado!', description: `Lançamento marcado como ${tx.isPaid ? 'Pendente' : 'Pago'}.` });
-    setSelectedIds(new Set()); // Limpa a seleção após alterar status
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -199,7 +171,7 @@ export function TransactionsPage() {
       const baseData = {
         userId: formData.userId,
         type: formData.type,
-        amount: installmentAmount, // Valor da parcela
+        amount: installmentAmount,
         description: formData.description,
         purchaseDate: formData.purchaseDate,
         categoryId: formData.categoryId,
@@ -216,7 +188,7 @@ export function TransactionsPage() {
       if (editingTransaction) {
         await updateTransaction(editingTransaction.id, {
           ...baseData,
-          amount: totalAmount, // Ao editar, o valor é o total
+          amount: totalAmount,
           purchaseDate: format(formData.purchaseDate, 'yyyy-MM-dd'),
           effectiveDate: format(formData.purchaseDate, 'yyyy-MM-dd'),
           effectiveMonth: selectedMonthStr,
@@ -245,20 +217,14 @@ export function TransactionsPage() {
         });
         toast({ title: 'Transferência criada!' });
       } else if (formData.type === 'CREDIT' || formData.type === 'REFUND') {
-        if (!formData.cardId) throw new Error('Selecione um cartão para lançamentos de cartão.');
-        
+        if (!formData.cardId) throw new Error('Selecione um cartão.');
         const groupId = totalInstallments > 1 ? generateId() : null;
-
         for (let i = 0; i < totalInstallments; i++) {
           const installmentDate = addMonths(formData.purchaseDate, i);
           const mesFatura = calculateMesFatura(installmentDate, formData.cardId);
-          
-          // A descrição agora é mantida limpa, sem o sufixo (x/y)
-          const installmentDesc = formData.description;
-
           await createTransaction({
             ...baseData,
-            description: installmentDesc,
+            description: formData.description,
             purchaseDate: installmentDate,
             cardId: formData.cardId,
             effectiveMonth: mesFatura,
@@ -266,12 +232,13 @@ export function TransactionsPage() {
             accountId: null,
             installmentGroupId: groupId,
             installmentNumber: i + 1,
-            totalInstallments: totalInstallments
+            totalInstallments: totalInstallments,
+            isPaid: false // Sempre pendente no cartão
           });
         }
         toast({ title: 'Lançamento(s) de cartão criado(s)!' });
       } else {
-        if (!formData.accountId) throw new Error('Selecione uma conta para este lançamento.');
+        if (!formData.accountId) throw new Error('Selecione uma conta.');
         await createTransaction({
           ...baseData,
           accountId: formData.accountId,
@@ -281,7 +248,7 @@ export function TransactionsPage() {
       }
 
       setIsDialogOpen(false);
-      setSelectedIds(new Set()); // Limpa a seleção após salvar
+      setSelectedIds(new Set());
       await refresh();
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: "destructive" });
@@ -305,7 +272,7 @@ export function TransactionsPage() {
   return (
     <div className="space-y-6 animate-fade-in w-full max-w-full">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">{isCardMode ? 'Lançamentos de Cartão' : 'Lançamentos'}</h1>
+        <h1 className="text-2xl font-bold">Lançamentos</h1>
         <div className="flex items-center gap-3">
           <UserFilter 
             value={selectedUserId} 
@@ -320,13 +287,24 @@ export function TransactionsPage() {
         </div>
       </div>
 
+      <Tabs value={activeTab} onValueChange={(v) => setSearchParams({ view: v })} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="accounts" className="gap-2">
+            <Wallet className="h-4 w-4" /> Contas
+          </TabsTrigger>
+          <TabsTrigger value="cards" className="gap-2">
+            <CreditCard className="h-4 w-4" /> Cartões
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="bg-income/10"><CardContent className="p-4"><p className="text-xs text-muted-foreground">Receitas</p><p className="text-lg font-bold text-income">{formatCurrency(monthStats.income)}</p></CardContent></Card>
         <Card className="bg-expense/10"><CardContent className="p-4"><p className="text-xs text-muted-foreground">Despesas</p><p className="text-lg font-bold text-expense">{formatCurrency(monthStats.totalExpenses)}</p></CardContent></Card>
         <Card className="bg-muted"><CardContent className="p-4"><p className="text-xs text-muted-foreground">Saldo</p><p className="text-lg font-bold">{formatCurrency(monthStats.balance)}</p></CardContent></Card>
       </div>
 
-      <Card className="finance-card overflow-hidden"> {/* Removido overflow-x-hidden para permitir a rolagem da tabela interna */}
+      <Card className="finance-card">
         <CardContent className="p-4 flex flex-col lg:flex-row gap-4 items-center justify-between">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><ChevronLeft className="h-4 w-4" /></Button>
@@ -340,29 +318,23 @@ export function TransactionsPage() {
         </CardContent>
       </Card>
 
-      <Card className="finance-card overflow-hidden"> {/* Removido overflow-x-hidden para permitir a rolagem da tabela interna */}
+      <Card className="finance-card overflow-hidden">
         <CardContent className="p-0">
           <TransactionTable 
             transactions={filteredTransactions} 
             selectedIds={selectedIds} 
             onToggleSelect={(id) => { 
               const newSelectedIds = new Set(selectedIds);
-              if (newSelectedIds.has(id)) {
-                newSelectedIds.delete(id);
-              } else {
-                newSelectedIds.add(id);
-              }
+              if (newSelectedIds.has(id)) newSelectedIds.delete(id);
+              else newSelectedIds.add(id);
               setSelectedIds(newSelectedIds);
             }}
             onToggleSelectAll={() => {
-              if (selectedIds.size === filteredTransactions.length) {
-                setSelectedIds(new Set());
-              } else {
-                setSelectedIds(new Set(filteredTransactions.map(t => t.id)));
-              }
+              if (selectedIds.size === filteredTransactions.length) setSelectedIds(new Set());
+              else setSelectedIds(new Set(filteredTransactions.map(t => t.id)));
             }}
             onEdit={handleEdit} 
-            onDelete={(tx) => handleDelete([tx.id])} // Adaptação para exclusão individual
+            onDelete={(tx) => handleDelete([tx.id])}
             onTogglePaid={handleTogglePaid}
             getCategoryById={getCategoryById} users={users as any}
           />
