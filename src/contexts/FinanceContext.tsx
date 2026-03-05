@@ -9,7 +9,10 @@ import {
   Budget, 
   Goal, 
   Debt,
-  Invoice
+  Invoice,
+  MerchantCategoryMapping,
+  db,
+  generateId
 } from '@/lib/db';
 import { format, addMonths, getDate, isValid, parseISO } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -46,6 +49,8 @@ interface FinanceContextType {
   saveDebt: (data: any) => Promise<void>;
   deleteDebt: (id: string) => Promise<void>;
   calculateMesFatura: (purchaseDate: Date, cardId: string) => string;
+  getMerchantCategoryMapping: (userId: string, merchantName: string) => Promise<MerchantCategoryMapping | undefined>;
+  saveMerchantCategoryMapping: (userId: string, merchantName: string, categoryId: string) => Promise<void>;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -204,13 +209,35 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     return day >= card.closing_day ? format(addMonths(purchaseDate, 1), 'yyyy-MM') : format(purchaseDate, 'yyyy-MM');
   };
 
+  // Funções para MerchantCategoryMapping
+  const getMerchantCategoryMapping = async (userId: string, merchantName: string): Promise<MerchantCategoryMapping | undefined> => {
+    const mappings = await db.getAll<MerchantCategoryMapping>('merchantCategoryMappings');
+    return mappings.find(m => m.userId === userId && m.merchantName.toLowerCase() === merchantName.toLowerCase());
+  };
+
+  const saveMerchantCategoryMapping = async (userId: string, merchantName: string, categoryId: string) => {
+    const existing = await getMerchantCategoryMapping(userId, merchantName);
+    if (existing) {
+      await db.put('merchantCategoryMappings', { ...existing, categoryId, lastUsed: new Date(), count: existing.count + 1 });
+    } else {
+      await db.add('merchantCategoryMappings', {
+        id: generateId(),
+        userId,
+        merchantName,
+        categoryId,
+        lastUsed: new Date(),
+        count: 1
+      });
+    }
+  };
+
   // Mutadores
   const createTransaction = async (data: any) => {
     const pDate = data.purchaseDate instanceof Date ? data.purchaseDate : new Date(data.purchaseDate);
     const eDate = data.effectiveDate ? (data.effectiveDate instanceof Date ? data.effectiveDate : new Date(data.effectiveDate)) : pDate;
 
     let effectiveMonth = data.effectiveMonth;
-    let mesFatura = data.mes_fatura;
+    let mesFatura = data.mesFatura;
 
     if (data.cardId) {
       mesFatura = calculateMesFatura(pDate, data.cardId);
@@ -241,6 +268,12 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       notes: data.notes
     }]);
     if (error) throw new Error(error.message);
+    
+    // Salvar mapeamento de comerciante/categoria
+    if (data.userId && data.description && data.categoryId) {
+      await saveMerchantCategoryMapping(data.userId, data.description, data.categoryId);
+    }
+
     await refresh();
   };
 
@@ -271,6 +304,12 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
     const { error } = await supabase.from('transactions').update(updateData).eq('id', id);
     if (error) throw new Error(error.message);
+
+    // Salvar mapeamento de comerciante/categoria
+    if (data.userId && data.description && data.categoryId) {
+      await saveMerchantCategoryMapping(data.userId, data.description, data.categoryId);
+    }
+
     await refresh();
   };
 
@@ -419,7 +458,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       createTransaction, updateTransaction, deleteTransaction,
       createAccount, updateAccount, deleteAccount,
       createCard, updateCard, deleteCard,
-      saveBudget, saveGoal, deleteGoal, saveDebt, deleteDebt, calculateMesFatura
+      saveBudget, saveGoal, deleteGoal, saveDebt, deleteDebt, calculateMesFatura,
+      getMerchantCategoryMapping, saveMerchantCategoryMapping
     }}>
       {children}
     </FinanceContext.Provider>

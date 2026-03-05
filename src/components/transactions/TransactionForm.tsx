@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Transaction, TransactionType, Account, Card as CardType, Category, User } from '@/lib/db';
 import { matchCategory } from '@/lib/category-matcher';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
@@ -14,9 +14,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
-import { Check, ChevronsUpDown, CalendarIcon, Loader2, ArrowRight } from 'lucide-react';
+import { Check, ChevronsUpDown, CalendarIcon, Loader2, ArrowRight, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/db';
+import { useFinance } from '@/contexts/FinanceContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TransactionFormProps {
   isOpen: boolean;
@@ -40,10 +42,42 @@ export function TransactionForm({
   
   const sortedCategories = [...categories].sort((a, b) => a.name.localeCompare(b.name));
   const [categoryPopoverOpen, setCategoryPopoverOpen] = React.useState(false);
+  const [showSuggestionAnimation, setShowSuggestionAnimation] = useState(false);
+
+  const { getMerchantCategoryMapping } = useFinance();
+  const { currentUser } = useAuth();
 
   const parsedAmount = parseFloat(formData.amount) || 0;
   const parsedInstallments = parseInt(formData.installments) || 1;
   const installmentValue = parsedInstallments > 0 ? parsedAmount / parsedInstallments : 0;
+
+  const handleDescriptionChange = async (newDescription: string) => {
+    onDescriptionChange(newDescription); // Chama a função do pai para atualizar a descrição
+
+    let suggestedCategoryId = '';
+
+    // 1. Tentar encontrar no histórico do usuário (IndexedDB)
+    if (currentUser?.id && newDescription.trim()) {
+      const mapping = await getMerchantCategoryMapping(currentUser.id, newDescription);
+      if (mapping) {
+        suggestedCategoryId = mapping.categoryId;
+      }
+    }
+
+    // 2. Se não encontrou no histórico, usar a lógica de palavras-chave
+    if (!suggestedCategoryId) {
+      suggestedCategoryId = matchCategory(newDescription, categories, formData.type) || '';
+    }
+
+    if (suggestedCategoryId && suggestedCategoryId !== formData.categoryId) {
+      setFormData(prev => ({ ...prev, description: newDescription, categoryId: suggestedCategoryId }));
+      setShowSuggestionAnimation(true);
+      setTimeout(() => setShowSuggestionAnimation(false), 1500); // Esconde a animação após 1.5s
+    } else {
+      setFormData(prev => ({ ...prev, description: newDescription }));
+      setShowSuggestionAnimation(false);
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -127,16 +161,19 @@ export function TransactionForm({
 
             <div className="space-y-2">
               <Label>Descrição</Label>
-              <Input value={formData.description} onChange={e => {
-                              const newDescription = e.target.value;
-                              onDescriptionChange(newDescription); // Chama a função do pai
-                              const suggestedCategoryId = matchCategory(newDescription, categories, formData.type);
-                              if (suggestedCategoryId) {
-                                setFormData(prev => ({ ...prev, description: newDescription, categoryId: suggestedCategoryId }));
-                              } else {
-                                setFormData(prev => ({ ...prev, description: newDescription }));
-                              }
-                            }} placeholder="Ex: iFood, Aluguel..." required />
+              <div className="relative">
+                <Input 
+                  value={formData.description} 
+                  onChange={e => handleDescriptionChange(e.target.value)} 
+                  placeholder="Ex: iFood, Aluguel..." 
+                  required 
+                />
+                {showSuggestionAnimation && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 animate-pulse-once">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                  </div>
+                )}
+              </div>
             </div>
 
             {formData.type !== 'TRANSFER' && (

@@ -187,6 +187,15 @@ export interface Debt {
   updatedAt: Date;
 }
 
+export interface MerchantCategoryMapping {
+  id: string;
+  userId: string;
+  merchantName: string;
+  categoryId: string;
+  lastUsed: Date;
+  count: number;
+}
+
 class FinancasDB {
   private db: IDBDatabase | null = null;
   private dbPromise: Promise<IDBDatabase> | null = null;
@@ -215,7 +224,8 @@ class FinancasDB {
           'invoices', 
           'budgets', 
           'goals', 
-          'debts'
+          'debts',
+          'merchantCategoryMappings' // Nova store
         ];
 
         stores.forEach(storeName => {
