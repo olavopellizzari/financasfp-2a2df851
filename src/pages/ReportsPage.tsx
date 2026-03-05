@@ -100,22 +100,29 @@ export function ReportsPage() {
     );
 
     const income = monthTransactions.filter(t => t.type === 'INCOME').reduce((sum, t) => sum + t.amount, 0);
-    const expenses = monthTransactions.filter(t => t.type === 'EXPENSE' || t.type === 'CREDIT').reduce((sum, t) => sum + t.amount, 0);
+    
+    // Filtramos pagamentos de fatura
+    const expenses = monthTransactions
+      .filter(t => (t.type === 'EXPENSE' || t.type === 'CREDIT') && !t.description.includes('Pagamento de Fatura'))
+      .reduce((sum, t) => sum + t.amount, 0);
+      
     const refunds = monthTransactions.filter(t => t.type === 'REFUND').reduce((sum, t) => sum + t.amount, 0);
     const netExpense = expenses - refunds;
     const savingsRate = income > 0 ? ((income - netExpense) / income) * 100 : 0;
 
     const fixed = monthTransactions
-      .filter(t => (t.type === 'EXPENSE' || t.type === 'CREDIT') && (t.installmentGroupId || t.isRecurring))
+      .filter(t => (t.type === 'EXPENSE' || t.type === 'CREDIT') && (t.installmentGroupId || t.isRecurring) && !t.description.includes('Pagamento de Fatura'))
       .reduce((sum, t) => sum + t.amount, 0);
     
     const variable = netExpense - fixed;
 
     const merchants: Record<string, number> = {};
-    monthTransactions.filter(t => t.type === 'EXPENSE' || t.type === 'CREDIT').forEach(t => {
-      const desc = t.description.split('(')[0].trim();
-      merchants[desc] = (merchants[desc] || 0) + t.amount;
-    });
+    monthTransactions
+      .filter(t => (t.type === 'EXPENSE' || t.type === 'CREDIT') && !t.description.includes('Pagamento de Fatura'))
+      .forEach(t => {
+        const desc = t.description.split('(')[0].trim();
+        merchants[desc] = (merchants[desc] || 0) + t.amount;
+      });
     const topMerchants = Object.entries(merchants).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 5);
 
     return { income, expenses: netExpense, balance: income - netExpense, savingsRate, fixed, variable, topMerchants, count: monthTransactions.length, transactions: monthTransactions };
@@ -128,7 +135,7 @@ export function ReportsPage() {
       const dayNum = getDate(day);
       const dayTxs = monthlyStats.transactions.filter(t => {
         const txDate = typeof t.purchaseDate === 'string' ? parse(t.purchaseDate, 'yyyy-MM-dd', new Date()) : new Date(t.purchaseDate);
-        return isValid(txDate) && getDate(txDate) === dayNum && (t.type === 'EXPENSE' || t.type === 'CREDIT' || t.type === 'REFUND');
+        return isValid(txDate) && getDate(txDate) === dayNum && (t.type === 'EXPENSE' || t.type === 'CREDIT' || t.type === 'REFUND') && !t.description.includes('Pagamento de Fatura');
       });
       const amount = dayTxs.reduce((sum, t) => t.type === 'REFUND' ? sum - t.amount : sum + t.amount, 0);
       return { day: dayNum.toString().padStart(2, '0'), amount: Math.max(0, amount) };
@@ -139,7 +146,7 @@ export function ReportsPage() {
     const byCategory: Record<string, { amount: number; category: any }> = {};
     
     // Usamos as transações do ano selecionado para o ranking de categorias no explorador
-    const yearTransactions = filteredSource.filter(t => t.effectiveMonth.startsWith(selectedYear.toString()) && t.status !== 'cancelled');
+    const yearTransactions = filteredSource.filter(t => t.effectiveMonth.startsWith(selectedYear.toString()) && t.status !== 'cancelled' && !t.description.includes('Pagamento de Fatura'));
     
     yearTransactions.forEach(t => {
       if (t.categoryId && (t.type === 'EXPENSE' || t.type === 'CREDIT' || t.type === 'REFUND')) {
@@ -171,7 +178,11 @@ export function ReportsPage() {
       const monthStr = format(month, 'yyyy-MM');
       const monthTransactions = filteredSource.filter(t => t.effectiveMonth === monthStr && t.status !== 'cancelled');
       const income = monthTransactions.filter(t => t.type === 'INCOME').reduce((sum, t) => sum + t.amount, 0);
-      const expenses = monthTransactions.filter(t => t.type === 'EXPENSE' || t.type === 'CREDIT').reduce((sum, t) => sum + t.amount, 0);
+      
+      const expenses = monthTransactions
+        .filter(t => (t.type === 'EXPENSE' || t.type === 'CREDIT') && !t.description.includes('Pagamento de Fatura'))
+        .reduce((sum, t) => sum + t.amount, 0);
+        
       const refunds = monthTransactions.filter(t => t.type === 'REFUND').reduce((sum, t) => sum + t.amount, 0);
       const netExpense = expenses - refunds;
       const monthBalance = income - netExpense;
@@ -212,7 +223,7 @@ export function ReportsPage() {
         txs = txs.filter(t => t.type === 'INCOME');
         if (explorerCategoryId !== 'all') txs = txs.filter(t => t.categoryId === explorerCategoryId);
       } else if (explorerMetric === 'expense') {
-        txs = txs.filter(t => t.type === 'EXPENSE' || t.type === 'CREDIT' || t.type === 'REFUND');
+        txs = txs.filter(t => (t.type === 'EXPENSE' || t.type === 'CREDIT' || t.type === 'REFUND') && !t.description.includes('Pagamento de Fatura'));
         if (explorerCategoryId !== 'all') txs = txs.filter(t => t.categoryId === explorerCategoryId);
       } else if (explorerMetric === 'card') {
         txs = txs.filter(t => t.cardId && (t.type === 'CREDIT' || t.type === 'REFUND'));

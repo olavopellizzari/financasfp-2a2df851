@@ -128,7 +128,12 @@ export function Dashboard() {
 
   const stats = useMemo(() => {
     const income = launchTransactions.filter(t => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
-    const expenses = launchTransactions.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + t.amount, 0);
+    
+    // Filtramos pagamentos de fatura para não contar como gasto (já que as compras no cartão já são contadas)
+    const expenses = launchTransactions
+      .filter(t => t.type === 'EXPENSE' && !t.description.includes('Pagamento de Fatura'))
+      .reduce((s, t) => s + t.amount, 0);
+      
     const cardExpenses = launchTransactions.filter(t => t.type === 'CREDIT').reduce((s, t) => s + t.amount, 0);
     const refunds = launchTransactions.filter(t => t.type === 'REFUND').reduce((s, t) => s + t.amount, 0);
     
@@ -160,7 +165,11 @@ export function Dashboard() {
       const mStr = format(m, 'yyyy-MM');
       const txs = userFilteredTransactions.filter(t => t.effectiveMonth === mStr && t.status !== 'cancelled');
       const income = txs.filter(t => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
-      const expenses = txs.filter(t => t.type === 'EXPENSE' || t.type === 'CREDIT').reduce((s, t) => s + t.amount, 0);
+      
+      const expenses = txs
+        .filter(t => (t.type === 'EXPENSE' || t.type === 'CREDIT') && !t.description.includes('Pagamento de Fatura'))
+        .reduce((s, t) => s + t.amount, 0);
+        
       const refunds = txs.filter(t => t.type === 'REFUND').reduce((s, t) => s + t.amount, 0);
       
       return {
@@ -175,7 +184,7 @@ export function Dashboard() {
     const categoryMap: Record<string, number> = {};
     
     launchTransactions
-      .filter(t => t.type === 'EXPENSE' || t.type === 'CREDIT' || t.type === 'REFUND')
+      .filter(t => (t.type === 'EXPENSE' || t.type === 'CREDIT' || t.type === 'REFUND') && !t.description.includes('Pagamento de Fatura'))
       .forEach(t => {
         const cat = getCategoryById(t.categoryId);
         const name = cat?.name || 'Outros';
@@ -252,7 +261,11 @@ export function Dashboard() {
         const dayStr = format(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), day), 'yyyy-MM-dd');
         const txs = launchTransactions.filter(t => t.purchaseDate === dayStr && t.status !== 'cancelled');
         const income = txs.filter(t => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
-        const expenses = txs.filter(t => t.type === 'EXPENSE' || t.type === 'CREDIT').reduce((s, t) => s + t.amount, 0);
+        
+        const expenses = txs
+          .filter(t => (t.type === 'EXPENSE' || t.type === 'CREDIT') && !t.description.includes('Pagamento de Fatura'))
+          .reduce((s, t) => s + t.amount, 0);
+          
         const refunds = txs.filter(t => t.type === 'REFUND').reduce((s, t) => s + t.amount, 0);
         return {
           name: day.toString(),

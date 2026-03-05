@@ -108,7 +108,7 @@ export function EvolutionPage() {
     const cycleEndDay = targetBudgets[0]?.cycle_end_day || 28;
 
     const spent = targetTransactions
-      .filter(t => t.type === 'EXPENSE' || t.type === 'CREDIT' || t.type === 'REFUND')
+      .filter(t => (t.type === 'EXPENSE' || t.type === 'CREDIT' || t.type === 'REFUND') && !t.description.includes('Pagamento de Fatura'))
       .reduce((sum, t) => t.type === 'REFUND' ? sum - t.amount : sum + t.amount, 0);
 
     let endDate = setDate(parsedDate, cycleEndDay);
@@ -144,7 +144,11 @@ export function EvolutionPage() {
 
       const monthTxs = userTxs.filter(t => t.effectiveMonth === mStr);
       const monthIncome = monthTxs.filter(t => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
-      const monthExpense = monthTxs.filter(t => t.type === 'EXPENSE' || t.type === 'CREDIT').reduce((s, t) => s + t.amount, 0);
+      
+      const monthExpense = monthTxs
+        .filter(t => (t.type === 'EXPENSE' || t.type === 'CREDIT') && !t.description.includes('Pagamento de Fatura'))
+        .reduce((s, t) => s + t.amount, 0);
+        
       const monthRefund = monthTxs.filter(t => t.type === 'REFUND').reduce((s, t) => s + t.amount, 0);
       const netChange = monthIncome - (monthExpense - monthRefund);
       runningBalance -= netChange;

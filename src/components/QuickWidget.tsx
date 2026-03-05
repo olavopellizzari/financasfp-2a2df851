@@ -40,7 +40,7 @@ export function QuickWidget({ selectedUserId, date }: QuickWidgetProps) {
     const cycleEndDay = targetBudgets[0]?.cycle_end_day || 28;
 
     const spent = allTransactions
-      .filter(t => t.userId === userId && t.effectiveMonth === nextMonthStr && t.status !== 'cancelled')
+      .filter(t => t.userId === userId && t.effectiveMonth === nextMonthStr && t.status !== 'cancelled' && !t.description.includes('Pagamento de Fatura'))
       .reduce((sum, t) => {
         const amount = Number(t.amount) || 0;
         if (t.type === 'REFUND') return sum - amount;
