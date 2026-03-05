@@ -1,6 +1,6 @@
 // IndexedDB Wrapper with Schema Versioning and Migrations
 export const DB_NAME = 'FinancasDB';
-export const DB_VERSION = 3; 
+export const DB_VERSION = 4; 
 
 export interface User {
   id: string;
