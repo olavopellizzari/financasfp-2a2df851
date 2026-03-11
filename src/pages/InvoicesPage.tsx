@@ -182,14 +182,14 @@ export function InvoicesPage() {
       const newPaidAmount = invoice.paid + amount;
       const isFullyPaid = newPaidAmount >= invoice.total;
       
-      // 1. Salvar status da fatura no Supabase incluindo household_id (após rodar o SQL)
+      // 1. Salvar status da fatura no Supabase
       const { error: invError } = await supabase
         .from('invoices')
         .upsert({
           id: invoice.id.startsWith('temp-') ? undefined : invoice.id,
           card_id: invoice.card.id,
           user_id: currentUser?.id,
-          household_id: currentUser?.family_id, // Agora validado pelo SQL
+          household_id: currentUser?.family_id,
           month: invoice.month,
           closing_date: format(invoice.closingDate, 'yyyy-MM-dd'),
           due_date: format(invoice.dueDate, 'yyyy-MM-dd'),
@@ -218,6 +218,17 @@ export function InvoicesPage() {
         status: 'confirmed',
         notes: `Referente à fatura de ${format(safeParseMonth(invoice.month), 'MMMM/yyyy', { locale: ptBR })}`
       });
+
+      // 3. Marcar lançamentos individuais como pagos se a fatura foi totalmente quitada
+      if (isFullyPaid) {
+        const { error: txUpdateError } = await supabase
+          .from('transactions')
+          .update({ is_paid: true })
+          .eq('card_id', invoice.card.id)
+          .eq('mes_fatura', invoice.month);
+        
+        if (txUpdateError) throw txUpdateError;
+      }
       
       toast({ title: 'Pagamento registrado!', description: 'A fatura foi marcada como paga e o lançamento foi gerado na sua conta.' });
       setPayDialogOpen(false);
