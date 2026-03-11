@@ -122,7 +122,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     queryKey: ['budgets', familyId, familyUserIds],
     queryFn: async () => {
       if (!familyId) return [];
-      // Busca orçamentos dos usuários OU orçamentos da família (user_id is null)
       const { data } = await supabase
         .from('budgets')
         .select('*')
@@ -243,10 +242,11 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     let effectiveMonth = data.effectiveMonth;
     let mesFatura = data.mesFatura;
 
-    if (data.cardId) {
+    // Se o mesFatura não foi enviado explicitamente, calculamos
+    if (data.cardId && !mesFatura) {
       mesFatura = calculateMesFatura(pDate, data.cardId);
-      effectiveMonth = mesFatura; // Para transações de cartão, effectiveMonth é o mesFatura
-    } else {
+      effectiveMonth = mesFatura;
+    } else if (!data.cardId && !effectiveMonth) {
       effectiveMonth = format(pDate, 'yyyy-MM');
       mesFatura = null;
     }
@@ -256,7 +256,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       account_id: data.accountId || null, 
       card_id: data.cardId || null,
       category_id: data.categoryId || null, 
-      amount: data.amount, // Já deve vir o valor da parcela
+      amount: data.amount,
       description: data.description, 
       type: data.type,
       status: data.status || 'confirmed', 
@@ -273,7 +273,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }]);
     if (error) throw new Error(error.message);
     
-    // Salvar mapeamento de comerciante/categoria
     if (data.userId && data.description && data.categoryId) {
       await saveMerchantCategoryMapping(data.userId, data.description, data.categoryId);
     }
@@ -309,7 +308,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.from('transactions').update(updateData).eq('id', id);
     if (error) throw new Error(error.message);
 
-    // Salvar mapeamento de comerciante/categoria
     if (data.userId && data.description && data.categoryId) {
       await saveMerchantCategoryMapping(data.userId, data.description, data.categoryId);
     }
@@ -328,7 +326,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       household_id: familyId, user_id: data.userId || currentUser?.id, name: data.name, bank: data.bank,
       account_type: data.type === 'checking' ? 'corrente' : data.type, opening_balance: data.balance,
       opening_date: new Date().toISOString().split('T')[0], active: true, is_shared: data.isShared ?? true,
-      exclude_from_totals: data.excludeFromTotals ?? false
+      exclude_from_totals: data.exclude_from_totals ?? false
     }]);
     if (error) throw new Error(error.message);
     await refresh();
