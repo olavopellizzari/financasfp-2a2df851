@@ -19,7 +19,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Plus, Search, Wallet, CreditCard, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { Plus, Search, Wallet, CreditCard, ChevronLeft, ChevronRight, Filter, LayoutGrid } from 'lucide-react';
 import { format, addMonths, subMonths, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
@@ -32,6 +32,9 @@ export function TransactionsPage() {
   
   const activeTab = searchParams.get('view') || 'accounts';
   const isCardMode = activeTab === 'cards';
+  
+  const selectedAccountId = searchParams.get('accountId') || 'all';
+  const selectedCardId = searchParams.get('cardId') || 'all';
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -43,6 +46,74 @@ export function TransactionsPage() {
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'total');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const updateFilter = (key: string, value: string) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (value === 'all') {
+      newParams.delete(key);
+    } else {
+      newParams.set(key, value);
+    }
+    setSearchParams(newParams);
+  };
+
+  useEffect(() => {
+    if (currentUser?.id) {
+      setFormData(prev => ({ ...prev, userId: currentUser.id, destinationUserId: currentUser.id }));
+    }
+  }, [currentUser?.id]);
+
+  const selectedMonthStr = useMemo(() => format(currentMonth, 'yyyy-MM'), [currentMonth]);
+
+  const filteredTransactions = useMemo(() => {
+    return allTransactions.filter(tx => {
+      // 1. Filtragem por usuário/família
+      if (selectedUserId !== 'total') {
+        if (selectedUserId === 'all') {
+          const familyAccountIds = new Set(allAccounts.filter(a => a.is_shared && !a.user_id).map(a => a.id));
+          const familyCardIds = new Set(allCards.filter(c => (c as any).is_shared && !c.user_id).map(c => c.id));
+          
+          const isFamilyEntity = (tx.accountId && familyAccountIds.has(tx.accountId)) || 
+                                (tx.cardId && familyCardIds.has(tx.cardId));
+          
+          if (!isFamilyEntity) return false;
+        } else {
+          const userAccountIds = new Set(allAccounts.filter(a => a.user_id === selectedUserId).map(a => a.id));
+          const userCardIds = new Set(allCards.filter(c => c.user_id === selectedUserId).map(c => c.id));
+          
+          const belongsToUser = (tx.accountId && userAccountIds.has(tx.accountId)) || 
+                               (tx.cardId && userCardIds.has(tx.cardId)) ||
+                               (tx.userId === selectedUserId);
+          
+          if (!belongsToUser) return false;
+        }
+      }
+
+      // 2. Filtragem por modo (cartão/conta) e entidade específica
+      if (isCardMode) {
+        if (!tx.cardId) return false;
+        if (selectedCardId !== 'all' && tx.cardId !== selectedCardId) return false;
+        if (tx.mesFatura !== selectedMonthStr) return false;
+      } else {
+        if (tx.cardId) return false;
+        if (selectedAccountId !== 'all' && tx.accountId !== selectedAccountId) return false;
+        if (tx.effectiveMonth !== selectedMonthStr) return false;
+      }
+      
+      // 3. Busca e Tipo
+      const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType = filterType === 'ALL' || tx.type === filterType;
+      
+      return matchesSearch && matchesType;
+    }).sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
+  }, [allTransactions, selectedMonthStr, searchQuery, filterType, isCardMode, selectedUserId, allAccounts, allCards, selectedAccountId, selectedCardId]);
+
+  const monthStats = useMemo(() => {
+    const income = filteredTransactions.filter(t => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
+    const expenses = filteredTransactions.filter(t => t.type === 'EXPENSE' || t.type === 'CREDIT').reduce((s, t) => s + t.amount, 0);
+    const refunds = filteredTransactions.filter(t => t.type === 'REFUND').reduce((s, t) => s + t.amount, 0);
+    return { income, totalExpenses: expenses - refunds, balance: income - (expenses - refunds) };
+  }, [filteredTransactions]);
 
   const [formData, setFormData] = useState({
     userId: currentUser?.id || '',
@@ -61,64 +132,6 @@ export function TransactionsPage() {
     notes: ''
   });
 
-  useEffect(() => {
-    if (currentUser?.id) {
-      setFormData(prev => ({ ...prev, userId: currentUser.id, destinationUserId: currentUser.id }));
-    }
-  }, [currentUser?.id]);
-
-  const selectedMonthStr = useMemo(() => format(currentMonth, 'yyyy-MM'), [currentMonth]);
-
-  const filteredTransactions = useMemo(() => {
-    return allTransactions.filter(tx => {
-      // 1. Filtragem por usuário/família (Lógica sincronizada com Dashboard)
-      if (selectedUserId !== 'total') {
-        if (selectedUserId === 'all') {
-          // Filtro "Contas da Família": Apenas o que está em contas/cartões compartilhados sem dono
-          const familyAccountIds = new Set(allAccounts.filter(a => a.is_shared && !a.user_id).map(a => a.id));
-          const familyCardIds = new Set(allCards.filter(c => (c as any).is_shared && !c.user_id).map(c => c.id));
-          
-          const isFamilyEntity = (tx.accountId && familyAccountIds.has(tx.accountId)) || 
-                                (tx.cardId && familyCardIds.has(tx.cardId));
-          
-          if (!isFamilyEntity) return false;
-        } else {
-          // Filtro de Usuário Específico: O que pertence às contas dele OU o que ele mesmo lançou
-          const userAccountIds = new Set(allAccounts.filter(a => a.user_id === selectedUserId).map(a => a.id));
-          const userCardIds = new Set(allCards.filter(c => c.user_id === selectedUserId).map(c => c.id));
-          
-          const belongsToUser = (tx.accountId && userAccountIds.has(tx.accountId)) || 
-                               (tx.cardId && userCardIds.has(tx.cardId)) ||
-                               (tx.userId === selectedUserId);
-          
-          if (!belongsToUser) return false;
-        }
-      }
-
-      // 2. Filtragem por modo (cartão/conta)
-      if (isCardMode) {
-        if (!tx.cardId) return false;
-        if (tx.mesFatura !== selectedMonthStr) return false;
-      } else {
-        if (tx.cardId) return false;
-        if (tx.effectiveMonth !== selectedMonthStr) return false;
-      }
-      
-      // 3. Busca e Tipo
-      const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesType = filterType === 'ALL' || tx.type === filterType;
-      
-      return matchesSearch && matchesType;
-    }).sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
-  }, [allTransactions, selectedMonthStr, searchQuery, filterType, isCardMode, selectedUserId, allAccounts, allCards]);
-
-  const monthStats = useMemo(() => {
-    const income = filteredTransactions.filter(t => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
-    const expenses = filteredTransactions.filter(t => t.type === 'EXPENSE' || t.type === 'CREDIT').reduce((s, t) => s + t.amount, 0);
-    const refunds = filteredTransactions.filter(t => t.type === 'REFUND').reduce((s, t) => s + t.amount, 0);
-    return { income, totalExpenses: expenses - refunds, balance: income - (expenses - refunds) };
-  }, [filteredTransactions]);
-
   const handleOpenDialog = () => {
     setEditingTransaction(null);
     setFormData(prev => ({
@@ -128,10 +141,10 @@ export function TransactionsPage() {
       description: '',
       purchaseDate: new Date(),
       categoryId: '',
-      accountId: allAccounts.find(a => a.user_id === currentUser?.id || (a.is_shared && !a.user_id))?.id || '',
-      cardId: isCardMode ? (allCards.find(c => c.user_id === currentUser?.id || ((c as any).is_shared && !c.user_id))?.id || '') : '',
+      accountId: selectedAccountId !== 'all' ? selectedAccountId : (allAccounts.find(a => a.user_id === currentUser?.id || (a.is_shared && !a.user_id))?.id || ''),
+      cardId: isCardMode ? (selectedCardId !== 'all' ? selectedCardId : (allCards.find(c => c.user_id === currentUser?.id || ((c as any).is_shared && !c.user_id))?.id || '')) : '',
       installments: '1',
-      isPaid: !isCardMode, // Cartão nasce pendente
+      isPaid: !isCardMode,
       recurrence: 'none',
       notes: ''
     }));
@@ -139,7 +152,6 @@ export function TransactionsPage() {
   };
 
   const handleEdit = (tx: Transaction) => {
-    // Verificar permissão de escrita
     const account = tx.accountId ? allAccounts.find(a => a.id === tx.accountId) : null;
     const card = tx.cardId ? allCards.find(c => c.id === tx.cardId) : null;
     
@@ -172,7 +184,6 @@ export function TransactionsPage() {
   };
 
   const handleDelete = async (txIds: string[]) => {
-    // Filtrar apenas os que o usuário pode deletar
     const allowedIds = txIds.filter(id => {
       const tx = allTransactions.find(t => t.id === id);
       if (!tx) return false;
@@ -288,7 +299,7 @@ export function TransactionsPage() {
             installmentGroupId: groupId,
             installmentNumber: i + 1,
             totalInstallments: totalInstallments,
-            isPaid: false // Sempre pendente no cartão
+            isPaid: false
           });
         }
         toast({ title: 'Lançamento(s) de cartão criado(s)!' });
@@ -313,16 +324,10 @@ export function TransactionsPage() {
   };
 
   const availableAccounts = useMemo(() => {
-    // Apenas contas que o usuário pode ESCREVER:
-    // 1. Contas da família (compartilhadas e sem dono)
-    // 2. Suas próprias contas (privadas ou exclusivas)
     return allAccounts.filter(a => (a.is_shared && !a.user_id) || a.user_id === currentUser?.id);
   }, [allAccounts, currentUser?.id]);
 
   const availableCards = useMemo(() => {
-    // Apenas cartões que o usuário pode ESCREVER:
-    // 1. Cartões da família (compartilhados e sem dono)
-    // 2. Seus próprios cartões (privados ou exclusivos)
     return allCards.filter(c => ((c as any).is_shared && !c.user_id) || c.user_id === currentUser?.id);
   }, [allCards, currentUser?.id]);
 
@@ -348,7 +353,11 @@ export function TransactionsPage() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setSearchParams({ view: v })} className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set('view', v);
+        setSearchParams(newParams);
+      }} className="w-full">
         <TabsList className="grid w-full grid-cols-2 max-w-md">
           <TabsTrigger value="accounts" className="gap-2">
             <Wallet className="h-4 w-4" /> Contas
@@ -372,9 +381,63 @@ export function TransactionsPage() {
             <span className="text-sm font-bold min-w-[120px] text-center capitalize">{format(currentMonth, 'MMMM yyyy', { locale: ptBR })}</span>
             <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}><ChevronRight className="h-4 w-4" /></Button>
           </div>
+          
           <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-            <div className="relative flex-1 min-w-[150px] sm:min-w-[200px]"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" /></div>
-            <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}><SelectTrigger className="w-full sm:w-[140px]"><Filter className="w-4 h-4 mr-2" /><SelectValue placeholder="Tipo" /></SelectTrigger><SelectContent><SelectItem value="ALL">Todos</SelectItem><SelectItem value="INCOME">Receita</SelectItem><SelectItem value="EXPENSE">Despesa</SelectItem><SelectItem value="CREDIT">Cartão</SelectItem><SelectItem value="REFUND">Estorno</SelectItem></SelectContent></Select>
+            {/* Seletor Específico de Conta ou Cartão */}
+            {isCardMode ? (
+              <Select value={selectedCardId} onValueChange={(v) => updateFilter('cardId', v)}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <CreditCard className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder="Todos os Cartões" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    <div className="flex items-center gap-2">
+                      <LayoutGrid className="w-4 h-4" /> Todos os Cartões
+                    </div>
+                  </SelectItem>
+                  {allCards.filter(c => !c.is_archived).map(card => (
+                    <SelectItem key={card.id} value={card.id}>{card.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Select value={selectedAccountId} onValueChange={(v) => updateFilter('accountId', v)}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <Wallet className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder="Todas as Contas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    <div className="flex items-center gap-2">
+                      <LayoutGrid className="w-4 h-4" /> Todas as Contas
+                    </div>
+                  </SelectItem>
+                  {allAccounts.filter(a => a.active !== false).map(acc => (
+                    <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            <div className="relative flex-1 min-w-[150px] sm:min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+            </div>
+            
+            <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}>
+              <SelectTrigger className="w-full sm:w-[140px]">
+                <Filter className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Todos</SelectItem>
+                <SelectItem value="INCOME">Receita</SelectItem>
+                <SelectItem value="EXPENSE">Despesa</SelectItem>
+                <SelectItem value="CREDIT">Cartão</SelectItem>
+                <SelectItem value="REFUND">Estorno</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
