@@ -54,7 +54,21 @@ export function TransactionForm({
   const handleTypeChange = (newType: TransactionType) => {
     // Lançamentos de cartão (CREDIT) nascem pendentes. Outros nascem pagos.
     const isPaid = newType !== 'CREDIT';
-    setFormData({ ...formData, type: newType, isPaid });
+    
+    let categoryId = formData.categoryId;
+    
+    // Se for transferência, tenta selecionar a categoria "Transferência" automaticamente
+    if (newType === 'TRANSFER') {
+      const transferCat = categories.find(c => 
+        c.name.toLowerCase() === 'transferência' || 
+        c.name.toLowerCase() === 'transferencia'
+      );
+      if (transferCat) {
+        categoryId = transferCat.id;
+      }
+    }
+    
+    setFormData({ ...formData, type: newType, isPaid, categoryId });
   };
 
   const handleDescriptionChange = async (newDescription: string) => {

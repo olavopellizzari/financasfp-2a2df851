@@ -239,8 +239,36 @@ export function TransactionsPage() {
         });
         toast({ title: 'Lançamento atualizado!' });
       } else if (formData.type === 'TRANSFER') {
-        await createTransaction({ ...baseData, type: 'EXPENSE', accountId: formData.accountId, categoryId: categories.find(c => c.name === 'Transferência')?.id || '', description: `Transferência para ${users.find(u => u.id === formData.destinationUserId)?.name || 'Outra Conta'}`, isPaid: true });
-        await createTransaction({ ...baseData, type: 'INCOME', userId: formData.destinationUserId, accountId: formData.destinationAccountId, categoryId: categories.find(c => c.name === 'Transferência')?.id || '', description: `Transferência de ${users.find(u => u.id === formData.destinationUserId)?.name || 'Outra Conta'}`, isPaid: true });
+        // Busca a categoria de transferência se não estiver selecionada
+        const transferCatId = formData.categoryId || categories.find(c => 
+          c.name.toLowerCase() === 'transferência' || 
+          c.name.toLowerCase() === 'transferencia'
+        )?.id || '';
+
+        const senderName = users.find(u => u.id === formData.userId)?.name || 'Outra Conta';
+        const receiverName = users.find(u => u.id === formData.destinationUserId)?.name || 'Outra Conta';
+
+        // Lançamento de Saída (Despesa)
+        await createTransaction({ 
+          ...baseData, 
+          type: 'EXPENSE', 
+          accountId: formData.accountId, 
+          categoryId: transferCatId, 
+          description: `Transferência para ${receiverName}`, 
+          isPaid: true 
+        });
+
+        // Lançamento de Entrada (Receita)
+        await createTransaction({ 
+          ...baseData, 
+          type: 'INCOME', 
+          userId: formData.destinationUserId, 
+          accountId: formData.destinationAccountId, 
+          categoryId: transferCatId, 
+          description: `Transferência de ${senderName}`, 
+          isPaid: true 
+        });
+
         toast({ title: 'Transferência criada!' });
       } else if (formData.type === 'CREDIT' || formData.type === 'REFUND') {
         if (!formData.cardId) throw new Error('Selecione um cartão.');
