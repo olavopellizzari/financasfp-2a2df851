@@ -107,7 +107,14 @@ export function Dashboard() {
 
   const userFilteredTransactions = useMemo(() => {
     // Filtramos transferências logo na base para não poluírem o dashboard
-    const baseTxs = allTransactions.filter(t => t.type !== 'TRANSFER');
+    // Consideramos tanto o tipo 'TRANSFER' quanto a categoria 'Transferência'
+    const baseTxs = allTransactions.filter(t => {
+      if (t.type === 'TRANSFER') return false;
+      const cat = getCategoryById(t.categoryId);
+      const catName = cat?.name?.toLowerCase() || '';
+      if (catName === 'transferencia' || catName === 'transferência') return false;
+      return true;
+    });
 
     if (selectedUserId === 'total') return baseTxs;
 
@@ -128,7 +135,7 @@ export function Dashboard() {
       if (t.cardId) return userCardIds.has(t.cardId);
       return t.userId === selectedUserId;
     });
-  }, [allTransactions, allAccounts, allCards, selectedUserId]);
+  }, [allTransactions, allAccounts, allCards, selectedUserId, getCategoryById]);
 
   const launchTransactions = useMemo(() => {
     return userFilteredTransactions.filter(t => t.effectiveMonth === selectedMonthStr && t.status !== 'cancelled');
