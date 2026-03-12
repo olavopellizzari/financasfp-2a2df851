@@ -106,12 +106,15 @@ export function Dashboard() {
   }, [allAccounts, selectedUserId]);
 
   const userFilteredTransactions = useMemo(() => {
-    if (selectedUserId === 'total') return allTransactions;
+    // Filtramos transferências logo na base para não poluírem o dashboard
+    const baseTxs = allTransactions.filter(t => t.type !== 'TRANSFER');
+
+    if (selectedUserId === 'total') return baseTxs;
 
     if (selectedUserId === 'all') {
       const familyAccountIds = new Set(allAccounts.filter(a => a.is_shared && !a.user_id).map(a => a.id));
       const familyCardIds = new Set(allCards.filter(c => (c as any).is_shared && !c.user_id).map(c => c.id));
-      return allTransactions.filter(t => 
+      return baseTxs.filter(t => 
         (t.accountId && familyAccountIds.has(t.accountId)) || 
         (t.cardId && familyCardIds.has(t.cardId))
       );
@@ -120,7 +123,7 @@ export function Dashboard() {
     const userAccountIds = new Set(allAccounts.filter(a => a.user_id === selectedUserId).map(a => a.id));
     const userCardIds = new Set(allCards.filter(c => c.user_id === selectedUserId).map(c => c.id));
     
-    return allTransactions.filter(t => {
+    return baseTxs.filter(t => {
       if (t.accountId) return userAccountIds.has(t.accountId);
       if (t.cardId) return userCardIds.has(t.cardId);
       return t.userId === selectedUserId;
