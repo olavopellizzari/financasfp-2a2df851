@@ -317,7 +317,21 @@ export function TransactionsPage() {
               <Select value={selectedAccountId} onValueChange={(v) => updateFilter('accountId', v)}><SelectTrigger className="w-full sm:w-[180px]"><Wallet className="w-4 h-4 mr-2 text-muted-foreground" /><SelectValue placeholder="Todas as Contas" /></SelectTrigger><SelectContent><SelectItem value="all"><div className="flex items-center gap-2"><LayoutGrid className="w-4 h-4" /> Todas as Contas</div></SelectItem>{allAccounts.filter(a => a.active !== false).map(acc => (<SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>))}</SelectContent></Select>
             )}
             <div className="relative flex-1 min-w-[150px] sm:min-w-[200px]"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" /></div>
-            <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}><SelectTrigger className="w-full sm:w-[140px]"><Filter className="w-4 h-4 mr-2" /><SelectValue placeholder="Tipo" /></SelectTrigger><SelectContent><SelectItem value="ALL">Todos</SelectItem><SelectItem value="INCOME">Receita</SelectItem><SelectItem value="EXPENSE">Despesa</SelectItem><SelectItem value="CREDIT">Cartão</SelectItem><SelectItem value="REFUND">Estorno</SelectItem></SelectContent></Select>
+            
+            {!isCardMode && (
+              <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}>
+                <SelectTrigger className="w-full sm:w-[140px]">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Todos</SelectItem>
+                  <SelectItem value="INCOME">Receita</SelectItem>
+                  <SelectItem value="EXPENSE">Despesa</SelectItem>
+                  <SelectItem value="REFUND">Estorno</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </CardContent>
       </Card>
