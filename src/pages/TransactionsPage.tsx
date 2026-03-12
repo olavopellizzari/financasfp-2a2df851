@@ -7,7 +7,6 @@ import { formatCurrency, Transaction, TransactionType, generateId } from '@/lib/
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { UserFilter } from '@/components/UserFilter';
 import { TransactionForm } from '@/components/transactions/TransactionForm';
 import { TransactionTable } from '@/components/transactions/TransactionTable';
 import { TransactionActions } from '@/components/transactions/TransactionActions';
@@ -43,6 +42,7 @@ export function TransactionsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<TransactionType | 'ALL'>('ALL');
   
+  // Mantemos o estado para o funcionamento da filtragem, mas removemos o seletor da UI conforme solicitado
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'total');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -246,19 +246,17 @@ export function TransactionsPage() {
         if (!formData.cardId) throw new Error('Selecione um cartão.');
         const groupId = totalInstallments > 1 ? generateId() : null;
         
-        // Calcula o primeiro mês de fatura baseado na data da compra
         const firstMesFaturaStr = calculateMesFatura(formData.purchaseDate, formData.cardId);
         const firstMesFaturaDate = parse(firstMesFaturaStr, 'yyyy-MM', new Date());
 
         for (let i = 0; i < totalInstallments; i++) {
-          // Incrementa apenas o mês da fatura, mantendo a data da compra original
           const currentMesFaturaDate = addMonths(firstMesFaturaDate, i);
           const currentMesFatura = format(currentMesFaturaDate, 'yyyy-MM');
           
           await createTransaction({
             ...baseData,
             description: formData.description,
-            purchaseDate: formData.purchaseDate, // Mantém a data original da compra
+            purchaseDate: formData.purchaseDate,
             cardId: formData.cardId,
             effectiveMonth: currentMesFatura,
             mes_fatura: currentMesFatura,
@@ -291,7 +289,6 @@ export function TransactionsPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">Lançamentos</h1>
         <div className="flex items-center gap-3">
-          <UserFilter value={selectedUserId} onChange={setSelectedUserId} showTotalOption={true} className="w-full sm:w-[180px] shrink-0" />
           <Button onClick={handleOpenDialog} className="gradient-primary shadow-primary px-3 sm:px-4"><Plus className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Novo</span></Button>
         </div>
       </div>
