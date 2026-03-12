@@ -143,11 +143,12 @@ export function SetupPage() {
       if (accError) throw accError;
 
       const defaultCategories = [
-        { name: 'Salário', kind: 'receita' },
-        { name: 'Alimentação', kind: 'despesa' },
-        { name: 'Moradia', kind: 'despesa' },
-        { name: 'Lazer', kind: 'despesa' },
-        { name: 'Transporte', kind: 'despesa' }
+        { name: 'Salário', kind: 'receita', icon: '💰', color: '#22c55e' },
+        { name: 'Alimentação', kind: 'despesa', icon: '🛒', color: '#f97316' },
+        { name: 'Moradia', kind: 'despesa', icon: '🏠', color: '#ef4444' },
+        { name: 'Lazer', kind: 'despesa', icon: '🏖️', color: '#06b6d4' },
+        { name: 'Transporte', kind: 'despesa', icon: '🚗', color: '#1f2937' },
+        { name: 'Transferência', kind: 'despesa', icon: '🔄', color: '#6366f1' }
       ];
 
       await supabase.from('categories').insert(

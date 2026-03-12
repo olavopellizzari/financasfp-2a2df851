@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Search, Sparkles, Loader2, Globe, Home } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Sparkles, Loader2, Globe, Home, LayoutGrid } from 'lucide-react';
 import { Category } from '@/lib/db';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -115,7 +115,12 @@ export function CategoriesPage() {
   );
 
   const incomeCats = filteredCategories.filter((c) => c.type === 'income' || c.kind === 'receita');
-  const expenseCats = filteredCategories.filter((c) => c.type === 'expense' || c.kind === 'despesa');
+  const expenseCats = filteredCategories.filter((c) => (c.type === 'expense' || c.kind === 'despesa') && c.name.toLowerCase() !== 'transferência' && c.name.toLowerCase() !== 'transferencia');
+  const otherCats = filteredCategories.filter((c) => 
+    c.kind === 'cartao' || 
+    c.name.toLowerCase() === 'transferência' || 
+    c.name.toLowerCase() === 'transferencia'
+  );
 
   const CategoryCard = ({ cat }: { cat: Category }) => {
     const isGlobal = !(cat as any).household_id;
@@ -196,9 +201,10 @@ export function CategoriesPage() {
       </div>
 
       <Tabs defaultValue="expenses">
-        <TabsList className="grid w-full grid-cols-2 max-w-[400px] bg-muted/50 p-1 rounded-xl">
+        <TabsList className="grid w-full grid-cols-3 max-w-[600px] bg-muted/50 p-1 rounded-xl">
           <TabsTrigger value="expenses" className="rounded-lg">Despesas ({expenseCats.length})</TabsTrigger>
           <TabsTrigger value="income" className="rounded-lg">Receitas ({incomeCats.length})</TabsTrigger>
+          <TabsTrigger value="others" className="rounded-lg">Outros ({otherCats.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="expenses" className="mt-6">
@@ -212,6 +218,14 @@ export function CategoriesPage() {
         <TabsContent value="income" className="mt-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {incomeCats.map((cat) => (
+              <CategoryCard key={cat.id} cat={cat} />
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="others" className="mt-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {otherCats.map((cat) => (
               <CategoryCard key={cat.id} cat={cat} />
             ))}
           </div>
@@ -232,7 +246,7 @@ export function CategoriesPage() {
             <div className="space-y-2"><Label>Nome</Label><Input value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} className="h-11 rounded-xl" placeholder="Ex: Supermercado" /></div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Ícone (Emoji)</Label><Input value={categoryForm.icon} onChange={(e) => setCategoryForm({ ...categoryForm, icon: e.target.value })} className="h-11 rounded-xl text-center text-xl" /></div>
-              <div className="space-y-2"><Label>Tipo</Label><Select value={categoryForm.kind} onValueChange={(v: any) => setCategoryForm({ ...categoryForm, kind: v })}><SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="despesa">Despesa</SelectItem><SelectItem value="receita">Receita</SelectItem></SelectContent></Select></div>
+              <div className="space-y-2"><Label>Tipo</Label><Select value={categoryForm.kind} onValueChange={(v: any) => setCategoryForm({ ...categoryForm, kind: v })}><SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="despesa">Despesa</SelectItem><SelectItem value="receita">Receita</SelectItem><SelectItem value="cartao">Cartão</SelectItem></SelectContent></Select></div>
             </div>
           </div>
           <DialogFooter className="flex flex-col sm:flex-row gap-2">

@@ -53,6 +53,9 @@ export const DEFAULT_CATEGORIES: Omit<Category, 'id' | 'createdAt'>[] = [
   { name: 'Tarifas Bancárias', icon: '💸', color: '#64748b', type: 'expense', kind: 'despesa', isSystem: true },
   { name: 'Impostos', icon: '🏛️', color: '#475569', type: 'expense', kind: 'despesa', isSystem: true },
   { name: 'Outras Despesas', icon: '❓', color: '#94a3b8', type: 'expense', kind: 'despesa', isSystem: true },
+
+  // --- SISTEMA ---
+  { name: 'Transferência', icon: '🔄', color: '#6366f1', type: 'expense', kind: 'despesa', isSystem: true },
 ];
 
 const DEFAULT_TAGS: Omit<Tag, 'id' | 'createdAt'>[] = [
