@@ -112,7 +112,7 @@ export function Dashboard() {
       if (t.type === 'TRANSFER') return false;
       const cat = getCategoryById(t.categoryId);
       const catName = cat?.name?.toLowerCase() || '';
-      if (catName === 'transferencia' || catName === 'transferência') return false;
+      if (catName.includes('transferencia') || catName.includes('transferência')) return false;
       return true;
     });
 

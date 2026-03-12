@@ -16,7 +16,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
 export function BudgetPage() {
-  const { allTransactions, categories, allBudgets, saveBudget } = useFinance();
+  const { allTransactions, categories, allBudgets, saveBudget, getCategoryById } = useFinance();
   const { currentUser } = useAuth();
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'all');
@@ -51,17 +51,26 @@ export function BudgetPage() {
       (selectedUserId === 'all' || t.userId === selectedUserId)
     );
     
-    const expenses = monthTransactions
+    // Filtramos transferências do cálculo de gastos
+    const filteredTxs = monthTransactions.filter(t => {
+      if (t.type === 'TRANSFER') return false;
+      const cat = getCategoryById(t.categoryId);
+      const catName = cat?.name?.toLowerCase() || '';
+      if (catName.includes('transferencia') || catName.includes('transferência')) return false;
+      return true;
+    });
+
+    const expenses = filteredTxs
       .filter(t => (t.type === 'EXPENSE' || t.type === 'CREDIT') && !t.description.includes('Pagamento de Fatura'))
       .reduce((sum, t) => sum + t.amount, 0);
     
     const byCategory: Record<string, number> = {};
-    monthTransactions.filter(t => (t.type === 'EXPENSE' || t.type === 'CREDIT') && !t.description.includes('Pagamento de Fatura')).forEach(t => {
+    filteredTxs.filter(t => (t.type === 'EXPENSE' || t.type === 'CREDIT') && !t.description.includes('Pagamento de Fatura')).forEach(t => {
       if (t.categoryId) byCategory[t.categoryId] = (byCategory[t.categoryId] || 0) + t.amount;
     });
     
     return { expenses, byCategory };
-  }, [allTransactions, selectedMonth, selectedUserId]);
+  }, [allTransactions, selectedMonth, selectedUserId, getCategoryById]);
 
   const handleSaveBudget = async () => {
     try {

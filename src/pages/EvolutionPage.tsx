@@ -35,7 +35,7 @@ import { cn } from '@/lib/utils';
 
 export function EvolutionPage() {
   const { currentUser, users } = useAuth();
-  const { allTransactions, allAccounts, allBudgets, getAccountBalance, saveBudget } = useFinance();
+  const { allTransactions, allAccounts, allBudgets, getAccountBalance, saveBudget, getCategoryById } = useFinance();
   const [snapshots, setSnapshots] = useState<CycleSnapshot[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
@@ -108,7 +108,14 @@ export function EvolutionPage() {
     const cycleEndDay = targetBudgets[0]?.cycle_end_day || 28;
 
     const spent = targetTransactions
-      .filter(t => (t.type === 'EXPENSE' || t.type === 'CREDIT' || t.type === 'REFUND') && !t.description.includes('Pagamento de Fatura'))
+      .filter(t => {
+        if (t.type === 'TRANSFER') return false;
+        const cat = getCategoryById(t.categoryId);
+        const catName = cat?.name?.toLowerCase() || '';
+        if (catName.includes('transferencia') || catName.includes('transferência')) return false;
+        
+        return (t.type === 'EXPENSE' || t.type === 'CREDIT' || t.type === 'REFUND') && !t.description.includes('Pagamento de Fatura');
+      })
       .reduce((sum, t) => t.type === 'REFUND' ? sum - t.amount : sum + t.amount, 0);
 
     let endDate = setDate(parsedDate, cycleEndDay);
@@ -117,7 +124,7 @@ export function EvolutionPage() {
     const limit = available / daysRemaining;
 
     return { salary, goal, spent, available, daysRemaining, limit, endDate };
-  }, [allBudgets, allTransactions, selectedUserId, selectedMonthStr, viewDate]);
+  }, [allBudgets, allTransactions, selectedUserId, selectedMonthStr, viewDate, getCategoryById]);
 
   const evolutionData = useMemo(() => {
     const today = new Date();
@@ -143,13 +150,23 @@ export function EvolutionPage() {
       });
 
       const monthTxs = userTxs.filter(t => t.effectiveMonth === mStr);
-      const monthIncome = monthTxs.filter(t => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
       
-      const monthExpense = monthTxs
+      // Filtramos transferências do cálculo de mudança líquida
+      const filteredMonthTxs = monthTxs.filter(t => {
+        if (t.type === 'TRANSFER') return false;
+        const cat = getCategoryById(t.categoryId);
+        const catName = cat?.name?.toLowerCase() || '';
+        if (catName.includes('transferencia') || catName.includes('transferência')) return false;
+        return true;
+      });
+
+      const monthIncome = filteredMonthTxs.filter(t => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
+      
+      const monthExpense = filteredMonthTxs
         .filter(t => (t.type === 'EXPENSE' || t.type === 'CREDIT') && !t.description.includes('Pagamento de Fatura'))
         .reduce((s, t) => s + t.amount, 0);
         
-      const monthRefund = monthTxs.filter(t => t.type === 'REFUND').reduce((s, t) => s + t.amount, 0);
+      const monthRefund = filteredMonthTxs.filter(t => t.type === 'REFUND').reduce((s, t) => s + t.amount, 0);
       const netChange = monthIncome - (monthExpense - monthRefund);
       runningBalance -= netChange;
     }
@@ -179,7 +196,7 @@ export function EvolutionPage() {
     }
 
     return [...historyData.map(d => ({ ...d, projected: d.saldo })), ...futureData];
-  }, [snapshots, selectedUserId, allAccounts, getAccountBalance, allTransactions, cycleInfo]);
+  }, [snapshots, selectedUserId, allAccounts, getAccountBalance, allTransactions, cycleInfo, getCategoryById]);
 
   const handleSaveConfig = async () => {
     const existing = allBudgets.find(b => b.user_id === configForm.userId && b.month === selectedMonthStr);
