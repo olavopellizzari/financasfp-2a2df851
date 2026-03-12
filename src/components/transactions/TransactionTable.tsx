@@ -1,13 +1,13 @@
 "use client";
 
 import React from 'react';
-import { Transaction, Category, User, formatCurrency } from '@/lib/db';
+import { Transaction, Category, User, Account, Card, formatCurrency } from '@/lib/db';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Pencil, Trash2, Check, RotateCcw, Clock, CheckCircle2, ArrowUpRight, ArrowDownRight, ArrowLeftRight, CreditCard, Undo2 } from 'lucide-react';
+import { Pencil, Trash2, Check, RotateCcw, Clock, CheckCircle2, ArrowUpRight, ArrowDownRight, ArrowLeftRight, CreditCard, Undo2, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TYPE_ICONS: any = {
@@ -28,16 +28,30 @@ interface TransactionTableProps {
   onTogglePaid: (tx: Transaction) => void;
   getCategoryById: (id: string) => Category | undefined;
   users: User[];
+  accounts: Account[];
+  cards: Card[];
 }
 
 export function TransactionTable({
   transactions, selectedIds, onToggleSelect, onToggleSelectAll,
-  onEdit, onDelete, onTogglePaid, getCategoryById, users
+  onEdit, onDelete, onTogglePaid, getCategoryById, users, accounts, cards
 }: TransactionTableProps) {
   
   const formatLocal = (date: string, formatStr: string) => {
     const d = parseISO(date);
     return isValid(d) ? format(d, formatStr, { locale: ptBR }) : '';
+  };
+
+  const getEntityName = (tx: Transaction) => {
+    if (tx.cardId) {
+      const card = cards.find(c => c.id === tx.cardId);
+      return { name: card?.name || 'Cartão', icon: <CreditCard className="w-3 h-3" /> };
+    }
+    if (tx.accountId) {
+      const account = accounts.find(a => a.id === tx.accountId);
+      return { name: account?.name || 'Conta', icon: <Wallet className="w-3 h-3" /> };
+    }
+    return null;
   };
 
   return (
@@ -54,6 +68,7 @@ export function TransactionTable({
             <th className="text-left p-4 font-semibold whitespace-nowrap min-w-[80px]">Data</th>
             <th className="text-left p-4 font-semibold whitespace-nowrap min-w-[200px]">Descrição</th>
             <th className="text-left p-4 font-semibold whitespace-nowrap min-w-[120px]">Categoria</th>
+            <th className="text-left p-4 font-semibold whitespace-nowrap min-w-[120px]">Origem</th>
             <th className="text-right p-4 font-semibold whitespace-nowrap min-w-[100px]">Valor</th>
             <th className="text-center p-4 font-semibold whitespace-nowrap min-w-[100px]">Status</th>
           </tr>
@@ -64,6 +79,7 @@ export function TransactionTable({
             const txUser = users.find(u => u.id === tx.userId);
             const typeInfo = TYPE_ICONS[tx.type] || TYPE_ICONS.EXPENSE;
             const Icon = typeInfo.icon;
+            const entity = getEntityName(tx);
 
             return (
               <tr key={tx.id} className={cn("hover:bg-muted/30 transition-colors group", selectedIds.has(tx.id) && "bg-primary/5")}>
@@ -88,6 +104,14 @@ export function TransactionTable({
                   </div>
                 </td>
                 <td className="p-4 whitespace-nowrap"><Badge variant="outline" className="font-normal">{category?.icon} {category?.name || 'Sem Categoria'}</Badge></td>
+                <td className="p-4 whitespace-nowrap">
+                  {entity && (
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      {entity.icon}
+                      <span className="text-xs font-medium">{entity.name}</span>
+                    </div>
+                  )}
+                </td>
                 <td className="p-4 text-right font-semibold whitespace-nowrap">
                   <span className={cn(typeInfo.color)}>
                     {tx.type === 'INCOME' || tx.type === 'REFUND' ? '+' : '-'} {formatCurrency(tx.amount)}

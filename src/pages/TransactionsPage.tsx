@@ -343,6 +343,7 @@ export function TransactionsPage() {
             onToggleSelect={(id) => { const newSelectedIds = new Set(selectedIds); if (newSelectedIds.has(id)) newSelectedIds.delete(id); else newSelectedIds.add(id); setSelectedIds(newSelectedIds); }}
             onToggleSelectAll={() => { if (selectedIds.size === filteredTransactions.length) setSelectedIds(new Set()); else setSelectedIds(new Set(filteredTransactions.map(t => t.id))); }}
             onEdit={handleEdit} onDelete={(tx) => handleDelete([tx.id])} onTogglePaid={handleTogglePaid} getCategoryById={getCategoryById} users={users as any}
+            accounts={allAccounts} cards={allCards}
           />
         </CardContent>
       </Card>
