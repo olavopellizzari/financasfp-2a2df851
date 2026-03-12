@@ -194,58 +194,56 @@ export function TransactionForm({
               </div>
             </div>
 
-            {formData.type !== 'TRANSFER' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Categoria</Label>
-                  <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-between font-normal">
-                        {formData.categoryId ? sortedCategories.find((cat) => cat.id === formData.categoryId)?.name : "Selecionar..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[240px] p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder="Buscar..." />
-                        <CommandList>
-                          <CommandEmpty>Nenhuma encontrada.</CommandEmpty>
-                          <CommandGroup>
-                            {sortedCategories.filter(c => formData.type === 'INCOME' ? c.type === 'income' : c.type === 'expense').map((cat) => (
-                              <CommandItem key={cat.id} value={cat.name} onSelect={() => { setFormData({ ...formData, categoryId: cat.id }); setCategoryPopoverOpen(false); }}>
-                                <Check className={cn("mr-2 h-4 w-4", formData.categoryId === cat.id ? "opacity-100" : "opacity-0")} />
-                                <span className="mr-2">{cat.icon}</span>{cat.name}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="space-y-2">
-                  <Label>{formData.type === 'CREDIT' ? 'Parcelas' : 'Repetir'}</Label>
-                  {formData.type === 'CREDIT' ? (
-                    <Input 
-                      type="number" 
-                      min="1" 
-                      max="96" 
-                      value={formData.installments} 
-                      onChange={e => setFormData({ ...formData, installments: e.target.value })} 
-                    />
-                  ) : (
-                    <Select value={formData.recurrence} onValueChange={(v: any) => setFormData({ ...formData, recurrence: v })} disabled={!!editingTransaction}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Não repetir</SelectItem>
-                        <SelectItem value="custom">Repetir X vezes</SelectItem>
-                        <SelectItem value="monthly">Mensal (Fixo)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Categoria</Label>
+                <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between font-normal">
+                      {formData.categoryId ? sortedCategories.find((cat) => cat.id === formData.categoryId)?.name : "Selecionar..."}
+                      <Check className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[240px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Buscar..." />
+                      <CommandList>
+                        <CommandEmpty>Nenhuma encontrada.</CommandEmpty>
+                        <CommandGroup>
+                          {sortedCategories.filter(c => formData.type === 'INCOME' ? c.type === 'income' : c.type === 'expense').map((cat) => (
+                            <CommandItem key={cat.id} value={cat.name} onSelect={() => { setFormData({ ...formData, categoryId: cat.id }); setCategoryPopoverOpen(false); }}>
+                              <Check className={cn("mr-2 h-4 w-4", formData.categoryId === cat.id ? "opacity-100" : "opacity-0")} />
+                              <span className="mr-2">{cat.icon}</span>{cat.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
-            )}
+              <div className="space-y-2">
+                <Label>{formData.type === 'CREDIT' ? 'Parcelas' : 'Repetir'}</Label>
+                {formData.type === 'CREDIT' ? (
+                  <Input 
+                    type="number" 
+                    min="1" 
+                    max="96" 
+                    value={formData.installments} 
+                    onChange={e => setFormData({ ...formData, installments: e.target.value })} 
+                  />
+                ) : (
+                  <Select value={formData.recurrence} onValueChange={(v: any) => setFormData({ ...formData, recurrence: v })} disabled={!!editingTransaction}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Não repetir</SelectItem>
+                      <SelectItem value="custom">Repetir X vezes</SelectItem>
+                      <SelectItem value="monthly">Mensal (Fixo)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </div>
 
             {formData.type === 'CREDIT' && parsedInstallments > 1 && (
               <div className="space-y-2 animate-fade-in">
