@@ -148,7 +148,7 @@ export function SetupPage() {
         { name: 'Moradia', kind: 'despesa', icon: '🏠', color: '#ef4444' },
         { name: 'Lazer', kind: 'despesa', icon: '🏖️', color: '#06b6d4' },
         { name: 'Transporte', kind: 'despesa', icon: '🚗', color: '#1f2937' },
-        { name: 'Transferência', kind: 'despesa', icon: '🔄', color: '#6366f1' }
+        { name: 'Transferência', kind: 'cartao', icon: '🔄', color: '#6366f1' }
       ];
 
       await supabase.from('categories').insert(

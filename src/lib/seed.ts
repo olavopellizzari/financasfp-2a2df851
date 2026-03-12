@@ -55,7 +55,7 @@ export const DEFAULT_CATEGORIES: Omit<Category, 'id' | 'createdAt'>[] = [
   { name: 'Outras Despesas', icon: '❓', color: '#94a3b8', type: 'expense', kind: 'despesa', isSystem: true },
 
   // --- SISTEMA ---
-  { name: 'Transferência', icon: '🔄', color: '#6366f1', type: 'expense', kind: 'despesa', isSystem: true },
+  { name: 'Transferência', icon: '🔄', color: '#6366f1', type: 'expense', kind: 'cartao', isSystem: true },
 ];
 
 const DEFAULT_TAGS: Omit<Tag, 'id' | 'createdAt'>[] = [
