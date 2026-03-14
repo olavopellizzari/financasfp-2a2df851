@@ -42,7 +42,6 @@ export function TransactionsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<TransactionType | 'ALL'>('ALL');
   
-  // Mantemos o estado para o funcionamento da filtragem, mas removemos o seletor da UI conforme solicitado
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'total');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -222,7 +221,7 @@ export function TransactionsPage() {
         installmentGroupId: null,
         installmentNumber: null,
         totalInstallments: null,
-        effectiveMonth: selectedMonthStr,
+        effectiveMonth: format(formData.purchaseDate, 'yyyy-MM'),
         mes_fatura: null
       };
 
@@ -232,14 +231,13 @@ export function TransactionsPage() {
           amount: totalAmount,
           purchaseDate: format(formData.purchaseDate, 'yyyy-MM-dd'),
           effectiveDate: format(formData.purchaseDate, 'yyyy-MM-dd'),
-          effectiveMonth: selectedMonthStr,
+          effectiveMonth: format(formData.purchaseDate, 'yyyy-MM'),
           mes_fatura: formData.cardId ? calculateMesFatura(formData.purchaseDate, formData.cardId) : null,
           accountId: formData.accountId,
           cardId: formData.cardId,
         });
         toast({ title: 'Lançamento atualizado!' });
       } else if (formData.type === 'TRANSFER') {
-        // Busca a categoria de transferência se não estiver selecionada
         const transferCatId = formData.categoryId || categories.find(c => 
           c.name.toLowerCase() === 'transferência' || 
           c.name.toLowerCase() === 'transferencia'
@@ -248,7 +246,6 @@ export function TransactionsPage() {
         const senderName = users.find(u => u.id === formData.userId)?.name || 'Outra Conta';
         const receiverName = users.find(u => u.id === formData.destinationUserId)?.name || 'Outra Conta';
 
-        // Lançamento de Saída (Despesa)
         await createTransaction({ 
           ...baseData, 
           type: 'EXPENSE', 
@@ -258,7 +255,6 @@ export function TransactionsPage() {
           isPaid: true 
         });
 
-        // Lançamento de Entrada (Receita)
         await createTransaction({ 
           ...baseData, 
           type: 'INCOME', 
@@ -281,10 +277,13 @@ export function TransactionsPage() {
           const currentMesFaturaDate = addMonths(firstMesFaturaDate, i);
           const currentMesFatura = format(currentMesFaturaDate, 'yyyy-MM');
           
+          // Incrementa a data da compra para que cada parcela caia no mês seguinte
+          const currentPurchaseDate = addMonths(formData.purchaseDate, i);
+          
           await createTransaction({
             ...baseData,
             description: formData.description,
-            purchaseDate: formData.purchaseDate,
+            purchaseDate: currentPurchaseDate,
             cardId: formData.cardId,
             effectiveMonth: currentMesFatura,
             mes_fatura: currentMesFatura,

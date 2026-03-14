@@ -180,7 +180,6 @@ export function ImportPage() {
         const finalAccountId = importType === 'account' ? (item.targetAccountId || findUserAccount(currentUser?.id || '')) : null;
         const finalCardId = importType === 'card' ? globalTargetId : null;
 
-        // Para cartões, calculamos o primeiro mês de fatura baseado na data da compra
         let firstMesFaturaDate = new Date();
         if (importType === 'card' && finalCardId) {
           const firstMesFaturaStr = calculateMesFatura(item.date, finalCardId);
@@ -192,9 +191,11 @@ export function ImportPage() {
           
           let effectiveMonthStr = format(addMonths(item.date, i), 'yyyy-MM');
           let currentMesFatura = null;
+          
+          // Incrementa a data da compra para as parcelas seguintes
+          const currentPurchaseDate = addMonths(item.date, i);
 
           if (importType === 'card' && finalCardId) {
-            // Incrementa apenas o mês da fatura, mantendo a data da compra original
             const currentMesFaturaDate = addMonths(firstMesFaturaDate, i);
             currentMesFatura = format(currentMesFaturaDate, 'yyyy-MM');
             effectiveMonthStr = currentMesFatura;
@@ -204,8 +205,8 @@ export function ImportPage() {
             type: item.type,
             amount: item.amount,
             description: item.description,
-            purchaseDate: item.date, // Mantém a data original da compra em todas as parcelas
-            effectiveDate: item.date,
+            purchaseDate: currentPurchaseDate,
+            effectiveDate: currentPurchaseDate,
             effectiveMonth: effectiveMonthStr,
             mes_fatura: currentMesFatura,
             status: 'confirmed',
