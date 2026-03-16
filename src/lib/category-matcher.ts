@@ -42,7 +42,7 @@ const CATEGORY_KEYWORDS: Record<string, string> = {
   'petshop': 'pets', 'veterinario': 'pets', 'racoes': 'pets',
   'presente': 'presentes / doacoes', 'doacao': 'presentes / doacoes',
   'tarifa bancaria': 'tarifas bancarias', 'juros': 'tarifas bancarias', 'multa': 'tarifas bancarias',
-  'imposto': 'impostos', 'irpf': 'impostos', 'iptu': 'impostos', 'ipva': 'impostos',
+  'imposto': 'impostos', 'irpf': 'impostos', 'iptu': 'impostos',
   'pix': 'outras despesas', // PIX pode ser qualquer coisa, mas como fallback
   'transferencia': 'transferencia', // Categoria especial para transferências
 
