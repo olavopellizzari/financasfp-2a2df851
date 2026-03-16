@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/db';
 import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { AICategoryBadge } from '@/components/AICategoryBadge';
 
 interface TransactionFormProps {
   isOpen: boolean;
@@ -43,6 +44,7 @@ export function TransactionForm({
   const sortedCategories = [...categories].sort((a, b) => a.name.localeCompare(b.name));
   const [categoryPopoverOpen, setCategoryPopoverOpen] = React.useState(false);
   const [showSuggestionAnimation, setShowSuggestionAnimation] = useState(false);
+  const [isAISuggested, setIsAISuggested] = useState(false);
 
   const { getMerchantCategoryMapping } = useFinance();
   const { currentUser } = useAuth();
@@ -52,12 +54,9 @@ export function TransactionForm({
   const installmentValue = parsedInstallments > 0 ? parsedAmount / parsedInstallments : 0;
 
   const handleTypeChange = (newType: TransactionType) => {
-    // Lançamentos de cartão (CREDIT) nascem pendentes. Outros nascem pagos.
     const isPaid = newType !== 'CREDIT';
-    
     let categoryId = formData.categoryId;
     
-    // Se for transferência, tenta selecionar a categoria "Transferência" automaticamente
     if (newType === 'TRANSFER') {
       const transferCat = categories.find(c => 
         c.name.toLowerCase() === 'transferência' || 
@@ -75,25 +74,30 @@ export function TransactionForm({
     onDescriptionChange(newDescription);
 
     let suggestedCategoryId = '';
+    let source = '';
 
     if (currentUser?.id && newDescription.trim()) {
       const mapping = await getMerchantCategoryMapping(currentUser.id, newDescription);
       if (mapping) {
         suggestedCategoryId = mapping.categoryId;
+        source = 'history';
       }
     }
 
     if (!suggestedCategoryId) {
       suggestedCategoryId = matchCategory(newDescription, categories, formData.type) || '';
+      source = suggestedCategoryId ? 'ai' : '';
     }
 
     if (suggestedCategoryId && suggestedCategoryId !== formData.categoryId) {
       setFormData(prev => ({ ...prev, description: newDescription, categoryId: suggestedCategoryId }));
       setShowSuggestionAnimation(true);
+      setIsAISuggested(true);
       setTimeout(() => setShowSuggestionAnimation(false), 1500);
     } else {
       setFormData(prev => ({ ...prev, description: newDescription }));
       setShowSuggestionAnimation(false);
+      if (!suggestedCategoryId) setIsAISuggested(false);
     }
   };
 
@@ -196,10 +200,13 @@ export function TransactionForm({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Categoria</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Categoria</Label>
+                  {isAISuggested && <AICategoryBadge />}
+                </div>
                 <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-between font-normal">
+                    <Button variant="outline" className={cn("w-full justify-between font-normal", isAISuggested && "border-primary/30 bg-primary/5")}>
                       {formData.categoryId ? sortedCategories.find((cat) => cat.id === formData.categoryId)?.name : "Selecionar..."}
                       <Check className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
@@ -211,7 +218,7 @@ export function TransactionForm({
                         <CommandEmpty>Nenhuma encontrada.</CommandEmpty>
                         <CommandGroup>
                           {sortedCategories.filter(c => formData.type === 'INCOME' ? c.type === 'income' : c.type === 'expense').map((cat) => (
-                            <CommandItem key={cat.id} value={cat.name} onSelect={() => { setFormData({ ...formData, categoryId: cat.id }); setCategoryPopoverOpen(false); }}>
+                            <CommandItem key={cat.id} value={cat.name} onSelect={() => { setFormData({ ...formData, categoryId: cat.id }); setIsAISuggested(false); setCategoryPopoverOpen(false); }}>
                               <Check className={cn("mr-2 h-4 w-4", formData.categoryId === cat.id ? "opacity-100" : "opacity-0")} />
                               <span className="mr-2">{cat.icon}</span>{cat.name}
                             </CommandItem>
