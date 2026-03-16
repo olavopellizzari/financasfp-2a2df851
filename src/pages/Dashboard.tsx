@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { UserFilter } from '@/components/UserFilter';
 import { QuickWidget } from '@/components/QuickWidget';
 import { AIFinanceAssistant } from '@/components/AIFinanceAssistant';
+import { VoiceTransactionDialog } from '@/components/VoiceTransactionDialog';
+import { TransactionForm } from '@/components/transactions/TransactionForm';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -34,7 +36,8 @@ import {
   LayoutGrid,
   Target,
   Trophy,
-  Calculator
+  Calculator,
+  Mic
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, addMonths, subMonths, startOfYear, endOfYear, eachMonthOfInterval, getYear, isSameMonth, isValid, parseISO } from 'date-fns';
@@ -48,6 +51,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { toast } from '@/hooks/use-toast';
 
 interface BalanceCardProps {
   title: string;
@@ -84,7 +88,7 @@ function BalanceCard({ title, amount, icon, variant = 'default', isPrivate, chil
 
 export function Dashboard() {
   const { currentUser, users } = useAuth();
-  const { allAccounts, allCards, allTransactions, categories, allBudgets, goals, debts, getAccountBalance, getCategoryById } = useFinance();
+  const { allAccounts, allCards, allTransactions, categories, allBudgets, goals, debts, getAccountBalance, getCategoryById, createTransaction, refresh } = useFinance();
   const navigate = useNavigate();
   
   const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -92,6 +96,27 @@ export function Dashboard() {
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'total');
   const [chartView, setChartView] = useState<'mensal' | 'anual'>('mensal');
   
+  // Estados para Lançamento por Voz
+  const [isVoiceDialogOpen, setIsVoiceDialogOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    userId: currentUser?.id || '',
+    type: 'EXPENSE' as any,
+    amount: '',
+    description: '',
+    purchaseDate: new Date(),
+    categoryId: '',
+    accountId: '',
+    cardId: '',
+    installments: '1',
+    isPaid: true,
+    recurrence: 'none',
+    destinationUserId: currentUser?.id || '',
+    destinationAccountId: '',
+    notes: ''
+  });
+
   useEffect(() => {
     if (currentUser?.id && selectedUserId === 'total') {
       setSelectedUserId(currentUser.id);
@@ -272,6 +297,42 @@ export function Dashboard() {
     return fluxData;
   }, [chartView, selectedMonth, launchTransactions, fluxData]);
 
+  const handleVoiceResult = (result: any) => {
+    const defaultAccount = allAccounts.find(a => a.user_id === currentUser?.id && a.account_type === 'corrente') || allAccounts[0];
+    
+    setFormData({
+      ...formData,
+      type: result.type,
+      amount: result.amount?.toString() || '',
+      description: result.description,
+      accountId: defaultAccount?.id || '',
+      isPaid: result.type !== 'CREDIT'
+    });
+    setIsFormOpen(true);
+    toast({ title: "Voz processada!", description: "Confira os detalhes do lançamento." });
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      await createTransaction({
+        ...formData,
+        amount: parseFloat(formData.amount),
+        purchaseDate: formData.purchaseDate,
+        effectiveDate: formData.purchaseDate,
+        status: 'confirmed'
+      });
+      setIsFormOpen(false);
+      await refresh();
+      toast({ title: "Sucesso!", description: "Lançamento realizado com sucesso." });
+    } catch (error: any) {
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in w-full max-w-full overflow-x-hidden">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -286,6 +347,16 @@ export function Dashboard() {
         <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
           <UserFilter value={selectedUserId} onChange={setSelectedUserId} showTotalOption={true} className="w-[160px] sm:w-[200px] shrink-0" />
           <Button variant="ghost" size="icon" onClick={() => setIsPrivate(!isPrivate)} className="shrink-0">{isPrivate ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}</Button>
+          
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="shrink-0 rounded-full border-primary/30 text-primary hover:bg-primary/10"
+            onClick={() => setIsVoiceDialogOpen(true)}
+          >
+            <Mic className="w-5 h-5" />
+          </Button>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild><Button className="gradient-primary shadow-primary shrink-0 px-3 sm:px-4"><Plus className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Novo</span> <ChevronDown className="ml-2 h-4 w-4 opacity-50 hidden sm:inline" /></Button></DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56"><DropdownMenuItem onClick={() => navigate('/transactions')} className="gap-2 cursor-pointer"><ArrowDownRight className="w-4 h-4 text-expense" /> Lançamento em Conta</DropdownMenuItem><DropdownMenuItem onClick={() => navigate('/transactions?type=card')} className="gap-2 cursor-pointer"><CreditCard className="w-4 h-4 text-credit" /> Lançamento em Cartão</DropdownMenuItem></DropdownMenuContent>
@@ -520,6 +591,27 @@ export function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <VoiceTransactionDialog 
+        isOpen={isVoiceDialogOpen} 
+        onOpenChange={setIsVoiceDialogOpen} 
+        onResult={handleVoiceResult} 
+      />
+
+      <TransactionForm 
+        isOpen={isFormOpen} 
+        onOpenChange={setIsFormOpen} 
+        editingTransaction={null}
+        formData={formData}
+        setFormData={setFormData}
+        onSubmit={handleFormSubmit}
+        isSaving={isSaving}
+        users={users as any}
+        availableAccounts={allAccounts.filter(a => a.user_id === currentUser?.id || a.is_shared)}
+        availableCards={allCards.filter(c => c.user_id === currentUser?.id || (c as any).is_shared)}
+        categories={categories}
+        onDescriptionChange={(desc) => setFormData({ ...formData, description: desc })}
+      />
     </div>
   );
 }
