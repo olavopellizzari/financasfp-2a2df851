@@ -12,7 +12,8 @@ import {
   Invoice,
   MerchantCategoryMapping,
   db,
-  generateId
+  generateId,
+  AuditLog
 } from '@/lib/db';
 import { format, addMonths, getDate, isValid, parseISO } from 'date-fns';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -60,6 +61,25 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const familyId = currentUser?.family_id;
   const familyUserIds = useMemo(() => users.map(u => u.id), [users]);
+
+  // Helper para registrar logs
+  const logAction = async (action: AuditLog['action'], entityType: string, entityId: string, before?: any, after?: any) => {
+    if (!currentUser) return;
+    try {
+      await db.add('auditLogs', {
+        id: generateId(),
+        timestamp: new Date(),
+        actorUserId: currentUser.id,
+        action,
+        entityType,
+        entityId,
+        before,
+        after
+      });
+    } catch (e) {
+      console.error('Erro ao registrar log:', e);
+    }
+  };
 
   // Queries individuais com TanStack Query
   const { data: categories = [], isLoading: loadingCats } = useQuery({
@@ -242,7 +262,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     let effectiveMonth = data.effectiveMonth;
     let mesFatura = data.mesFatura;
 
-    // Se o mesFatura não foi enviado explicitamente, calculamos
     if (data.cardId && !mesFatura) {
       mesFatura = calculateMesFatura(pDate, data.cardId);
       effectiveMonth = mesFatura;
@@ -251,7 +270,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       mesFatura = null;
     }
 
-    const { error } = await supabase.from('transactions').insert([{
+    const payload = {
       user_id: data.userId, 
       account_id: data.accountId || null, 
       card_id: data.cardId || null,
@@ -270,9 +289,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       is_recurring: data.isRecurring, 
       is_paid: data.isPaid, 
       notes: data.notes
-    }]);
+    };
+
+    const { data: inserted, error } = await supabase.from('transactions').insert([payload]).select().single();
     if (error) throw new Error(error.message);
     
+    await logAction('create', 'transaction', inserted.id, null, payload);
+
     if (data.userId && data.description && data.categoryId) {
       await saveMerchantCategoryMapping(data.userId, data.description, data.categoryId);
     }
@@ -281,6 +304,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateTransaction = async (id: string, data: any) => {
+    const before = allTransactionsRaw.find(t => t.id === id);
     const updateData: any = {};
     if (data.amount !== undefined) updateData.amount = data.amount;
     if (data.description !== undefined) updateData.description = data.description;
@@ -293,10 +317,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       const pDate = data.purchaseDate instanceof Date ? data.purchaseDate : parseISO(data.purchaseDate);
       updateData.purchase_date = format(pDate, 'yyyy-MM-dd');
       updateData.effective_date = format(pDate, 'yyyy-MM-dd');
-      const currentTx = allTransactionsRaw.find(t => t.id === id);
-      if (currentTx) {
-        if (currentTx.cardId) {
-          const mesFatura = calculateMesFatura(pDate, currentTx.cardId);
+      if (before) {
+        if (before.cardId) {
+          const mesFatura = calculateMesFatura(pDate, before.cardId);
           updateData.mes_fatura = mesFatura;
           updateData.effective_month = mesFatura;
         } else {
@@ -308,6 +331,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.from('transactions').update(updateData).eq('id', id);
     if (error) throw new Error(error.message);
 
+    await logAction('update', 'transaction', id, before, updateData);
+
     if (data.userId && data.description && data.categoryId) {
       await saveMerchantCategoryMapping(data.userId, data.description, data.categoryId);
     }
@@ -316,23 +341,30 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteTransaction = async (id: string) => {
+    const before = allTransactionsRaw.find(t => t.id === id);
     const { error } = await supabase.from('transactions').delete().eq('id', id);
     if (error) throw new Error(error.message);
+    
+    await logAction('delete', 'transaction', id, before, null);
     await refresh();
   };
 
   const createAccount = async (data: any) => {
-    const { error } = await supabase.from('accounts').insert([{
+    const payload = {
       household_id: familyId, user_id: data.userId || currentUser?.id, name: data.name, bank: data.bank,
       account_type: data.type === 'checking' ? 'corrente' : data.type, opening_balance: data.balance,
       opening_date: new Date().toISOString().split('T')[0], active: true, is_shared: data.isShared ?? true,
       exclude_from_totals: data.exclude_from_totals ?? false
-    }]);
+    };
+    const { data: inserted, error } = await supabase.from('accounts').insert([payload]).select().single();
     if (error) throw new Error(error.message);
+    
+    await logAction('create', 'account', inserted.id, null, payload);
     await refresh();
   };
 
   const updateAccount = async (id: string, data: any) => {
+    const before = allAccountsRaw.find(a => a.id === id);
     const updateData: any = {};
     if (data.name !== undefined) updateData.name = data.name;
     if (data.bank !== undefined) updateData.bank = data.bank;
@@ -342,28 +374,38 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.isShared !== undefined) updateData.is_shared = data.isShared;
     if (data.excludeFromTotals !== undefined) updateData.exclude_from_totals = data.excludeFromTotals;
     if (data.userId !== undefined) updateData.user_id = data.userId;
+    
     const { error } = await supabase.from('accounts').update(updateData).eq('id', id);
     if (error) throw new Error(error.message);
+    
+    await logAction('update', 'account', id, before, updateData);
     await refresh();
   };
 
   const deleteAccount = async (id: string) => {
+    const before = allAccountsRaw.find(a => a.id === id);
     const { error } = await supabase.from('accounts').delete().eq('id', id);
     if (error) throw new Error(error.message);
+    
+    await logAction('delete', 'account', id, before, null);
     await refresh();
   };
 
   const createCard = async (data: any) => {
-    const { error } = await supabase.from('cards').insert([{
+    const payload = {
       user_id: data.userId || currentUser?.id, household_id: familyId, name: data.name, last_digits: data.lastDigits,
       brand: data.brand, limit: data.limit, closing_day: data.closingDay, due_day: data.dueDay, color: data.color,
       responsible_user_id: data.responsibleUserId, default_account_id: data.defaultAccountId, is_shared: data.isShared ?? false
-    }]);
+    };
+    const { data: inserted, error } = await supabase.from('cards').insert([payload]).select().single();
     if (error) throw new Error(error.message);
+    
+    await logAction('create', 'card', inserted.id, null, payload);
     await refresh();
   };
 
   const updateCard = async (id: string, data: any) => {
+    const before = allCardsRaw.find(c => c.id === id);
     const updateData: any = {};
     if (data.name !== undefined) updateData.name = data.name;
     if (data.limit !== undefined) updateData.limit = data.limit;
@@ -376,14 +418,20 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.defaultAccountId !== undefined) updateData.default_account_id = data.defaultAccountId;
     if (data.isShared !== undefined) updateData.is_shared = data.isShared;
     if (data.userId !== undefined) updateData.user_id = data.userId;
+    
     const { error } = await supabase.from('cards').update(updateData).eq('id', id);
     if (error) throw new Error(error.message);
+    
+    await logAction('update', 'card', id, before, updateData);
     await refresh();
   };
 
   const deleteCard = async (id: string) => {
+    const before = allCardsRaw.find(c => c.id === id);
     const { error } = await supabase.from('cards').delete().eq('id', id);
     if (error) throw new Error(error.message);
+    
+    await logAction('delete', 'card', id, before, null);
     await refresh();
   };
 

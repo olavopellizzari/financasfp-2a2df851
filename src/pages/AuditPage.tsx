@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,13 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search, History, User, FileText, Eye, RefreshCw } from 'lucide-react';
-import { db, AuditLog, User as UserType } from '@/lib/db';
+import { db, AuditLog } from '@/lib/db';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export function AuditPage() {
+  const { users } = useAuth();
   const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [users, setUsers] = useState<UserType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [actionFilter, setActionFilter] = useState<string>('all');
@@ -29,12 +30,8 @@ export function AuditPage() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [logsData, usersData] = await Promise.all([
-        db.getAll<AuditLog>('auditLogs'),
-        db.getAll<UserType>('users')
-      ]);
+      const logsData = await db.getAll<AuditLog>('auditLogs');
       setLogs(logsData.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
-      setUsers(usersData);
     } catch (error) {
       console.error('Failed to load audit logs:', error);
     } finally {
@@ -57,11 +54,11 @@ export function AuditPage() {
 
   const getActionBadge = (action: AuditLog['action']) => {
     const styles: Record<string, { bg: string; text: string }> = {
-      create: { bg: 'bg-finance-income/20', text: 'text-finance-income' },
+      create: { bg: 'bg-income/20', text: 'text-income' },
       update: { bg: 'bg-blue-500/20', text: 'text-blue-500' },
-      delete: { bg: 'bg-finance-expense/20', text: 'text-finance-expense' },
+      delete: { bg: 'bg-expense/20', text: 'text-expense' },
       import: { bg: 'bg-purple-500/20', text: 'text-purple-500' },
-      pay_invoice: { bg: 'bg-finance-warning/20', text: 'text-finance-warning' },
+      pay_invoice: { bg: 'bg-warning/20', text: 'text-warning' },
       login: { bg: 'bg-cyan-500/20', text: 'text-cyan-500' },
       logout: { bg: 'bg-gray-500/20', text: 'text-gray-500' },
       export: { bg: 'bg-indigo-500/20', text: 'text-indigo-500' },
@@ -83,7 +80,7 @@ export function AuditPage() {
     const style = styles[action] || { bg: 'bg-muted', text: 'text-foreground' };
 
     return (
-      <Badge className={`${style.bg} ${style.text}`}>
+      <Badge className={`${style.bg} ${style.text} border-none`}>
         {labels[action] || action}
       </Badge>
     );
@@ -119,26 +116,25 @@ export function AuditPage() {
   const entityTypes = [...new Set(logs.map(l => l.entityType))];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Auditoria</h1>
-          <p className="text-muted-foreground">Histórico completo de alterações</p>
+          <p className="text-muted-foreground">Histórico completo de alterações no sistema</p>
         </div>
         <Button variant="outline" onClick={loadData}>
-          <RefreshCw className="h-4 w-4 mr-2" />
+          <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
           Atualizar
         </Button>
       </div>
 
-      {/* Filters */}
-      <Card>
+      <Card className="finance-card">
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar..."
+                placeholder="Buscar nos dados..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -153,15 +149,7 @@ export function AuditPage() {
                 <SelectItem value="all">Todas as ações</SelectItem>
                 {actions.map(action => (
                   <SelectItem key={action} value={action}>
-                    {action === 'create' ? 'Criar' :
-                     action === 'update' ? 'Atualizar' :
-                     action === 'delete' ? 'Excluir' :
-                     action === 'import' ? 'Importar' :
-                     action === 'pay_invoice' ? 'Pagar Fatura' :
-                     action === 'login' ? 'Login' :
-                     action === 'logout' ? 'Logout' :
-                     action === 'export' ? 'Exportar' :
-                     action === 'backup' ? 'Backup' : action}
+                    {action.charAt(0).toUpperCase() + action.slice(1)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -194,106 +182,50 @@ export function AuditPage() {
         </CardContent>
       </Card>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-xl bg-primary/20">
-                <History className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total de Logs</p>
-                <p className="text-2xl font-bold">{logs.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-xl bg-finance-income/20">
-                <FileText className="h-5 w-5 text-finance-income" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Criações</p>
-                <p className="text-2xl font-bold">{logs.filter(l => l.action === 'create').length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-xl bg-blue-500/20">
-                <FileText className="h-5 w-5 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Atualizações</p>
-                <p className="text-2xl font-bold">{logs.filter(l => l.action === 'update').length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-xl bg-finance-expense/20">
-                <FileText className="h-5 w-5 text-finance-expense" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Exclusões</p>
-                <p className="text-2xl font-bold">{logs.filter(l => l.action === 'delete').length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <Card className="finance-card"><CardContent className="pt-6 flex items-center gap-3"><div className="p-3 rounded-xl bg-primary/10"><History className="h-5 w-5 text-primary" /></div><div><p className="text-[10px] font-bold text-muted-foreground uppercase">Total Logs</p><p className="text-2xl font-bold">{logs.length}</p></div></CardContent></Card>
+        <Card className="finance-card"><CardContent className="pt-6 flex items-center gap-3"><div className="p-3 rounded-xl bg-income/10"><FileText className="h-5 w-5 text-income" /></div><div><p className="text-[10px] font-bold text-muted-foreground uppercase">Criações</p><p className="text-2xl font-bold">{logs.filter(l => l.action === 'create').length}</p></div></CardContent></Card>
+        <Card className="finance-card"><CardContent className="pt-6 flex items-center gap-3"><div className="p-3 rounded-xl bg-blue-500/10"><FileText className="h-5 w-5 text-blue-500" /></div><div><p className="text-[10px] font-bold text-muted-foreground uppercase">Edições</p><p className="text-2xl font-bold">{logs.filter(l => l.action === 'update').length}</p></div></CardContent></Card>
+        <Card className="finance-card"><CardContent className="pt-6 flex items-center gap-3"><div className="p-3 rounded-xl bg-expense/10"><FileText className="h-5 w-5 text-expense" /></div><div><p className="text-[10px] font-bold text-muted-foreground uppercase">Exclusões</p><p className="text-2xl font-bold">{logs.filter(l => l.action === 'delete').length}</p></div></CardContent></Card>
       </div>
 
-      {/* Logs List */}
-      <Card>
+      <Card className="finance-card overflow-hidden">
         <CardHeader>
-          <CardTitle>Registros ({filteredLogs.length})</CardTitle>
+          <CardTitle className="text-lg">Registros Recentes ({filteredLogs.length})</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {isLoading ? (
-            <p className="text-center text-muted-foreground py-8">Carregando...</p>
+            <div className="p-12 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /></div>
           ) : filteredLogs.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">Nenhum registro encontrado</p>
+            <div className="p-12 text-center text-muted-foreground">Nenhum registro encontrado. Comece a usar o app para gerar logs.</div>
           ) : (
-            <div className="space-y-3 max-h-[600px] overflow-y-auto">
+            <div className="divide-y">
               {filteredLogs.map(log => (
                 <div 
                   key={log.id}
-                  className="flex items-center justify-between p-4 bg-muted rounded-lg hover:bg-muted/80 transition-colors cursor-pointer"
+                  className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors cursor-pointer group"
                   onClick={() => handleViewDetails(log)}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 items-start">
                       {getActionBadge(log.action)}
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-[9px] uppercase font-bold">
                         {getEntityLabel(log.entityType)}
                       </Badge>
                     </div>
                     <div>
-                      <p className="font-medium">
-                        {log.action === 'create' && log.after?.name && log.after.name}
-                        {log.action === 'update' && log.after?.name && log.after.name}
-                        {log.action === 'delete' && log.before?.name && log.before.name}
-                        {!log.after?.name && !log.before?.name && log.entityId.substring(0, 12)}
+                      <p className="font-bold text-sm">
+                        {log.after?.description || log.after?.name || log.before?.description || log.before?.name || `ID: ${log.entityId.substring(0, 8)}`}
                       </p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium uppercase">
                         <User className="h-3 w-3" />
                         <span>{getUserName(log.actorUserId)}</span>
                         <span>•</span>
-                        <span>{format(new Date(log.timestamp), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                        <span>{format(new Date(log.timestamp), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</span>
                       </div>
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
                     <Eye className="h-4 w-4" />
                   </Button>
                 </div>
@@ -303,9 +235,8 @@ export function AuditPage() {
         </CardContent>
       </Card>
 
-      {/* Detail Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
+        <DialogContent className="max-w-2xl max-h-[80vh] rounded-[24px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               Detalhes do Registro
@@ -313,50 +244,33 @@ export function AuditPage() {
             </DialogTitle>
           </DialogHeader>
           {selectedLog && (
-            <ScrollArea className="max-h-[60vh]">
-              <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Data/Hora</p>
-                    <p className="font-medium">{format(new Date(selectedLog.timestamp), "dd/MM/yyyy 'às' HH:mm:ss", { locale: ptBR })}</p>
+            <ScrollArea className="max-h-[60vh] pr-4">
+              <div className="space-y-6 py-4">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="p-3 bg-muted/30 rounded-xl">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Data/Hora</p>
+                    <p className="text-sm font-semibold">{format(new Date(selectedLog.timestamp), "dd/MM/yyyy 'às' HH:mm:ss", { locale: ptBR })}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Usuário</p>
-                    <p className="font-medium">{getUserName(selectedLog.actorUserId)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Tipo</p>
-                    <p className="font-medium">{getEntityLabel(selectedLog.entityType)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">ID da Entidade</p>
-                    <p className="font-mono text-sm">{selectedLog.entityId}</p>
+                  <div className="p-3 bg-muted/30 rounded-xl">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Usuário</p>
+                    <p className="text-sm font-semibold">{getUserName(selectedLog.actorUserId)}</p>
                   </div>
                 </div>
 
                 {selectedLog.before && (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">Antes</p>
-                    <pre className="p-3 bg-muted rounded-lg overflow-x-auto text-xs">
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-muted-foreground uppercase">Dados Anteriores</p>
+                    <pre className="p-4 bg-muted rounded-xl overflow-x-auto text-[11px] font-mono">
                       {JSON.stringify(selectedLog.before, null, 2)}
                     </pre>
                   </div>
                 )}
 
                 {selectedLog.after && (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">Depois</p>
-                    <pre className="p-3 bg-muted rounded-lg overflow-x-auto text-xs">
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-primary uppercase">Novos Dados / Alterações</p>
+                    <pre className="p-4 bg-primary/5 border border-primary/10 rounded-xl overflow-x-auto text-[11px] font-mono">
                       {JSON.stringify(selectedLog.after, null, 2)}
-                    </pre>
-                  </div>
-                )}
-
-                {Object.keys(selectedLog.meta || {}).length > 0 && (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">Metadados</p>
-                    <pre className="p-3 bg-muted rounded-lg overflow-x-auto text-xs">
-                      {JSON.stringify(selectedLog.meta, null, 2)}
                     </pre>
                   </div>
                 )}
