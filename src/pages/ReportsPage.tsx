@@ -248,7 +248,9 @@ export function ReportsPage() {
     });
   }, [filteredSource, selectedYear, explorerMetric, explorerCategoryId, explorerCardId]);
 
-  const handleExportPDF = () => {
+  // --- EXPORTAÇÃO PDF ---
+
+  const handleExportAnnualPDF = () => {
     try {
       const doc = new jsPDF();
       const userName = getUserName(selectedUserId);
@@ -258,7 +260,63 @@ export function ReportsPage() {
       autoTable(doc, { startY: 40, head: [["Indicador", "Valor"]], body: summaryData, theme: 'striped', headStyles: { fillColor: [34, 197, 94] } });
       const tableData = annualData.map(m => [m.monthFull, formatCurrency(m.income), formatCurrency(m.expenses), formatCurrency(m.balance)]);
       autoTable(doc, { startY: (doc as any).lastAutoTable.finalY + 15, head: [["Mês", "Receitas", "Despesas", "Saldo"]], body: tableData, theme: 'grid', headStyles: { fillColor: [31, 41, 55] } });
-      doc.save(`Relatorio_${selectedYear}_${userName}.pdf`);
+      doc.save(`Relatorio_Anual_${selectedYear}_${userName}.pdf`);
+      toast({ title: "PDF Gerado!" });
+    } catch (error) { toast({ title: "Erro ao gerar PDF", variant: "destructive" }); }
+  };
+
+  const handleExportMonthlyPDF = () => {
+    try {
+      const doc = new jsPDF();
+      const displayMonthDate = safeParseMonth(selectedMonth);
+      const monthName = format(displayMonthDate, 'MMMM yyyy', { locale: ptBR });
+      const userName = getUserName(selectedUserId);
+
+      doc.setFontSize(20); doc.setTextColor(34, 197, 94); doc.text("Relatório Financeiro Mensal", 14, 22);
+      doc.setFontSize(10); doc.setTextColor(100); doc.text(`Mês: ${monthName} | Filtro: ${userName}`, 14, 30);
+
+      const summary = [
+        ["Receitas", formatCurrency(monthlyStats.income)],
+        ["Despesas", formatCurrency(monthlyStats.expenses)],
+        ["Saldo", formatCurrency(monthlyStats.balance)],
+        ["Taxa de Economia", `${monthlyStats.savingsRate.toFixed(1)}%`]
+      ];
+      autoTable(doc, { startY: 40, head: [["Indicador", "Valor"]], body: summary, theme: 'striped', headStyles: { fillColor: [34, 197, 94] } });
+
+      const merchants = monthlyStats.topMerchants.map(m => [m.name, formatCurrency(m.value)]);
+      autoTable(doc, { startY: (doc as any).lastAutoTable.finalY + 10, head: [["Top 5 Estabelecimentos", "Valor"]], body: merchants, theme: 'grid' });
+
+      const txs = monthlyStats.transactions
+        .sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime())
+        .map(t => [
+          format(new Date(t.purchaseDate), 'dd/MM/yy'),
+          t.description,
+          getCategoryById(t.categoryId)?.name || 'Sem categoria',
+          formatCurrency(t.amount)
+        ]);
+      autoTable(doc, { startY: (doc as any).lastAutoTable.finalY + 10, head: [["Data", "Descrição", "Categoria", "Valor"]], body: txs, theme: 'grid' });
+
+      doc.save(`Relatorio_Mensal_${monthName}_${userName}.pdf`);
+      toast({ title: "PDF Gerado!" });
+    } catch (error) { toast({ title: "Erro ao gerar PDF", variant: "destructive" }); }
+  };
+
+  const handleExportExplorerPDF = () => {
+    try {
+      const doc = new jsPDF();
+      const metricLabel = explorerMetric === 'income' ? 'Receitas' : explorerMetric === 'expense' ? 'Despesas' : 'Gastos no Cartão';
+      const subLabel = explorerMetric === 'card'
+        ? (allCards.find(c => c.id === explorerCardId)?.name || 'Todos os Cartões')
+        : (categories.find(c => c.id === explorerCategoryId)?.name || 'Todas as Categorias');
+      const userName = getUserName(selectedUserId);
+
+      doc.setFontSize(20); doc.setTextColor(34, 197, 94); doc.text("Explorador de Tendências", 14, 22);
+      doc.setFontSize(10); doc.setTextColor(100); doc.text(`Métrica: ${metricLabel} | Filtro: ${subLabel} | Ano: ${selectedYear}`, 14, 30);
+
+      const tableData = explorerData.map(d => [d.name, formatCurrency(d.amount)]);
+      autoTable(doc, { startY: 40, head: [["Mês", "Valor"]], body: tableData, theme: 'striped', headStyles: { fillColor: [34, 197, 94] } });
+
+      doc.save(`Explorador_${metricLabel}_${selectedYear}.pdf`);
       toast({ title: "PDF Gerado!" });
     } catch (error) { toast({ title: "Erro ao gerar PDF", variant: "destructive" }); }
   };
@@ -285,10 +343,13 @@ export function ReportsPage() {
         </TabsList>
 
         <TabsContent value="monthly" className="space-y-6">
-          <div className="flex items-center justify-center gap-4">
-            <Button variant="outline" size="icon" onClick={() => setSelectedMonth(format(subMonths(displayMonthDate, 1), 'yyyy-MM'))}><ChevronLeft className="h-4 w-4" /></Button>
-            <span className="text-lg font-bold min-w-[160px] text-center capitalize">{format(displayMonthDate, 'MMMM yyyy', { locale: ptBR })}</span>
-            <Button variant="outline" size="icon" onClick={() => setSelectedMonth(format(addMonths(displayMonthDate, 1), 'yyyy-MM'))}><ChevronRight className="h-4 w-4" /></Button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex items-center gap-4">
+              <Button variant="outline" size="icon" onClick={() => setSelectedMonth(format(subMonths(displayMonthDate, 1), 'yyyy-MM'))}><ChevronLeft className="h-4 w-4" /></Button>
+              <span className="text-lg font-bold min-w-[160px] text-center capitalize">{format(displayMonthDate, 'MMMM yyyy', { locale: ptBR })}</span>
+              <Button variant="outline" size="icon" onClick={() => setSelectedMonth(format(addMonths(displayMonthDate, 1), 'yyyy-MM'))}><ChevronRight className="h-4 w-4" /></Button>
+            </div>
+            <Button variant="outline" onClick={handleExportMonthlyPDF} className="gap-2"><Download className="h-4 w-4" /> Baixar PDF</Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -317,7 +378,7 @@ export function ReportsPage() {
         <TabsContent value="annual" className="space-y-6">
           <div className="flex items-center gap-3">
             <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}><SelectTrigger className="w-32 font-bold"><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (<SelectItem key={y} value={y.toString()}>{y}</SelectItem>))}</SelectContent></Select>
-            <Button variant="outline" onClick={handleExportPDF} className="gap-2"><Download className="h-4 w-4" /> Baixar PDF</Button>
+            <Button variant="outline" onClick={handleExportAnnualPDF} className="gap-2"><Download className="h-4 w-4" /> Baixar PDF</Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="finance-card-gradient"><CardContent className="pt-6"><p className="text-xs font-bold text-primary-foreground/80 uppercase">Receitas Totais {selectedYear}</p><p className="text-3xl font-bold text-primary-foreground">{formatCurrency(annualTotals.income)}</p></CardContent></Card>
@@ -329,10 +390,11 @@ export function ReportsPage() {
 
         <TabsContent value="explorer" className="space-y-6">
           <Card className="border-none shadow-md">
-            <CardHeader>
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" /> Explorador de Tendências
               </CardTitle>
+              <Button variant="outline" onClick={handleExportExplorerPDF} className="gap-2"><Download className="h-4 w-4" /> Baixar PDF</Button>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
