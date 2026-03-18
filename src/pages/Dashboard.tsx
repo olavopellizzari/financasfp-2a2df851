@@ -330,7 +330,7 @@ export function Dashboard() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in w-full max-w-full overflow-x-hidden">
+    <div className="space-y-6 animate-fade-in w-full max-w-full overflow-x-hidden pb-10">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Painel</h1>
@@ -360,22 +360,14 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <QuickWidget selectedUserId={selectedUserId === 'total' ? 'all' : selectedUserId} date={selectedMonth} />
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <BalanceCard title="Saldo Atual" amount={totalBalance} icon={<Wallet className="w-4 h-4 text-primary-foreground" />} variant="primary" isPrivate={isPrivate}><Popover><PopoverTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-primary-foreground/60"><ChevronDown className="w-4 h-4" /></Button></PopoverTrigger><PopoverContent className="w-64 p-2">{filteredAccounts.map(acc => (<div key={acc.id} className="flex justify-between p-2 text-sm"><span className={cn(acc.exclude_from_totals && "text-muted-foreground line-through")}>{acc.name}</span><span className="font-bold">{formatCurrency(getAccountBalance(acc.id))}</span></div>))}</PopoverContent></Popover></BalanceCard>
-            <BalanceCard title="Receitas" amount={stats.income} icon={<TrendingUp className="w-4 h-4 text-income" />} variant="income" isPrivate={isPrivate} />
-            <BalanceCard title="Despesas" amount={stats.expenses} icon={<TrendingDown className="h-4 w-4 text-expense" />} variant="expense" isPrivate={isPrivate} />
-            <BalanceCard title="Cartão" amount={stats.cardExpenses} icon={<CreditCard className="w-4 h-4 text-purple-600" />} variant="credit" isPrivate={isPrivate}><Popover><PopoverTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-purple-600/60"><ChevronDown className="w-4 h-4" /></Button></PopoverTrigger><PopoverContent className="w-64 p-2">{cardActivity.length > 0 ? cardActivity.map((card, idx) => (<div key={idx} className="flex justify-between p-2 text-sm"><span>{card.name}</span><span className="font-bold">{formatCurrency(card.amount)}</span></div>)) : (<p className="text-xs text-center text-muted-foreground p-2">Nenhum gasto no cartão.</p>)}</PopoverContent></Popover></BalanceCard>
-            <BalanceCard title="Resultado" amount={stats.balance} icon={<BarChart3 className="w-4 h-4 text-warning" />} variant="pending" isPrivate={isPrivate} />
-          </div>
-        </div>
-        
-        <div className="lg:col-span-1">
-          <AIFinanceAssistant />
-        </div>
+      <QuickWidget selectedUserId={selectedUserId === 'total' ? 'all' : selectedUserId} date={selectedMonth} />
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <BalanceCard title="Saldo Atual" amount={totalBalance} icon={<Wallet className="w-4 h-4 text-primary-foreground" />} variant="primary" isPrivate={isPrivate}><Popover><PopoverTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-primary-foreground/60"><ChevronDown className="w-4 h-4" /></Button></PopoverTrigger><PopoverContent className="w-64 p-2">{filteredAccounts.map(acc => (<div key={acc.id} className="flex justify-between p-2 text-sm"><span className={cn(acc.exclude_from_totals && "text-muted-foreground line-through")}>{acc.name}</span><span className="font-bold">{formatCurrency(getAccountBalance(acc.id))}</span></div>))}</PopoverContent></Popover></BalanceCard>
+        <BalanceCard title="Receitas" amount={stats.income} icon={<TrendingUp className="w-4 h-4 text-income" />} variant="income" isPrivate={isPrivate} />
+        <BalanceCard title="Despesas" amount={stats.expenses} icon={<TrendingDown className="h-4 w-4 text-expense" />} variant="expense" isPrivate={isPrivate} />
+        <BalanceCard title="Cartão" amount={stats.cardExpenses} icon={<CreditCard className="w-4 h-4 text-purple-600" />} variant="credit" isPrivate={isPrivate}><Popover><PopoverTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-purple-600/60"><ChevronDown className="w-4 h-4" /></Button></PopoverTrigger><PopoverContent className="w-64 p-2">{cardActivity.length > 0 ? cardActivity.map((card, idx) => (<div key={idx} className="flex justify-between p-2 text-sm"><span>{card.name}</span><span className="font-bold">{formatCurrency(card.amount)}</span></div>)) : (<p className="text-xs text-center text-muted-foreground p-2">Nenhum gasto no cartão.</p>)}</PopoverContent></Popover></BalanceCard>
+        <BalanceCard title="Resultado" amount={stats.balance} icon={<BarChart3 className="w-4 h-4 text-warning" />} variant="pending" isPrivate={isPrivate} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -586,6 +578,11 @@ export function Dashboard() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Assistente de IA movido para o final para evitar conflitos visuais no topo */}
+      <div className="mt-8">
+        <AIFinanceAssistant />
       </div>
 
       <VoiceTransactionDialog 
