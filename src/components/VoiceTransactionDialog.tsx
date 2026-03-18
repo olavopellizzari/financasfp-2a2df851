@@ -49,9 +49,11 @@ export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: Voice
   const getErrorMessage = (err: string) => {
     switch (err) {
       case 'not-allowed': return 'Acesso ao microfone negado. Verifique as permissões do navegador.';
-      case 'no-speech': return 'Nenhuma voz detectada. Tente falar mais alto.';
+      case 'no-speech': return 'Nenhuma voz detectada. Tente falar mais alto e claro.';
+      case 'network': return 'Erro de rede. O reconhecimento de voz precisa de internet.';
+      case 'audio-capture': return 'Microfone não encontrado ou ocupado por outro app.';
       case 'not-supported': return 'Seu navegador não suporta comandos de voz.';
-      default: return 'Ocorreu um erro ao tentar ouvir. Tente novamente.';
+      default: return `Erro: ${err}. Tente novamente ou use o teclado.`;
     }
   };
 
