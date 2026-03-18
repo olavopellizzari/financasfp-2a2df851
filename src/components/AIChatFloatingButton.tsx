@@ -17,30 +17,44 @@ export function AIChatFloatingButton() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Scroll automático para o fim da conversa
-  useEffect(() => {
+  // Função robusta para rolar até o fim
+  const scrollToBottom = () => {
     if (scrollRef.current) {
       const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
       if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        scrollContainer.scrollTo({
+          top: scrollContainer.scrollHeight,
+          behavior: 'smooth'
+        });
       }
     }
-  }, [messages, isTyping]);
+  };
 
-  // Focar no input quando o chat abrir ou quando a IA terminar de digitar
+  // Rola sempre que as mensagens mudam ou a IA começa/termina de digitar
   useEffect(() => {
-    if (isOpen && !isTyping) {
-      setTimeout(() => inputRef.current?.focus(), 100);
+    if (isOpen) {
+      // Pequeno delay para garantir que o DOM foi atualizado com a nova mensagem
+      const timer = setTimeout(scrollToBottom, 100);
+      return () => clearTimeout(timer);
     }
-  }, [isOpen, isTyping]);
+  }, [messages, isTyping, isOpen]);
+
+  // Focar no input ao abrir
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => inputRef.current?.focus(), 300);
+    }
+  }, [isOpen]);
 
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!inputValue.trim()) return;
     
-    sendMessage(inputValue);
+    const text = inputValue;
     setInputValue('');
-    // Mantém o foco no input para a próxima mensagem
+    sendMessage(text);
+    
+    // Mantém o foco para a próxima mensagem imediatamente
     inputRef.current?.focus();
   };
 
@@ -65,9 +79,9 @@ export function AIChatFloatingButton() {
 
           <CardContent className="flex-1 p-0 flex flex-col bg-muted/10">
             <ScrollArea ref={scrollRef} className="flex-1 p-4">
-              <div className="space-y-4">
+              <div className="space-y-4 pb-2">
                 {messages.map((msg, idx) => (
-                  <div key={idx} className={cn("flex gap-3 max-w-[85%]", msg.role === 'user' ? "ml-auto flex-row-reverse" : "mr-auto")}>
+                  <div key={idx} className={cn("flex gap-3 max-w-[85%] animate-slide-up", msg.role === 'user' ? "ml-auto flex-row-reverse" : "mr-auto")}>
                     <div className={cn(
                       "w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm",
                       msg.role === 'user' ? "bg-primary text-white" : "bg-white text-primary border"
@@ -88,12 +102,16 @@ export function AIChatFloatingButton() {
                   </div>
                 ))}
                 {isTyping && (
-                  <div className="flex gap-3 mr-auto max-w-[85%]">
+                  <div className="flex gap-3 mr-auto max-w-[85%] animate-pulse">
                     <div className="w-8 h-8 rounded-full bg-white text-primary border flex items-center justify-center shrink-0">
                       <Bot className="w-4 h-4" />
                     </div>
                     <div className="bg-white p-3 rounded-2xl rounded-tl-none border shadow-sm">
-                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                      <div className="flex gap-1">
+                        <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -103,19 +121,19 @@ export function AIChatFloatingButton() {
             <form onSubmit={handleSend} className="p-4 bg-white border-t flex gap-2 shrink-0">
               <Input 
                 ref={inputRef}
-                placeholder="Pergunte algo..." 
+                placeholder="Escreva sua mensagem..." 
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                className="rounded-xl border-muted focus-visible:ring-primary"
-                // Removido o disabled para permitir que o usuário continue escrevendo
+                className="rounded-xl border-muted focus-visible:ring-primary h-11"
+                autoComplete="off"
               />
               <Button 
                 type="submit" 
                 size="icon" 
-                className="rounded-xl gradient-primary shrink-0" 
-                disabled={!inputValue.trim() || isTyping}
+                className="rounded-xl gradient-primary shrink-0 h-11 w-11 shadow-md" 
+                disabled={!inputValue.trim()}
               >
-                {isTyping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                <Send className="w-4 h-4" />
               </Button>
             </form>
           </CardContent>
