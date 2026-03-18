@@ -15,7 +15,9 @@ export function AIChatFloatingButton() {
   const [inputValue, setInputValue] = useState('');
   const { messages, isTyping, sendMessage } = useAIChat();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
+  // Scroll automático para o fim da conversa
   useEffect(() => {
     if (scrollRef.current) {
       const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -25,11 +27,21 @@ export function AIChatFloatingButton() {
     }
   }, [messages, isTyping]);
 
+  // Focar no input quando o chat abrir ou quando a IA terminar de digitar
+  useEffect(() => {
+    if (isOpen && !isTyping) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [isOpen, isTyping]);
+
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!inputValue.trim() || isTyping) return;
+    if (!inputValue.trim()) return;
+    
     sendMessage(inputValue);
     setInputValue('');
+    // Mantém o foco no input para a próxima mensagem
+    inputRef.current?.focus();
   };
 
   return (
@@ -90,14 +102,20 @@ export function AIChatFloatingButton() {
 
             <form onSubmit={handleSend} className="p-4 bg-white border-t flex gap-2 shrink-0">
               <Input 
-                placeholder="Pergunte algo sobre suas finanças..." 
+                ref={inputRef}
+                placeholder="Pergunte algo..." 
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 className="rounded-xl border-muted focus-visible:ring-primary"
-                disabled={isTyping}
+                // Removido o disabled para permitir que o usuário continue escrevendo
               />
-              <Button type="submit" size="icon" className="rounded-xl gradient-primary shrink-0" disabled={!inputValue.trim() || isTyping}>
-                <Send className="w-4 h-4" />
+              <Button 
+                type="submit" 
+                size="icon" 
+                className="rounded-xl gradient-primary shrink-0" 
+                disabled={!inputValue.trim() || isTyping}
+              >
+                {isTyping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>
             </form>
           </CardContent>
