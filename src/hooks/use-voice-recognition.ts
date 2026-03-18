@@ -32,8 +32,6 @@ export function useVoiceRecognition() {
     };
 
     recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
-      // Não tratamos 'aborted' como erro fatal pois acontece ao parar manualmente
       if (event.error !== 'aborted') {
         setError(event.error);
       }
@@ -48,7 +46,6 @@ export function useVoiceRecognition() {
   }, []);
 
   const startListening = useCallback(() => {
-    // Sempre criamos uma nova instância para evitar o erro de "already started"
     try {
       if (recognitionRef.current) {
         recognitionRef.current.abort();
@@ -58,9 +55,9 @@ export function useVoiceRecognition() {
       if (!recognition) return;
       
       recognitionRef.current = recognition;
+      setTranscript(''); // Limpa o texto anterior ao começar
       recognition.start();
     } catch (e) {
-      console.error('Failed to start recognition:', e);
       setError('start-failed');
       setIsListening(false);
     }
@@ -72,12 +69,17 @@ export function useVoiceRecognition() {
     }
   }, []);
 
+  const resetTranscript = useCallback(() => {
+    setTranscript('');
+  }, []);
+
   return {
     isListening,
     transcript,
     error,
     startListening,
     stopListening,
+    resetTranscript,
     isSupported: !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
   };
 }

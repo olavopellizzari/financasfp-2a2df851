@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Mic, Loader2, Sparkles, Volume2, AlertCircle } from 'lucide-react';
@@ -15,27 +15,41 @@ interface VoiceTransactionDialogProps {
 }
 
 export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: VoiceTransactionDialogProps) {
-  const { isListening, transcript, error, startListening, stopListening, isSupported } = useVoiceRecognition();
+  const { isListening, transcript, error, startListening, stopListening, resetTranscript, isSupported } = useVoiceRecognition();
   const [isProcessing, setIsProcessing] = useState(false);
+  const hasProcessedRef = useRef(false);
+
+  // Resetar a flag de processamento quando o diálogo abrir
+  useEffect(() => {
+    if (isOpen) {
+      hasProcessedRef.current = false;
+      setIsProcessing(false);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
-    if (transcript && !isListening) {
+    if (transcript && !isListening && !hasProcessedRef.current) {
+      hasProcessedRef.current = true;
       setIsProcessing(true);
+      
       const parsed = parseVoiceCommand(transcript);
       
+      // Pequeno delay para o usuário ver o que foi transcrito antes de fechar
       const timer = setTimeout(() => {
         onResult(parsed);
         setIsProcessing(false);
+        resetTranscript(); // Limpa o texto para evitar re-processamento
         onOpenChange(false);
-      }, 1000);
+      }, 800);
       
       return () => clearTimeout(timer);
     }
-  }, [transcript, isListening, onResult, onOpenChange]);
+  }, [transcript, isListening, onResult, onOpenChange, resetTranscript]);
 
   const handlePressStart = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isSupported || isProcessing) return;
     e.preventDefault();
+    hasProcessedRef.current = false;
     startListening();
   };
 
