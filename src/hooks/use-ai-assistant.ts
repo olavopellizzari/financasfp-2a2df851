@@ -3,8 +3,8 @@
 import { useMemo } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Transaction, Budget, Goal, formatCurrency } from '@/lib/db';
-import { subMonths, format, isSameMonth, parseISO, startOfMonth } from 'date-fns';
+import { formatCurrency } from '@/lib/db';
+import { subMonths, format } from 'date-fns';
 
 export interface AIInsight {
   type: 'warning' | 'success' | 'info' | 'tip';
