@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Mic, MicOff, Loader2, Sparkles, Volume2, AlertCircle } from 'lucide-react';
+import { Mic, Loader2, Sparkles, Volume2, AlertCircle } from 'lucide-react';
 import { useVoiceRecognition } from '@/hooks/use-voice-recognition';
 import { parseVoiceCommand } from '@/lib/voice-parser';
 import { cn } from '@/lib/utils';
@@ -18,14 +18,9 @@ export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: Voice
   const { isListening, transcript, error, startListening, stopListening, isSupported } = useVoiceRecognition();
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Processa o resultado quando a transcrição termina
   useEffect(() => {
-    if (isOpen && isSupported) {
-      startListening();
-    }
-  }, [isOpen, isSupported, startListening]);
-
-  useEffect(() => {
-    if (transcript) {
+    if (transcript && !isListening) {
       setIsProcessing(true);
       const parsed = parseVoiceCommand(transcript);
       
@@ -36,7 +31,19 @@ export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: Voice
         onOpenChange(false);
       }, 1200);
     }
-  }, [transcript, onResult, onOpenChange]);
+  }, [transcript, isListening, onResult, onOpenChange]);
+
+  const handlePressStart = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isSupported || isProcessing) return;
+    e.preventDefault();
+    startListening();
+  };
+
+  const handlePressEnd = () => {
+    if (isListening) {
+      stopListening();
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -49,7 +56,7 @@ export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: Voice
           </div>
           <DialogTitle className="text-2xl font-bold">Comando de Voz</DialogTitle>
           <DialogDescription className="text-base">
-            Diga algo como: "Gastei 45 reais no almoço"
+            Segure o botão para falar seu gasto
           </DialogDescription>
         </DialogHeader>
 
@@ -64,10 +71,14 @@ export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: Voice
             <Button 
               size="icon" 
               className={cn(
-                "w-24 h-24 rounded-full shadow-xl transition-all duration-500 relative z-10",
-                isListening ? "bg-primary scale-110" : "bg-muted hover:bg-muted/80"
+                "w-24 h-24 rounded-full shadow-xl transition-all duration-300 relative z-10 select-none touch-none",
+                isListening ? "bg-primary scale-110 shadow-primary/40" : "bg-muted hover:bg-muted/80"
               )}
-              onClick={isListening ? stopListening : startListening}
+              onMouseDown={handlePressStart}
+              onMouseUp={handlePressEnd}
+              onMouseLeave={handlePressEnd}
+              onTouchStart={handlePressStart}
+              onTouchEnd={handlePressEnd}
             >
               {isListening ? <Volume2 className="w-10 h-10 text-white" /> : <Mic className="w-10 h-10 text-muted-foreground" />}
             </Button>
@@ -75,7 +86,10 @@ export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: Voice
 
           <div className="min-h-[60px] text-center w-full px-4">
             {isListening ? (
-              <p className="text-primary font-medium animate-pulse">Ouvindo você...</p>
+              <div className="space-y-2">
+                <p className="text-primary font-bold animate-pulse uppercase tracking-widest text-xs">Gravando...</p>
+                <p className="text-sm text-muted-foreground">Solte para finalizar</p>
+              </div>
             ) : isProcessing ? (
               <div className="flex flex-col items-center gap-2">
                 <Loader2 className="w-5 h-5 animate-spin text-primary" />
@@ -89,7 +103,7 @@ export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: Voice
                 <p className="text-xs font-medium">{error === 'not-allowed' ? 'Permissão de microfone negada.' : 'Erro ao capturar voz.'}</p>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Clique no microfone para tentar novamente</p>
+              <p className="text-sm text-muted-foreground font-medium">Pressione e segure para falar</p>
             )}
           </div>
         </div>
