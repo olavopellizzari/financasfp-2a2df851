@@ -11,6 +11,7 @@ import { Search, History, User, FileText, Eye, RefreshCw } from 'lucide-react';
 import { db, AuditLog } from '@/lib/db';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 export function AuditPage() {
   const { users } = useAuth();
