@@ -18,18 +18,18 @@ export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: Voice
   const { isListening, transcript, error, startListening, stopListening, isSupported } = useVoiceRecognition();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Processa o resultado quando a transcrição termina
   useEffect(() => {
     if (transcript && !isListening) {
       setIsProcessing(true);
       const parsed = parseVoiceCommand(transcript);
       
-      // Simula um pequeno delay de processamento da "IA"
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         onResult(parsed);
         setIsProcessing(false);
         onOpenChange(false);
-      }, 1200);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
     }
   }, [transcript, isListening, onResult, onOpenChange]);
 
@@ -39,9 +39,19 @@ export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: Voice
     startListening();
   };
 
-  const handlePressEnd = () => {
+  const handlePressEnd = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
     if (isListening) {
       stopListening();
+    }
+  };
+
+  const getErrorMessage = (err: string) => {
+    switch (err) {
+      case 'not-allowed': return 'Acesso ao microfone negado. Verifique as permissões do navegador.';
+      case 'no-speech': return 'Nenhuma voz detectada. Tente falar mais alto.';
+      case 'not-supported': return 'Seu navegador não suporta comandos de voz.';
+      default: return 'Ocorreu um erro ao tentar ouvir. Tente novamente.';
     }
   };
 
@@ -84,7 +94,7 @@ export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: Voice
             </Button>
           </div>
 
-          <div className="min-h-[60px] text-center w-full px-4">
+          <div className="min-h-[80px] text-center w-full px-4 flex flex-col items-center justify-center">
             {isListening ? (
               <div className="space-y-2">
                 <p className="text-primary font-bold animate-pulse uppercase tracking-widest text-xs">Gravando...</p>
@@ -98,9 +108,9 @@ export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: Voice
             ) : transcript ? (
               <p className="text-lg font-semibold italic text-foreground">"{transcript}"</p>
             ) : error ? (
-              <div className="flex items-center gap-2 text-destructive bg-destructive/10 p-3 rounded-xl">
-                <AlertCircle className="w-4 h-4" />
-                <p className="text-xs font-medium">{error === 'not-allowed' ? 'Permissão de microfone negada.' : 'Erro ao capturar voz.'}</p>
+              <div className="flex flex-col items-center gap-2 text-destructive bg-destructive/5 p-4 rounded-2xl border border-destructive/10">
+                <AlertCircle className="w-5 h-5" />
+                <p className="text-xs font-medium leading-relaxed">{getErrorMessage(error)}</p>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground font-medium">Pressione e segure para falar</p>
