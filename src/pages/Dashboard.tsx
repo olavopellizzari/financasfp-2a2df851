@@ -10,6 +10,7 @@ import { UserFilter } from '@/components/UserFilter';
 import { QuickWidget } from '@/components/QuickWidget';
 import { AIFinanceAssistant } from '@/components/AIFinanceAssistant';
 import { VoiceTransactionDialog } from '@/components/VoiceTransactionDialog';
+import { AIChatFloatingButton } from '@/components/AIChatFloatingButton';
 import { TransactionForm } from '@/components/transactions/TransactionForm';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -597,6 +598,8 @@ export function Dashboard() {
         onOpenChange={setIsVoiceDialogOpen} 
         onResult={handleVoiceResult} 
       />
+
+      <AIChatFloatingButton />
 
       <TransactionForm 
         isOpen={isFormOpen} 
