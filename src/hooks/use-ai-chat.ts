@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatCurrency, Transaction } from '@/lib/db';
+import { formatCurrency } from '@/lib/db';
 import { format, startOfMonth, endOfMonth, subMonths, isSameDay, parseISO, subDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -30,20 +30,17 @@ export function useAIChat() {
     setMessages(prev => [...prev, userMessage]);
     setIsTyping(true);
 
-    // Simula processamento da IA
     setTimeout(() => {
       const query = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       let response = "";
 
-      // 1. Identificar Intenção (Gasto ou Receita)
       const isExpenseQuery = query.includes('gastei') || query.includes('gasto') || query.includes('despesa') || query.includes('paguei');
       const isIncomeQuery = query.includes('recebi') || query.includes('ganhei') || query.includes('entrada') || query.includes('renda') || query.includes('salario');
       const isBalanceQuery = query.includes('saldo') || query.includes('quanto eu tenho') || query.includes('dinheiro');
 
-      // 2. Identificar Período
       const today = startOfDay(new Date());
-      let targetDateStart = null;
-      let targetDateEnd = null;
+      let targetDateStart: Date | null = null;
+      let targetDateEnd: Date | null = null;
       let periodLabel = "no período";
 
       if (query.includes('hoje')) {
@@ -58,23 +55,18 @@ export function useAIChat() {
         targetDateEnd = endOfMonth(lastMonth);
         periodLabel = `em ${format(lastMonth, 'MMMM', { locale: ptBR })}`;
       } else {
-        // Padrão: Este mês
         targetDateStart = startOfMonth(new Date());
         targetDateEnd = endOfMonth(new Date());
         periodLabel = "este mês";
       }
 
-      // 3. Identificar Categoria
       const targetCategory = categories.find(c => 
         query.includes(c.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
       );
 
-      // 4. Identificar Conta
       const targetAccount = allAccounts.find(a => 
         query.includes(a.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
       );
-
-      // --- LÓGICA DE RESPOSTA ---
 
       if (isBalanceQuery) {
         if (targetAccount) {
@@ -88,25 +80,21 @@ export function useAIChat() {
         }
       } 
       else if (isExpenseQuery || isIncomeQuery) {
-        // Filtrar transações
         let filtered = allTransactions.filter(t => t.status !== 'cancelled');
 
-        // Filtro de Data
-        if (targetDateEnd) {
+        if (targetDateEnd && targetDateStart) {
           filtered = filtered.filter(t => {
             const d = parseISO(t.purchaseDate);
             return d >= targetDateStart! && d <= targetDateEnd!;
           });
-        } else {
+        } else if (targetDateStart) {
           filtered = filtered.filter(t => isSameDay(parseISO(t.purchaseDate), targetDateStart!));
         }
 
-        // Filtro de Categoria
         if (targetCategory) {
           filtered = filtered.filter(t => t.categoryId === targetCategory.id);
         }
 
-        // Filtro de Conta
         if (targetAccount) {
           filtered = filtered.filter(t => t.accountId === targetAccount.id);
         }

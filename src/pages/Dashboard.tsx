@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatCurrency, Transaction, Goal, Debt, Budget } from '@/lib/db';
+import { formatCurrency, Transaction } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { UserFilter } from '@/components/UserFilter';
@@ -20,32 +20,28 @@ import {
   TrendingDown, 
   CreditCard, 
   Plus,
-  ChevronRight,
-  ChevronLeft,
   Eye,
   EyeOff,
   BarChart3,
   PieChart as PieChartIcon,
   ChevronDown,
   AlertCircle,
-  ArrowRight,
-  History,
+  ChevronLeft,
+  ChevronRight,
   ArrowDownRight,
   ArrowUpRight,
-  Users,
-  User as UserIcon,
-  LayoutGrid,
   Target,
   Trophy,
   Calculator,
-  Mic
+  Mic,
+  History
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { format, addMonths, subMonths, startOfYear, endOfYear, eachMonthOfInterval, getYear, isSameMonth, isValid, parseISO } from 'date-fns';
+import { format, addMonths, subMonths, startOfYear, endOfYear, eachMonthOfInterval, getYear, isValid, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, Legend } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -97,7 +93,6 @@ export function Dashboard() {
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'total');
   const [chartView, setChartView] = useState<'mensal' | 'anual'>('mensal');
   
-  // Estados para Lançamento por Voz
   const [isVoiceDialogOpen, setIsVoiceDialogOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
