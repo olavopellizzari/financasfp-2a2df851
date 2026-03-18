@@ -5,9 +5,11 @@ import { useAIAssistant, AIInsight } from '@/hooks/use-ai-assistant';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles, AlertTriangle, CheckCircle2, Lightbulb, Info, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 export function AIFinanceAssistant() {
   const { insights } = useAIAssistant();
+  const navigate = useNavigate();
 
   if (insights.length === 0) return null;
 
@@ -47,7 +49,10 @@ export function AIFinanceAssistant() {
             </div>
           </div>
         ))}
-        <button className="w-full py-2 text-[10px] font-bold uppercase tracking-widest text-primary hover:bg-primary/5 rounded-lg transition-colors flex items-center justify-center gap-1">
+        <button 
+          onClick={() => navigate('/reports')}
+          className="w-full py-2 text-[10px] font-bold uppercase tracking-widest text-primary hover:bg-primary/5 rounded-lg transition-colors flex items-center justify-center gap-1"
+        >
           Ver análise completa <ChevronRight className="w-3 h-3" />
         </button>
       </CardContent>
