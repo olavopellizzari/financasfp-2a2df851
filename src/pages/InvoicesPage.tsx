@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,13 +18,14 @@ import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 
 export function InvoicesPage() {
-  const { cards, transactions, accounts, invoices, refresh, allTransactions, allCards, updateCard, allAccounts, getAccountBalance, getCategoryById, deleteTransaction, createTransaction } = useFinance();
+  const { cards, transactions, accounts, invoices, refresh, allTransactions, allCards, updateCard, allAccounts, getAccountBalance, getCategoryById, deleteTransaction, createTransaction, loading } = useFinance();
   const { currentUser, isCurrentUserAdmin, users } = useAuth();
   const navigate = useNavigate();
   
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [selectedCardId, setSelectedCardId] = useState<string>('all');
   const [expandedInvoices, setExpandedInvoices] = useState<Set<string>>(new Set());
+  const [hasSetInitialMonth, setHasSetInitialMonth] = useState(false);
   
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
@@ -43,6 +44,20 @@ export function InvoicesPage() {
   });
 
   const isAdmin = isCurrentUserAdmin();
+
+  // Lógica para definir o mês inicial baseado na primeira fatura em aberto
+  useEffect(() => {
+    if (!loading && invoices.length > 0 && !hasSetInitialMonth) {
+      const pendingInvoices = invoices
+        .filter(inv => inv.status === 'open' || inv.status === 'partial' || inv.status === 'closed')
+        .sort((a, b) => a.month.localeCompare(b.month));
+
+      if (pendingInvoices.length > 0) {
+        setSelectedMonth(pendingInvoices[0].month);
+      }
+      setHasSetInitialMonth(true);
+    }
+  }, [invoices, loading, hasSetInitialMonth]);
 
   const safeParseMonth = (monthStr: string) => {
     const parsed = parse(monthStr, 'yyyy-MM', new Date());
@@ -182,7 +197,6 @@ export function InvoicesPage() {
       const newPaidAmount = invoice.paid + amount;
       const isFullyPaid = newPaidAmount >= invoice.total;
       
-      // 1. Salvar status da fatura no Supabase
       const { error: invError } = await supabase
         .from('invoices')
         .upsert({
@@ -204,7 +218,6 @@ export function InvoicesPage() {
 
       const cardName = invoice.card.name || 'Cartão';
       
-      // 2. Lançamento automático na conta
       await createTransaction({
         type: 'EXPENSE',
         amount: amount,
@@ -219,7 +232,6 @@ export function InvoicesPage() {
         notes: `Referente à fatura de ${format(safeParseMonth(invoice.month), 'MMMM/yyyy', { locale: ptBR })}`
       });
 
-      // 3. Marcar lançamentos individuais como pagos se a fatura foi totalmente quitada
       if (isFullyPaid) {
         const { error: txUpdateError } = await supabase
           .from('transactions')
