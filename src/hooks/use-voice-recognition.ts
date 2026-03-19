@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 
 export function useVoiceRecognition() {
   const [isListening, setIsListening] = useState(false);
@@ -20,7 +20,8 @@ export function useVoiceRecognition() {
     recognition.continuous = false;
     recognition.lang = 'pt-BR';
     recognition.interimResults = false;
-
+    // No mobile, o tempo de silêncio para encerrar é menor, então forçamos o fim manual
+    
     recognition.onstart = () => {
       setIsListening(true);
       setError(null);
@@ -32,7 +33,8 @@ export function useVoiceRecognition() {
     };
 
     recognition.onerror = (event: any) => {
-      if (event.error !== 'aborted') {
+      // 'aborted' acontece quando paramos manualmente, não é um erro real
+      if (event.error !== 'aborted' && event.error !== 'no-speech') {
         setError(event.error);
       }
       setIsListening(false);
@@ -47,16 +49,22 @@ export function useVoiceRecognition() {
 
   const startListening = useCallback(() => {
     try {
+      // Limpa instâncias anteriores
       if (recognitionRef.current) {
-        recognitionRef.current.abort();
+        try { recognitionRef.current.abort(); } catch(e) {}
       }
       
       const recognition = initRecognition();
       if (!recognition) return;
       
       recognitionRef.current = recognition;
-      setTranscript(''); // Limpa o texto anterior ao começar
+      setTranscript('');
       recognition.start();
+      
+      // Feedback tátil (vibração curta) se disponível
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+      }
     } catch (e) {
       setError('start-failed');
       setIsListening(false);
@@ -64,10 +72,17 @@ export function useVoiceRecognition() {
   }, [initRecognition]);
 
   const stopListening = useCallback(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
+    if (recognitionRef.current && isListening) {
+      try {
+        recognitionRef.current.stop();
+        if ('vibrate' in navigator) {
+          navigator.vibrate([30, 30]);
+        }
+      } catch (e) {
+        recognitionRef.current.abort();
+      }
     }
-  }, []);
+  }, [isListening]);
 
   const resetTranscript = useCallback(() => {
     setTranscript('');

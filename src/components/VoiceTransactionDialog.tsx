@@ -19,7 +19,6 @@ export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: Voice
   const [isProcessing, setIsProcessing] = useState(false);
   const hasProcessedRef = useRef(false);
 
-  // Resetar a flag de processamento quando o diálogo abrir
   useEffect(() => {
     if (isOpen) {
       hasProcessedRef.current = false;
@@ -34,11 +33,10 @@ export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: Voice
       
       const parsed = parseVoiceCommand(transcript);
       
-      // Pequeno delay para o usuário ver o que foi transcrito antes de fechar
       const timer = setTimeout(() => {
         onResult(parsed);
         setIsProcessing(false);
-        resetTranscript(); // Limpa o texto para evitar re-processamento
+        resetTranscript();
         onOpenChange(false);
       }, 800);
       
@@ -48,13 +46,15 @@ export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: Voice
 
   const handlePressStart = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isSupported || isProcessing) return;
-    e.preventDefault();
-    hasProcessedRef.current = false;
+    // Importante: não dar preventDefault em tudo para não quebrar o scroll, 
+    // mas aqui precisamos para evitar o menu de contexto do mobile
+    if (e.type === 'touchstart') {
+      // Feedback visual imediato no toque
+    }
     startListening();
   };
 
   const handlePressEnd = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
     if (isListening) {
       stopListening();
     }
@@ -100,11 +100,14 @@ export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: Voice
                 "w-24 h-24 rounded-full shadow-xl transition-all duration-300 relative z-10 select-none touch-none",
                 isListening ? "bg-primary scale-110 shadow-primary/40" : "bg-muted hover:bg-muted/80"
               )}
+              // Eventos combinados para mobile e desktop
               onMouseDown={handlePressStart}
               onMouseUp={handlePressEnd}
               onMouseLeave={handlePressEnd}
               onTouchStart={handlePressStart}
               onTouchEnd={handlePressEnd}
+              // Previne o menu de "copiar/salvar" ao segurar o botão no mobile
+              onContextMenu={(e) => e.preventDefault()}
             >
               {isListening ? <Volume2 className="w-10 h-10 text-white" /> : <Mic className="w-10 h-10 text-muted-foreground" />}
             </Button>
