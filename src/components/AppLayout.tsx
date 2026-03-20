@@ -165,25 +165,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         <div className="p-4 border-t border-sidebar-border space-y-4">
           {/* User info and level moved to dropdown */}
           
-          <div className={`flex gap-2 mt-4 ${isCollapsed ? 'flex-col' : ''}`}>
-            <NavLink
-              to="/settings"
-              className={`flex items-center justify-center text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent rounded-lg px-3 py-2 flex-1 ${isCollapsed ? 'p-2' : ''}`}
-              activeClassName="bg-primary text-white"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              <Settings className="w-4 h-4" />
-              {!isCollapsed && <span className="ml-2">Ajustes</span>}
-            </NavLink>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-sidebar-foreground/80 hover:text-destructive hover:bg-destructive/10"
-              onClick={handleLogout}
-            >
-              <LogOut className="w-4 h-4" />
-            </Button>
-          </div>
+          {/* Removed Ajustes and Sair from here */}
         </div>
 
         <button

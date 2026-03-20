@@ -31,10 +31,7 @@ export function AIInsightsCard() {
   };
 
   const handleAskAI = (question: string) => {
-    // Aqui simulamos a abertura do chat e envio da pergunta
-    // Como o chat é um componente flutuante, apenas enviamos a mensagem
     sendMessage(question);
-    // Opcional: disparar um evento ou estado global para abrir o chat se estiver fechado
   };
 
   return (
