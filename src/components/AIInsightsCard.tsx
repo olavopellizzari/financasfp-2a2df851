@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Sparkles, TrendingUp, AlertCircle, Lightbulb, ChevronRight, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAIChat } from '@/hooks/use-ai-chat';
+import { useAIChat } from '@/hooks/use-ai-chat'; // Importação corrigida
 
 export function AIInsightsCard() {
   const { insights } = useAIAssistant();
@@ -30,8 +30,8 @@ export function AIInsightsCard() {
     setCurrentIndex((prev) => (prev + 1) % insights.length);
   };
 
-  const handleAskAI = (question: string) => {
-    sendMessage(question);
+  const handleAskAI = async (question: string) => { // Tornando a função assíncrona
+    await sendMessage(question);
   };
 
   return (
