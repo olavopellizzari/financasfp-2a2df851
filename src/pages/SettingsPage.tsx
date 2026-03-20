@@ -111,7 +111,7 @@ export function SettingsPage() {
           invoice_reminder_days: data.invoice_reminder_days.toString(),
           balance_report_frequency: data.balance_report_frequency,
           balance_report_time: data.balance_report_time,
-          low_balance_alert_value: data.low_balance_alert_value.toFixed(2),
+          low_balance_alert_value: parseFloat(data.low_balance_alert_value).toFixed(2),
           enable_spending_limit: data.enable_spending_limit,
           enable_low_balance: data.enable_low_balance,
           invoice_reminder_alert: true
@@ -500,60 +500,68 @@ export function SettingsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <Card className="border-none shadow-md overflow-hidden">
-            <CardHeader className="bg-primary/5">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                  <Trophy className="h-5 w-5" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg">Gamificação & Nível</CardTitle>
-                  <CardDescription>Acompanhe sua evolução e conquistas financeiras.</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6 space-y-8">
-              <div className="p-6 bg-muted/30 rounded-2xl border border-dashed">
-                <div className="flex flex-col sm:flex-row items-center gap-6">
-                  <div className="relative">
-                    <div className="w-24 h-24 rounded-full border-4 border-primary/20 flex items-center justify-center bg-background shadow-xl">
-                      <span className="text-4xl font-black text-primary">{level}</span>
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="gamification" className="border-none">
+                <CardHeader className="bg-primary/5 p-0">
+                  <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                    <div className="flex items-center gap-3 text-left">
+                      <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                        <Trophy className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">Gamificação & Nível</CardTitle>
+                        <CardDescription>Acompanhe sua evolução e conquistas financeiras.</CardDescription>
+                      </div>
                     </div>
-                    <div className="absolute -bottom-2 -right-2 p-2 bg-yellow-500 rounded-full shadow-lg">
-                      <Medal className="w-5 h-5 text-white" />
+                  </AccordionTrigger>
+                </CardHeader>
+                <AccordionContent>
+                  <CardContent className="p-6 space-y-8">
+                    <div className="p-6 bg-muted/30 rounded-2xl border border-dashed">
+                      <div className="flex flex-col sm:flex-row items-center gap-6">
+                        <div className="relative">
+                          <div className="w-24 h-24 rounded-full border-4 border-primary/20 flex items-center justify-center bg-background shadow-xl">
+                            <span className="text-4xl font-black text-primary">{level}</span>
+                          </div>
+                          <div className="absolute -bottom-2 -right-2 p-2 bg-yellow-500 rounded-full shadow-lg">
+                            <Medal className="w-5 h-5 text-white" />
+                          </div>
+                        </div>
+                        <div className="flex-1 space-y-4 w-full">
+                          <div>
+                            <h3 className="text-xl font-bold">{levelTitle}</h3>
+                            <p className="text-xs text-muted-foreground uppercase font-bold tracking-widest">Total acumulado: {xp} XP</p>
+                          </div>
+                          <LevelProgress showTitle={false} />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex-1 space-y-4 w-full">
-                    <div>
-                      <h3 className="text-xl font-bold">{levelTitle}</h3>
-                      <p className="text-xs text-muted-foreground uppercase font-bold tracking-widest">Total acumulado: {xp} XP</p>
-                    </div>
-                    <LevelProgress showTitle={false} />
-                  </div>
-                </div>
-              </div>
 
-              <div className="space-y-4">
-                <h4 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Minhas Conquistas</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {badges.map(badge => (
-                    <div 
-                      key={badge.id} 
-                      className={cn(
-                        "p-4 rounded-xl border-2 flex flex-col items-center text-center gap-2 transition-all",
-                        badge.unlocked ? "border-primary/20 bg-primary/5" : "border-muted bg-muted/20 opacity-40 grayscale"
-                      )}
-                    >
-                      <span className="text-3xl">{badge.icon}</span>
-                      <p className="text-xs font-bold leading-tight">{badge.name}</p>
-                      <p className="text-[9px] text-muted-foreground leading-tight">{badge.description}</p>
-                      {badge.unlocked && (
-                        <Badge className="bg-primary text-white border-none text-[8px] h-4 px-1">DESBLOQUEADO</Badge>
-                      )}
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Minhas Conquistas</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {badges.map(badge => (
+                          <div 
+                            key={badge.id} 
+                            className={cn(
+                              "p-4 rounded-xl border-2 flex flex-col items-center text-center gap-2 transition-all",
+                              badge.unlocked ? "border-primary/20 bg-primary/5" : "border-muted bg-muted/20 opacity-40 grayscale"
+                            )}
+                          >
+                            <span className="text-3xl">{badge.icon}</span>
+                            <p className="text-xs font-bold leading-tight">{badge.name}</p>
+                            <p className="text-[9px] text-muted-foreground leading-tight">{badge.description}</p>
+                            {badge.unlocked && (
+                              <Badge className="bg-primary text-white border-none text-[8px] h-4 px-1">DESBLOQUEADO</Badge>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
+                  </CardContent>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </Card>
 
           <Card className="border-none shadow-md overflow-hidden">

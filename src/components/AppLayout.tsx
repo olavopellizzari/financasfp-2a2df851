@@ -26,7 +26,8 @@ import {
   TrendingDown,
   LineChart,
   User,
-  UserCircle
+  UserCircle,
+  Medal
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -162,27 +163,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         </nav>
 
         <div className="p-4 border-t border-sidebar-border space-y-4">
-          {!isCollapsed && (
-            <div className="px-2">
-              <LevelProgress />
-            </div>
-          )}
-          
-          <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 bg-primary overflow-hidden">
-              {currentUser?.avatar_url ? (
-                <img src={currentUser.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : <User className="w-5 h-5" />
-              )}
-            </div>
-            {!isCollapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sidebar-foreground truncate">{currentUser?.name || 'Usuário'}</p>
-                <p className="text-xs text-sidebar-foreground/60 truncate">{currentUser?.email}</p>
-              </div>
-            )}
-          </div>
+          {/* User info and level moved to dropdown */}
           
           <div className={`flex gap-2 mt-4 ${isCollapsed ? 'flex-col' : ''}`}>
             <NavLink
@@ -238,7 +219,27 @@ export function AppLayout({ children }: AppLayoutProps) {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+                <DropdownMenuLabel>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 bg-primary overflow-hidden">
+                      {currentUser?.avatar_url ? (
+                        <img src={currentUser.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : <User className="w-5 h-5" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">{currentUser?.name || 'Usuário'}</p>
+                      <p className="text-xs text-muted-foreground truncate">{currentUser?.email}</p>
+                    </div>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="p-0">
+                  <div className="w-full px-2 py-1.5">
+                    <LevelProgress />
+                  </div>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate('/settings?mode=profile')}>
                   <UserCircle className="mr-2 h-4 w-4" />
