@@ -136,7 +136,7 @@ export function SettingsPage() {
           invoice_reminder_days: parseInt(alertSettings.invoice_reminder_days) || 3,
           balance_report_frequency: alertSettings.balance_report_frequency,
           balance_report_time: alertSettings.balance_report_time,
-          low_balance_alert_value: alertSettings.low_balance_alert_value.toFixed(2),
+          low_balance_alert_value: parseFloat(alertSettings.low_balance_alert_value) || 0,
           enable_spending_limit: alertSettings.enable_spending_limit,
           enable_low_balance: alertSettings.enable_low_balance,
           updated_at: new Date().toISOString()
@@ -978,7 +978,8 @@ export function SettingsPage() {
                     Limpar Tudo na Nuvem
                   </Button>
                 </CardContent>
-              </>
+              </Card>
+            </>
           )}
         </div>
       </div>

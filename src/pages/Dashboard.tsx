@@ -12,6 +12,7 @@ import { AIInsightsCard } from '@/components/AIInsightsCard';
 import { VoiceTransactionDialog } from '@/components/VoiceTransactionDialog';
 import { AIChatFloatingButton } from '@/components/AIChatFloatingButton';
 import { TransactionForm } from '@/components/transactions/TransactionForm';
+import { AIFinanceAssistant } from '@/components/AIFinanceAssistant';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -604,7 +605,6 @@ export function Dashboard() {
         </Card>
       </div>
 
-      {/* Assistente de IA movido para o final para evitar conflitos visuais no topo */}
       <div className="mt-8">
         <AIFinanceAssistant />
       </div>
