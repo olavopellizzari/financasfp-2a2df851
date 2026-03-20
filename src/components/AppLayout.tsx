@@ -3,6 +3,7 @@ import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { NotificationsPanel } from '@/components/NotificationsPanel';
+import { LevelProgress } from '@/components/LevelProgress';
 import { 
   Wallet, 
   LayoutDashboard, 
@@ -160,7 +161,13 @@ export function AppLayout({ children }: AppLayoutProps) {
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-sidebar-border">
+        <div className="p-4 border-t border-sidebar-border space-y-4">
+          {!isCollapsed && (
+            <div className="px-2">
+              <LevelProgress />
+            </div>
+          )}
+          
           <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}>
             <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 bg-primary overflow-hidden">
               {currentUser?.avatar_url ? (
