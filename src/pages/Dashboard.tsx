@@ -245,25 +245,43 @@ export function Dashboard() {
 
   const lastTransactions = useMemo(() => {
     const groupedTransactions = new Map<string, Transaction[]>();
+    
     userFilteredTransactions.forEach(tx => {
       if (tx.installmentGroupId) {
-        if (!groupedTransactions.has(tx.installmentGroupId)) groupedTransactions.set(tx.installmentGroupId, []);
+        if (!groupedTransactions.has(tx.installmentGroupId)) {
+          groupedTransactions.set(tx.installmentGroupId, []);
+        }
         groupedTransactions.get(tx.installmentGroupId)?.push(tx);
       } else {
+        // Usa o ID como chave para transações não parceladas
         groupedTransactions.set(tx.id, [tx]);
       }
     });
-    const processedTransactions: Transaction[] = [];
-    groupedTransactions.forEach(txs => {
+
+    const processedTransactions: any[] = [];
+
+    groupedTransactions.forEach((txs) => {
       if (txs.length > 1) {
-        const firstTx = txs.reduce((prev, current) => (prev.installmentNumber || 0) < (current.installmentNumber || 0) ? prev : current);
+        // É um grupo parcelado
+        const firstTx = txs.reduce((prev, current) => 
+          (prev.installmentNumber || 0) < (current.installmentNumber || 0) ? prev : current
+        );
         const totalAmount = txs.reduce((sum, t) => sum + t.amount, 0);
-        processedTransactions.push({ ...firstTx, originalAmount: totalAmount, isParcelled: true } as Transaction);
+        
+        processedTransactions.push({
+          ...firstTx,
+          amount: totalAmount,
+          isParcelled: true,
+          totalInstallments: txs[0].totalInstallments
+        });
       } else {
         processedTransactions.push(txs[0]);
       }
     });
-    return processedTransactions.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()).slice(0, 8);
+
+    return processedTransactions
+      .sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime())
+      .slice(0, 8);
   }, [userFilteredTransactions]);
 
   const cardActivity = useMemo(() => {
@@ -547,7 +565,7 @@ export function Dashboard() {
         <Card className="border-none shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <History className="w-4 h-4 text-primary" /> Últimas Transações
+              <History className="w-4 h-4 text-primary" /> Últimas Atividades
             </CardTitle>
             <Button variant="ghost" size="sm" className="h-7 text-[10px] text-muted-foreground" onClick={() => navigate('/transactions')}>Ver todas</Button>
           </CardHeader>
@@ -563,12 +581,16 @@ export function Dashboard() {
                         <p className="text-xs font-bold truncate max-w-[120px]">{tx.description}</p>
                         <div className="flex flex-col">
                           <p className="text-[10px] text-muted-foreground">{format(new Date(tx.purchaseDate), 'dd/MM/yy')}</p>
-                          {tx.totalInstallments && tx.totalInstallments > 1 && (<p className="text-[9px] text-primary font-bold">Parcela {tx.installmentNumber}/{tx.totalInstallments}</p>)}
+                          {tx.isParcelled ? (
+                            <p className="text-[9px] text-primary font-bold uppercase tracking-tighter">Compra Parcelada ({tx.totalInstallments}x)</p>
+                          ) : tx.totalInstallments && tx.totalInstallments > 1 && (
+                            <p className="text-[9px] text-primary font-bold">Parcela {tx.installmentNumber}/{tx.totalInstallments}</p>
+                          )}
                         </div>
                       </div>
                     </div>
                     <span className={cn("text-xs font-bold", tx.type === 'INCOME' || tx.type === 'REFUND' ? "text-income" : "text-expense")}>
-                      {tx.type === 'INCOME' || tx.type === 'REFUND' ? '+' : '-'} {isPrivate ? '••••' : formatCurrency(tx.originalAmount || tx.amount)}
+                      {tx.type === 'INCOME' || tx.type === 'REFUND' ? '+' : '-'} {isPrivate ? '••••' : formatCurrency(tx.amount)}
                     </span>
                   </div>
                 );
