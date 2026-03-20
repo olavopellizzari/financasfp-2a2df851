@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { UserFilter } from '@/components/UserFilter';
 import { QuickWidget } from '@/components/QuickWidget';
-import { AIFinanceAssistant } from '@/components/AIFinanceAssistant';
+import { AIInsightsCard } from '@/components/AIInsightsCard';
 import { VoiceTransactionDialog } from '@/components/VoiceTransactionDialog';
 import { AIChatFloatingButton } from '@/components/AIChatFloatingButton';
 import { TransactionForm } from '@/components/transactions/TransactionForm';
@@ -378,6 +378,8 @@ export function Dashboard() {
         </div>
       </div>
 
+      <AIInsightsCard />
+
       <QuickWidget selectedUserId={selectedUserId === 'total' ? 'all' : selectedUserId} date={selectedMonth} />
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -595,7 +597,7 @@ export function Dashboard() {
                   </div>
                 );
               }) : (
-                <p className="text-xs text-center text-muted-foreground py-4">Nenhuma movimentação.</p>
+                <p className="text-xs text-center text-muted-foreground py-4">Nenhum movimentação.</p>
               )}
             </div>
           </CardContent>

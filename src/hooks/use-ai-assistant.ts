@@ -4,13 +4,15 @@ import { useMemo } from 'react';
 import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency } from '@/lib/db';
-import { subMonths, format } from 'date-fns';
+import { subMonths, format, parseISO, getDay, startOfMonth, endOfMonth } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export interface AIInsight {
   type: 'warning' | 'success' | 'info' | 'tip';
   title: string;
   message: string;
   category?: string;
+  actionable?: string;
 }
 
 export function useAIAssistant() {
@@ -23,78 +25,75 @@ export function useAIAssistant() {
 
     const now = new Date();
     const currentMonthStr = format(now, 'yyyy-MM');
-    const lastMonthStr = format(subMonths(now, 1), 'yyyy-MM');
-
-    // 1. Análise de Gastos vs Mês Anterior
+    
+    // 1. Análise de Gastos vs Média dos últimos 3 meses
+    const last3Months = [1, 2, 3].map(i => format(subMonths(now, i), 'yyyy-MM'));
     const currentMonthTxs = allTransactions.filter(t => t.effectiveMonth === currentMonthStr && (t.type === 'EXPENSE' || t.type === 'CREDIT'));
-    const lastMonthTxs = allTransactions.filter(t => t.effectiveMonth === lastMonthStr && (t.type === 'EXPENSE' || t.type === 'CREDIT'));
+    
+    const categorySpikes: Record<string, { current: number; history: number[] }> = {};
+    
+    allTransactions.forEach(t => {
+      if (t.type !== 'EXPENSE' && t.type !== 'CREDIT') return;
+      if (!t.categoryId) return;
+      
+      if (!categorySpikes[t.categoryId]) categorySpikes[t.categoryId] = { current: 0, history: [] };
+      
+      if (t.effectiveMonth === currentMonthStr) {
+        categorySpikes[t.categoryId].current += t.amount;
+      } else if (last3Months.includes(t.effectiveMonth)) {
+        categorySpikes[t.categoryId].history.push(t.amount);
+      }
+    });
 
-    const currentTotal = currentMonthTxs.reduce((s, t) => s + t.amount, 0);
-    const lastTotal = lastMonthTxs.reduce((s, t) => s + t.amount, 0);
-
-    if (lastTotal > 0) {
-      const diff = ((currentTotal - lastTotal) / lastTotal) * 100;
-      if (diff > 15) {
+    Object.entries(categorySpikes).forEach(([catId, data]) => {
+      const avgHistory = data.history.length > 0 ? data.history.reduce((a, b) => a + b, 0) / 3 : 0;
+      if (avgHistory > 50 && data.current > avgHistory * 1.3) {
+        const cat = getCategoryById(catId);
+        const diffPercent = ((data.current - avgHistory) / avgHistory) * 100;
         list.push({
           type: 'warning',
-          title: 'Aumento de Gastos',
-          message: `Seus gastos este mês estão ${diff.toFixed(0)}% maiores que no mês passado. Que tal revisar os lançamentos recentes?`
-        });
-      } else if (diff < -10 && currentTotal > 0) {
-        list.push({
-          type: 'success',
-          title: 'Economia Detectada',
-          message: `Parabéns! Você está gastando ${Math.abs(diff).toFixed(0)}% menos que no mês anterior até agora.`
+          title: 'Aumento Súbito',
+          message: `Seus gastos com ${cat?.name || 'uma categoria'} subiram ${diffPercent.toFixed(0)}% em relação à média dos últimos 3 meses.`,
+          category: cat?.name,
+          actionable: `Por que gastei tanto com ${cat?.name} este mês?`
         });
       }
-    }
+    });
 
-    // 2. Análise de Orçamento (Budget)
+    // 2. Sugestão de Economia baseada no Orçamento
     const budget = allBudgets.find(b => (b.user_id === currentUser.id || !b.user_id) && b.month === currentMonthStr);
     if (budget) {
-      Object.entries(budget.category_limits).forEach(([catId, limit]) => {
-        const spent = currentMonthTxs.filter(t => t.categoryId === catId).reduce((s, t) => s + t.amount, 0);
-        const cat = getCategoryById(catId);
-        if (limit > 0 && spent > limit) {
-          list.push({
-            type: 'warning',
-            title: 'Limite Excedido',
-            message: `Você ultrapassou o limite de ${formatCurrency(limit)} na categoria ${cat?.name || 'Outros'}.`,
-            category: cat?.name
-          });
-        } else if (limit > 0 && spent > limit * 0.8) {
-          list.push({
-            type: 'tip',
-            title: 'Atenção ao Limite',
-            message: `Você já utilizou 80% do seu orçamento para ${cat?.name || 'Outros'}.`,
-            category: cat?.name
-          });
-        }
-      });
-    }
-
-    // 3. Análise de Metas (Goals)
-    const activeGoals = goals.filter(g => !g.is_completed && (g.user_id === currentUser.id));
-    if (activeGoals.length > 0) {
-      const topGoal = activeGoals[0];
-      list.push({
-        type: 'info',
-        title: 'Foco no Objetivo',
-        message: `Lembre-se da sua meta: "${topGoal.name}". Cada pequena economia hoje te deixa mais perto de ${formatCurrency(topGoal.target_amount)}.`
-      });
-    }
-
-    // 4. Dicas Genéricas de IA baseadas em comportamento
-    const diningOutCat = categories.find(c => c.name.toLowerCase().includes('restaurante') || c.name.toLowerCase().includes('delivery'));
-    if (diningOutCat) {
-      const diningSpent = currentMonthTxs.filter(t => t.categoryId === diningOutCat.id).reduce((s, t) => s + t.amount, 0);
-      if (diningSpent > currentTotal * 0.25) {
+      const totalLimit = Object.values(budget.category_limits).reduce((a, b) => a + b, 0);
+      const totalSpent = currentMonthTxs.reduce((s, t) => s + t.amount, 0);
+      
+      if (totalLimit > 0 && totalSpent > totalLimit * 0.9) {
         list.push({
           type: 'tip',
-          title: 'Insight de Alimentação',
-          message: 'Seus gastos com restaurantes/delivery representam mais de 25% do seu total. Cozinhar em casa no próximo final de semana pode gerar uma boa economia!'
+          title: 'Meta de Economia',
+          message: `Você já atingiu 90% do seu orçamento total planejado. Tente reduzir gastos não essenciais nos próximos dias.`,
+          actionable: "Como posso economizar até o fim do mês?"
         });
       }
+    }
+
+    // 3. Alerta de Dia de Pico (Análise Comportamental)
+    const dayOfWeekSpending: Record<number, number> = {};
+    const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    
+    allTransactions.filter(t => (t.type === 'EXPENSE' || t.type === 'CREDIT')).forEach(t => {
+      const day = getDay(parseISO(t.purchaseDate));
+      dayOfWeekSpending[day] = (dayOfWeekSpending[day] || 0) + t.amount;
+    });
+
+    const peakDay = Object.entries(dayOfWeekSpending).sort((a, b) => b[1] - a[1])[0];
+    if (peakDay) {
+      const dayIdx = parseInt(peakDay[0]);
+      list.push({
+        type: 'info',
+        title: 'Padrão de Consumo',
+        message: `Detectamos que seu maior volume de gastos ocorre às ${dayNames[dayIdx]}s. Cuidado com compras por impulso nesse dia!`,
+        actionable: `Dicas para gastar menos na ${dayNames[dayIdx]}`
+      });
     }
 
     return list;
