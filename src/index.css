@@ -5,47 +5,42 @@
 /* 
   FINANÇAS APP - Design System
   Paleta: Verde esmeralda + tons neutros + acentos azul
-  Inspiração: Apps de banco modernos (Nubank, Inter, Mobills)
 */
 
 @layer base {
   :root {
-    /* Background & Surfaces - Preto */
-    --background: 0 0% 0%;
-    --foreground: 215 50% 58%;
+    /* Light Theme - Padrão */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
     
-    --card: 220 15% 6%;
-    --card-foreground: 210 80% 70%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
     
-    --popover: 220 15% 6%;
-    --popover-foreground: 210 80% 70%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
     
     /* Primary - Azul sóbrio */
     --primary: 215 60% 42%;
     --primary-foreground: 0 0% 100%;
     --primary-glow: 215 55% 50%;
     
-    /* Secondary */
-    --secondary: 220 15% 10%;
-    --secondary-foreground: 210 80% 70%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
     
-    /* Muted */
-    --muted: 220 15% 8%;
-    --muted-foreground: 210 30% 45%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
     
-    /* Accent - Azul sóbrio */
-    --accent: 215 60% 42%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
     
-    /* Status Colors */
     --success: 150 60% 45%;
     --success-foreground: 0 0% 100%;
     
     --warning: 40 85% 55%;
     --warning-foreground: 0 0% 0%;
     
-    --destructive: 0 70% 55%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
     
     --info: 215 60% 42%;
     --info-foreground: 0 0% 100%;
@@ -64,20 +59,20 @@
     --credit-foreground: 0 0% 100%;
     
     /* UI Elements */
-    --border: 220 15% 14%;
-    --input: 220 15% 10%;
-    --ring: 210 100% 55%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 215 60% 42%;
     --radius: 0.75rem;
     
     /* Sidebar */
-    --sidebar-background: 0 0% 2%;
-    --sidebar-foreground: 210 80% 70%;
-    --sidebar-primary: 210 100% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 15% 8%;
-    --sidebar-accent-foreground: 210 80% 70%;
-    --sidebar-border: 220 15% 12%;
-    --sidebar-ring: 210 100% 55%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 215 60% 42%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
     
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(215 55% 28%), hsl(215 50% 38%));
@@ -88,46 +83,59 @@
     --gradient-credit: linear-gradient(135deg, hsl(270 55% 50%), hsl(270 55% 60%));
     
     /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.3);
-    --shadow-primary: 0 8px 25px -8px hsl(210 100% 55% / 0.3);
-    --shadow-card: 0 2px 8px 0 rgb(0 0 0 / 0.2);
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --shadow-primary: 0 8px 25px -8px hsl(215 60% 42% / 0.3);
+    --shadow-card: 0 2px 8px 0 rgb(0 0 0 / 0.05);
   }
 
   .dark {
     --background: 0 0% 0%;
     --foreground: 210 100% 65%;
+    
     --card: 220 15% 6%;
     --card-foreground: 210 80% 70%;
+    
     --popover: 220 15% 6%;
     --popover-foreground: 210 80% 70%;
+    
     --primary: 210 100% 58%;
     --primary-foreground: 0 0% 100%;
     --primary-glow: 210 100% 68%;
+    
     --secondary: 220 15% 10%;
     --secondary-foreground: 210 80% 70%;
+    
     --muted: 220 15% 8%;
     --muted-foreground: 210 30% 50%;
+    
     --accent: 210 100% 58%;
     --accent-foreground: 0 0% 100%;
+    
     --success: 150 60% 48%;
     --warning: 40 85% 58%;
     --destructive: 0 70% 55%;
     --info: 210 100% 58%;
+    
     --income: 150 60% 48%;
     --expense: 0 70% 55%;
     --transfer: 210 100% 58%;
     --credit: 270 55% 60%;
+    
     --border: 220 15% 14%;
     --input: 220 15% 10%;
     --ring: 210 100% 58%;
+    
     --sidebar-background: 0 0% 2%;
     --sidebar-foreground: 210 80% 70%;
     --sidebar-primary: 210 100% 58%;
     --sidebar-accent: 220 15% 8%;
     --sidebar-border: 220 15% 12%;
+    
+    --shadow-primary: 0 8px 25px -8px hsl(210 100% 58% / 0.3);
+    --shadow-card: 0 2px 8px 0 rgb(0 0 0 / 0.2);
   }
 }
 
@@ -139,6 +147,7 @@
   html, body {
     @apply bg-background text-foreground antialiased overflow-x-hidden max-w-full;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
   
   h1, h2, h3, h4, h5, h6 {
@@ -151,19 +160,21 @@
   .finance-card {
     @apply bg-card rounded-xl border shadow-sm transition-all duration-200;
     box-shadow: var(--shadow-card);
+  }
+  
+  .dark .finance-card {
     border-color: hsl(220 18% 16%);
   }
   
   .finance-card:hover {
     box-shadow: var(--shadow-md);
-    border-color: hsl(160 60% 45% / 0.15);
   }
   
   .finance-card-gradient {
     @apply rounded-xl p-6;
     background: var(--gradient-primary);
     box-shadow: var(--shadow-primary);
-    color: hsl(220 20% 7%);
+    color: white;
   }
   
   .finance-card-dark {
