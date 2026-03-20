@@ -30,7 +30,7 @@ import {
   User, Trash2, Loader2, Sparkles, Wrench, Calendar, Bell, BellRing, 
   Smartphone, CheckCircle2, AlertTriangle, Zap, Camera, Upload, X, 
   RefreshCw, Clock, Wallet, CreditCard, ShieldAlert, MessageSquare,
-  HelpCircle, ListChecks, Moon, Sun, Monitor
+  HelpCircle, ListChecks, Moon, Sun, Monitor, Palette
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -497,51 +497,59 @@ export function SettingsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <Card className="border-none shadow-md overflow-hidden">
-            <CardHeader className="bg-primary/5">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                  <Sparkles className="h-5 w-5" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg">Aparência</CardTitle>
-                  <CardDescription>Escolha como o aplicativo deve ser exibido.</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-3 gap-4">
-                <button
-                  onClick={() => setTheme('light')}
-                  className={cn(
-                    "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
-                    theme === 'light' ? "border-primary bg-primary/5" : "border-border hover:border-border/80"
-                  )}
-                >
-                  <Sun className={cn("h-6 w-6", theme === 'light' ? "text-primary" : "text-muted-foreground")} />
-                  <span className="text-xs font-bold">Claro</span>
-                </button>
-                <button
-                  onClick={() => setTheme('dark')}
-                  className={cn(
-                    "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
-                    theme === 'dark' ? "border-primary bg-primary/5" : "border-border hover:border-border/80"
-                  )}
-                >
-                  <Moon className={cn("h-6 w-6", theme === 'dark' ? "text-primary" : "text-muted-foreground")} />
-                  <span className="text-xs font-bold">Escuro</span>
-                </button>
-                <button
-                  onClick={() => setTheme('system')}
-                  className={cn(
-                    "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
-                    theme === 'system' ? "border-primary bg-primary/5" : "border-border hover:border-border/80"
-                  )}
-                >
-                  <Monitor className={cn("h-6 w-6", theme === 'system' ? "text-primary" : "text-muted-foreground")} />
-                  <span className="text-xs font-bold">Sistema</span>
-                </button>
-              </div>
-            </CardContent>
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="appearance" className="border-none">
+                <CardHeader className="bg-primary/5 p-0">
+                  <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                    <div className="flex items-center gap-3 text-left">
+                      <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                        <Palette className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">Aparência</CardTitle>
+                        <CardDescription>Escolha como o aplicativo deve ser exibido.</CardDescription>
+                      </div>
+                    </div>
+                  </AccordionTrigger>
+                </CardHeader>
+                <AccordionContent>
+                  <CardContent className="p-6">
+                    <div className="grid grid-cols-3 gap-4">
+                      <button
+                        onClick={() => setTheme('light')}
+                        className={cn(
+                          "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                          theme === 'light' ? "border-primary bg-primary/5" : "border-border hover:border-border/80"
+                        )}
+                      >
+                        <Sun className={cn("h-6 w-6", theme === 'light' ? "text-primary" : "text-muted-foreground")} />
+                        <span className="text-xs font-bold">Claro</span>
+                      </button>
+                      <button
+                        onClick={() => setTheme('dark')}
+                        className={cn(
+                          "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                          theme === 'dark' ? "border-primary bg-primary/5" : "border-border hover:border-border/80"
+                        )}
+                      >
+                        <Moon className={cn("h-6 w-6", theme === 'dark' ? "text-primary" : "text-muted-foreground")} />
+                        <span className="text-xs font-bold">Escuro</span>
+                      </button>
+                      <button
+                        onClick={() => setTheme('system')}
+                        className={cn(
+                          "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                          theme === 'system' ? "border-primary bg-primary/5" : "border-border hover:border-border/80"
+                        )}
+                      >
+                        <Monitor className={cn("h-6 w-6", theme === 'system' ? "text-primary" : "text-muted-foreground")} />
+                        <span className="text-xs font-bold">Sistema</span>
+                      </button>
+                    </div>
+                  </CardContent>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </Card>
 
           <Card className="border-none shadow-md overflow-hidden">
@@ -852,7 +860,7 @@ export function SettingsPage() {
                     <p className="text-xs font-bold">Ação Necessária no iPhone</p>
                   </div>
                   <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    Para receber notificações em tempo real, use <strong>"Adicionar à Tela de Início"</strong> no Safari.
+                    Para receber notifications em tempo real, use <strong>"Adicionar à Tela de Início"</strong> no Safari.
                   </p>
                 </div>
               ) : (
