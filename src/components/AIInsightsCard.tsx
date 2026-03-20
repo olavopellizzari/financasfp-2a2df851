@@ -6,11 +6,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Sparkles, TrendingUp, AlertCircle, Lightbulb, ChevronRight, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAIChat } from '@/hooks/use-ai-chat'; // Importação corrigida
 
-export function AIInsightsCard() {
+interface AIInsightsCardProps {
+  onSendMessage: (message: string) => Promise<void>;
+  onOpenChat: (open: boolean) => void;
+}
+
+export function AIInsightsCard({ onSendMessage, onOpenChat }: AIInsightsCardProps) {
   const { insights } = useAIAssistant();
-  const { sendMessage } = useAIChat();
   const [currentIndex, setCurrentIndex] = useState(0);
 
   if (insights.length === 0) return null;
@@ -30,8 +33,9 @@ export function AIInsightsCard() {
     setCurrentIndex((prev) => (prev + 1) % insights.length);
   };
 
-  const handleAskAI = async (question: string) => { // Tornando a função assíncrona
-    await sendMessage(question);
+  const handleAskAI = async (question: string) => {
+    onOpenChat(true); // Abre o chat da IA
+    await onSendMessage(question);
   };
 
   return (

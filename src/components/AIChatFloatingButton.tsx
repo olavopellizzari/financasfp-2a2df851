@@ -10,8 +10,12 @@ import { useAIChat } from '@/hooks/use-ai-chat';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
-export function AIChatFloatingButton() {
-  const [isOpen, setIsOpen] = useState(false);
+interface AIChatFloatingButtonProps {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+}
+
+export function AIChatFloatingButton({ isOpen, setIsOpen }: AIChatFloatingButtonProps) {
   const [inputValue, setInputValue] = useState('');
   const { messages, isTyping, sendMessage } = useAIChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);

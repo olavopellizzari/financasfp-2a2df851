@@ -47,9 +47,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from '@/hooks/use-toast';
+import { useAIChat } from '@/hooks/use-ai-chat'; // Importar useAIChat aqui
 
 interface BalanceCardProps {
   title: string;
@@ -88,6 +91,7 @@ export function Dashboard() {
   const { currentUser, users } = useAuth();
   const { allAccounts, allCards, allTransactions, categories, allBudgets, goals, debts, getAccountBalance, getCategoryById, createTransaction, refresh } = useFinance();
   const navigate = useNavigate();
+  const { sendMessage } = useAIChat(); // Obter sendMessage do hook
   
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [isPrivate, setIsPrivate] = useState(false);
@@ -97,6 +101,7 @@ export function Dashboard() {
   const [isVoiceDialogOpen, setIsVoiceDialogOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false); // Estado para controlar a abertura do chat da IA
   const [formData, setFormData] = useState({
     userId: currentUser?.id || '',
     type: 'EXPENSE' as any,
@@ -379,7 +384,7 @@ export function Dashboard() {
         </div>
       </div>
 
-      <AIInsightsCard />
+      <AIInsightsCard onSendMessage={sendMessage} onOpenChat={setIsAIChatOpen} /> {/* Passar as props aqui */}
 
       <QuickWidget selectedUserId={selectedUserId === 'total' ? 'all' : selectedUserId} date={selectedMonth} />
       
@@ -615,7 +620,7 @@ export function Dashboard() {
         onResult={handleVoiceResult} 
       />
 
-      <AIChatFloatingButton />
+      <AIChatFloatingButton isOpen={isAIChatOpen} setIsOpen={setIsAIChatOpen} /> {/* Passar o estado e o setter */}
 
       <TransactionForm 
         isOpen={isFormOpen} 
