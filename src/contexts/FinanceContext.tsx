@@ -52,6 +52,7 @@ interface FinanceContextType {
   calculateMesFatura: (purchaseDate: Date, cardId: string) => string;
   getMerchantCategoryMapping: (userId: string, merchantName: string) => Promise<MerchantCategoryMapping | undefined>;
   saveMerchantCategoryMapping: (userId: string, merchantName: string, categoryId: string) => Promise<void>;
+  logAction: (action: AuditLog['action'], entityType: string, entityId: string, before?: any, after?: any) => Promise<void>;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -66,6 +67,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const logAction = async (action: AuditLog['action'], entityType: string, entityId: string, before?: any, after?: any) => {
     if (!currentUser) return;
     try {
+      // Garante que os dados sejam serializáveis (sem funções ou referências circulares)
+      const cleanBefore = before ? JSON.parse(JSON.stringify(before)) : null;
+      const cleanAfter = after ? JSON.parse(JSON.stringify(after)) : null;
+
       await db.add('auditLogs', {
         id: generateId(),
         timestamp: new Date(),
@@ -73,11 +78,11 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         action,
         entityType,
         entityId,
-        before,
-        after
+        before: cleanBefore,
+        after: cleanAfter
       });
     } catch (e) {
-      console.error('Erro ao registrar log:', e);
+      console.error('[FinanceContext] Erro ao registrar log de auditoria:', e);
     }
   };
 
@@ -443,7 +448,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       month: data.month, 
       income: data.income,
       savings_goal: data.savingsGoal, 
-      category_limits: data.categoryLimits
+      category_limits: data.category_limits
     });
     if (error) throw new Error(error.message);
     await refresh();
@@ -510,7 +515,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       createAccount, updateAccount, deleteAccount,
       createCard, updateCard, deleteCard,
       saveBudget, saveGoal, deleteGoal, saveDebt, deleteDebt, calculateMesFatura,
-      getMerchantCategoryMapping, saveMerchantCategoryMapping
+      getMerchantCategoryMapping, saveMerchantCategoryMapping, logAction
     }}>
       {children}
     </FinanceContext.Provider>

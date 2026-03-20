@@ -7,14 +7,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, History, User, FileText, Eye, RefreshCw, Loader2 } from 'lucide-react';
+import { Search, History, User, FileText, Eye, RefreshCw, Loader2, Trash2 } from 'lucide-react';
 import { db, AuditLog } from '@/lib/db';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 export function AuditPage() {
-  const { users } = useAuth();
+  const { users, isCurrentUserAdmin } = useAuth();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,7 +33,11 @@ export function AuditPage() {
     setIsLoading(true);
     try {
       const logsData = await db.getAll<AuditLog>('auditLogs');
-      setLogs(logsData.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+      setLogs(logsData.sort((a, b) => {
+        const dateA = a.timestamp instanceof Date ? a.timestamp : new Date(a.timestamp);
+        const dateB = b.timestamp instanceof Date ? b.timestamp : new Date(b.timestamp);
+        return dateB.getTime() - dateA.getTime();
+      }));
     } catch (error) {
       console.error('Failed to load audit logs:', error);
     } finally {
@@ -40,11 +45,22 @@ export function AuditPage() {
     }
   };
 
+  const handleClearLogs = async () => {
+    if (!confirm('Tem certeza que deseja limpar todo o histórico de auditoria local?')) return;
+    try {
+      await db.clear('auditLogs');
+      setLogs([]);
+      toast({ title: 'Histórico limpo!' });
+    } catch (e) {
+      toast({ title: 'Erro ao limpar', variant: 'destructive' });
+    }
+  };
+
   const filteredLogs = logs.filter(log => {
     const matchesSearch = !searchTerm || 
       log.entityId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.entityType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      JSON.stringify(log.after || log.before).toLowerCase().includes(searchTerm.toLowerCase());
+      JSON.stringify(log.after || log.before || {}).toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesAction = actionFilter === 'all' || log.action === actionFilter;
     const matchesEntity = entityFilter === 'all' || log.entityType === entityFilter;
@@ -123,10 +139,17 @@ export function AuditPage() {
           <h1 className="text-3xl font-bold">Auditoria</h1>
           <p className="text-muted-foreground">Histórico completo de alterações no sistema</p>
         </div>
-        <Button variant="outline" onClick={loadData}>
-          <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
-          Atualizar
-        </Button>
+        <div className="flex items-center gap-2">
+          {isCurrentUserAdmin() && logs.length > 0 && (
+            <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={handleClearLogs}>
+              <Trash2 className="h-4 w-4 mr-2" /> Limpar Tudo
+            </Button>
+          )}
+          <Button variant="outline" onClick={loadData}>
+            <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       <Card className="finance-card">
@@ -201,36 +224,39 @@ export function AuditPage() {
             <div className="p-12 text-center text-muted-foreground">Nenhum registro encontrado. Comece a usar o app para gerar logs.</div>
           ) : (
             <div className="divide-y">
-              {filteredLogs.map(log => (
-                <div 
-                  key={log.id}
-                  className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors cursor-pointer group"
-                  onClick={() => handleViewDetails(log)}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex flex-col gap-1 items-start">
-                      {getActionBadge(log.action)}
-                      <Badge variant="outline" className="text-[9px] uppercase font-bold">
-                        {getEntityLabel(log.entityType)}
-                      </Badge>
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm">
-                        {log.after?.description || log.after?.name || log.before?.description || log.before?.name || `ID: ${log.entityId.substring(0, 8)}`}
-                      </p>
-                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium uppercase">
-                        <User className="h-3 w-3" />
-                        <span>{getUserName(log.actorUserId)}</span>
-                        <span>•</span>
-                        <span>{format(new Date(log.timestamp), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</span>
+              {filteredLogs.map(log => {
+                const logDate = log.timestamp instanceof Date ? log.timestamp : new Date(log.timestamp);
+                return (
+                  <div 
+                    key={log.id}
+                    className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors cursor-pointer group"
+                    onClick={() => handleViewDetails(log)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex flex-col gap-1 items-start">
+                        {getActionBadge(log.action)}
+                        <Badge variant="outline" className="text-[9px] uppercase font-bold">
+                          {getEntityLabel(log.entityType)}
+                        </Badge>
+                      </div>
+                      <div>
+                        <p className="font-bold text-sm">
+                          {log.after?.description || log.after?.name || log.before?.description || log.before?.name || `ID: ${log.entityId.substring(0, 8)}`}
+                        </p>
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium uppercase">
+                          <User className="h-3 w-3" />
+                          <span>{getUserName(log.actorUserId)}</span>
+                          <span>•</span>
+                          <span>{isValid(logDate) ? format(logDate, "dd/MM/yy 'às' HH:mm", { locale: ptBR }) : 'Data inválida'}</span>
+                        </div>
                       </div>
                     </div>
+                    <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Eye className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -250,7 +276,9 @@ export function AuditPage() {
                 <div className="grid grid-cols-2 gap-6">
                   <div className="p-3 bg-muted/30 rounded-xl">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Data/Hora</p>
-                    <p className="text-sm font-semibold">{format(new Date(selectedLog.timestamp), "dd/MM/yyyy 'às' HH:mm:ss", { locale: ptBR })}</p>
+                    <p className="text-sm font-semibold">
+                      {isValid(new Date(selectedLog.timestamp)) ? format(new Date(selectedLog.timestamp), "dd/MM/yyyy 'às' HH:mm:ss", { locale: ptBR }) : '---'}
+                    </p>
                   </div>
                   <div className="p-3 bg-muted/30 rounded-xl">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Usuário</p>
