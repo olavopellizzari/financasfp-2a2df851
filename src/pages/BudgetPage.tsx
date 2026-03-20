@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/MoneyInput';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -22,7 +23,7 @@ export function BudgetPage() {
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [budgetForm, setBudgetForm] = useState({
-    income: '',
+    income: '0.00',
     categoryLimits: {} as Record<string, string>
   });
 
@@ -36,11 +37,11 @@ export function BudgetPage() {
   useEffect(() => {
     if (budget) {
       setBudgetForm({
-        income: budget.income.toString(),
-        categoryLimits: Object.fromEntries(Object.entries(budget.category_limits).map(([k, v]) => [k, v.toString()]))
+        income: budget.income.toFixed(2),
+        categoryLimits: Object.fromEntries(Object.entries(budget.category_limits).map(([k, v]) => [k, v.toFixed(2)]))
       });
     } else {
-      setBudgetForm({ income: '', categoryLimits: {} });
+      setBudgetForm({ income: '0.00', categoryLimits: {} });
     }
   }, [budget]);
 
@@ -169,7 +170,7 @@ export function BudgetPage() {
           <div className="space-y-6 py-4">
             <div className="space-y-2">
               <Label>Renda Base para Cálculo</Label>
-              <Input type="number" value={budgetForm.income} onChange={e => setBudgetForm({...budgetForm, income: e.target.value})} placeholder="0.00" />
+              <MoneyInput value={budgetForm.income} onValueChange={v => setBudgetForm({...budgetForm, income: v})} placeholder="0.00" />
             </div>
             
             <div className="space-y-4">
@@ -178,7 +179,7 @@ export function BudgetPage() {
                 <div key={cat.id} className="flex items-center gap-3">
                   <span className="w-8 h-8 flex items-center justify-center bg-muted rounded-lg">{cat.icon}</span>
                   <span className="flex-1 text-sm">{cat.name}</span>
-                  <Input type="number" className="w-24 h-8" value={budgetForm.categoryLimits[cat.id] || ''} onChange={e => setBudgetForm({...budgetForm, categoryLimits: {...budgetForm.categoryLimits, [cat.id]: e.target.value}})} placeholder="0.00" />
+                  <MoneyInput className="w-32 h-9" value={budgetForm.categoryLimits[cat.id] || '0.00'} onValueChange={v => setBudgetForm({...budgetForm, categoryLimits: {...budgetForm.categoryLimits, [cat.id]: v}})} placeholder="0.00" />
                 </div>
               ))}
             </div>

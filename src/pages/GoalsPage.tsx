@@ -4,6 +4,7 @@ import { useFinance } from '@/contexts/FinanceContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/MoneyInput';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -33,7 +34,7 @@ export function GoalsPage() {
   
   const [goalForm, setGoalForm] = useState({
     name: '',
-    targetAmount: '',
+    targetAmount: '0.00',
     deadline: null as Date | null,
     icon: '🎯',
     color: '#6366f1',
@@ -89,7 +90,7 @@ export function GoalsPage() {
     setEditingGoal(goal);
     setGoalForm({
       name: goal.name,
-      targetAmount: goal.target_amount.toString(),
+      targetAmount: goal.target_amount.toFixed(2),
       deadline: goal.deadline ? new Date(goal.deadline) : null,
       icon: goal.icon,
       color: goal.color,
@@ -112,7 +113,7 @@ export function GoalsPage() {
     setEditingGoal(null);
     setGoalForm({
       name: '',
-      targetAmount: '',
+      targetAmount: '0.00',
       deadline: null,
       icon: '🎯',
       color: '#6366f1',
@@ -227,7 +228,7 @@ export function GoalsPage() {
               </div>
             )}
             <div className="space-y-2"><Label>Nome da Meta *</Label><Input value={goalForm.name} onChange={(e) => setGoalForm(prev => ({ ...prev, name: e.target.value }))} placeholder="Ex: Viagem para Europa" /></div>
-            <div className="space-y-2"><Label>Valor Alvo *</Label><Input type="number" step="0.01" value={goalForm.targetAmount} onChange={(e) => setGoalForm(prev => ({ ...prev, targetAmount: e.target.value }))} placeholder="10000.00" /></div>
+            <div className="space-y-2"><Label>Valor Alvo *</Label><MoneyInput value={goalForm.targetAmount} onValueChange={(v) => setGoalForm(prev => ({ ...prev, targetAmount: v }))} placeholder="10000.00" /></div>
             <div className="space-y-2">
               <Label>Prazo (opcional)</Label>
               <Popover>

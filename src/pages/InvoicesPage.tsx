@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/MoneyInput';
 import { Label } from '@/components/ui/label';
 import { CreditCard, Calendar, DollarSign, CheckCircle, AlertCircle, Clock, ChevronLeft, ChevronRight, Settings2, Loader2, Pencil, Trash2, ChevronDown, ChevronUp, List, CheckCircle2 } from 'lucide-react';
 import { formatCurrency, getCurrentMonth, Invoice, Card as CardType, generateId, Transaction } from '@/lib/db';
@@ -33,7 +34,7 @@ export function InvoicesPage() {
   
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [paymentAccountId, setPaymentAccountId] = useState<string>('');
-  const [paymentAmount, setPaymentAmount] = useState<string>('');
+  const [paymentAmount, setPaymentAmount] = useState<string>('0.00');
   
   const [editingCard, setEditingCard] = useState<CardType | null>(null);
   const [cardFormData, setCardFormData] = useState({
@@ -422,7 +423,10 @@ export function InvoicesPage() {
           <DialogHeader><DialogTitle>Pagar Fatura</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2"><Label>Conta para débito</Label><Select value={paymentAccountId} onValueChange={setPaymentAccountId}><SelectTrigger><SelectValue placeholder="Selecione a conta" /></SelectTrigger><SelectContent>{accounts.filter(a => a.active !== false).map(account => <SelectItem key={account.id} value={account.id}>{account.name} - {formatCurrency(getAccountBalance(account.id))}</SelectItem>)}</SelectContent></Select></div>
-            <div className="space-y-2"><Label>Valor do pagamento</Label><Input type="number" step="0.01" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} placeholder="0,00" /></div>
+            <div className="space-y-2">
+              <Label>Valor do pagamento</Label>
+              <MoneyInput value={paymentAmount} onValueChange={v => setPaymentAmount(v)} placeholder="0,00" />
+            </div>
           </div>
           <DialogFooter className="gap-2"><Button variant="outline" onClick={() => setPayDialogOpen(false)} className="flex-1">Cancelar</Button><Button onClick={handleConfirmPayment} className="flex-1" disabled={isLoading}>
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : 'Confirmar'}

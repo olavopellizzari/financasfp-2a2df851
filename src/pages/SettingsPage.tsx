@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/MoneyInput';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
@@ -62,11 +63,11 @@ export function SettingsPage() {
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
   const [alertSettings, setAlertSettings] = useState({
-    daily_spending_threshold: '0',
+    daily_spending_threshold: '0.00',
     invoice_reminder_days: '3',
     balance_report_frequency: 'off',
     balance_report_time: '08:00',
-    low_balance_alert_value: '100',
+    low_balance_alert_value: '100.00',
     enable_spending_limit: false,
     enable_low_balance: false,
     invoice_reminder_alert: true
@@ -101,11 +102,11 @@ export function SettingsPage() {
 
       if (data) {
         setAlertSettings({
-          daily_spending_threshold: data.daily_spending_threshold.toString(),
+          daily_spending_threshold: data.daily_spending_threshold.toFixed(2),
           invoice_reminder_days: data.invoice_reminder_days.toString(),
           balance_report_frequency: data.balance_report_frequency,
           balance_report_time: data.balance_report_time,
-          low_balance_alert_value: data.low_balance_alert_value.toString(),
+          low_balance_alert_value: data.low_balance_alert_value.toFixed(2),
           enable_spending_limit: data.enable_spending_limit,
           enable_low_balance: data.enable_low_balance,
           invoice_reminder_alert: true
@@ -592,13 +593,11 @@ export function SettingsPage() {
                       {alertSettings.enable_spending_limit && (
                         <div className="pl-12 animate-scale-in">
                           <div className="flex items-center gap-3 max-w-xs">
-                            <span className="text-sm font-bold text-muted-foreground">R$</span>
-                            <Input 
-                              type="number" 
+                            <MoneyInput 
                               value={alertSettings.daily_spending_threshold} 
-                              onChange={(e) => setAlertSettings({...alertSettings, daily_spending_threshold: e.target.value})}
+                              onValueChange={(v) => setAlertSettings({...alertSettings, daily_spending_threshold: v})}
                               placeholder="Ex: 200.00"
-                              className="h-10 font-bold"
+                              className="h-10"
                             />
                           </div>
                         </div>
@@ -713,13 +712,11 @@ export function SettingsPage() {
                       {alertSettings.enable_low_balance && (
                         <div className="pl-12 animate-scale-in">
                           <div className="flex items-center gap-3 max-w-xs">
-                            <span className="text-sm font-bold text-muted-foreground">R$</span>
-                            <Input 
-                              type="number" 
+                            <MoneyInput 
                               value={alertSettings.low_balance_alert_value} 
-                              onChange={(e) => setAlertSettings({...alertSettings, low_balance_alert_value: e.target.value})}
+                              onValueChange={(v) => setAlertSettings({...alertSettings, low_balance_alert_value: v})}
                               placeholder="Ex: 100.00"
-                              className="h-10 font-bold border-destructive/30"
+                              className="h-10 border-destructive/30"
                             />
                           </div>
                         </div>

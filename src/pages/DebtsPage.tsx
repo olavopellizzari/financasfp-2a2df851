@@ -4,6 +4,7 @@ import { useFinance } from '@/contexts/FinanceContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/MoneyInput';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -45,17 +46,17 @@ export function DebtsPage() {
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
-  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState('0.00');
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'all');
 
   const [debtForm, setDebtForm] = useState({
     name: '',
-    totalAmount: '',
-    paidAmount: '',
-    interestRate: '',
+    totalAmount: '0.00',
+    paidAmount: '0.00',
+    interestRate: '0',
     startDate: new Date(),
     dueDate: new Date(),
-    monthlyPayment: '',
+    monthlyPayment: '0.00',
     installmentsCount: '',
     frequency: 'monthly' as 'monthly' | 'semiannual' | 'annual',
     notes: '',
@@ -161,12 +162,12 @@ export function DebtsPage() {
     setEditingDebt(debt);
     setDebtForm({
       name: debt.name,
-      totalAmount: debt.total_amount.toString(),
-      paidAmount: debt.paid_amount.toString(),
+      totalAmount: debt.total_amount.toFixed(2),
+      paidAmount: debt.paid_amount.toFixed(2),
       interestRate: debt.interest_rate.toString(),
       startDate: parseISO(debt.start_date),
       dueDate: parseISO(debt.due_date),
-      monthlyPayment: debt.monthly_payment.toString(),
+      monthlyPayment: debt.monthly_payment.toFixed(2),
       installmentsCount: debt.installments_count?.toString() || '',
       frequency: debt.frequency || 'monthly',
       notes: debt.notes,
@@ -205,8 +206,8 @@ export function DebtsPage() {
   const resetForm = () => {
     setEditingDebt(null);
     setDebtForm({
-      name: '', totalAmount: '', paidAmount: '', interestRate: '',
-      startDate: new Date(), dueDate: new Date(), monthlyPayment: '',
+      name: '', totalAmount: '0.00', paidAmount: '0.00', interestRate: '0',
+      startDate: new Date(), dueDate: new Date(), monthlyPayment: '0.00',
       installmentsCount: '', frequency: 'monthly', notes: '', userId: currentUser?.id || 'family'
     });
   };
@@ -296,7 +297,7 @@ export function DebtsPage() {
                   </div>
                   <Progress value={percentage} className="h-2" />
                 </div>
-                <Button variant="outline" className="w-full sm:w-auto rounded-xl" onClick={() => { setSelectedDebt(debt); setPaymentAmount(debt.monthly_payment.toString()); setPaymentDialogOpen(true); }}>
+                <Button variant="outline" className="w-full sm:w-auto rounded-xl" onClick={() => { setSelectedDebt(debt); setPaymentAmount(debt.monthly_payment.toFixed(2)); setPaymentDialogOpen(true); }}>
                   <DollarSign className="h-4 w-4 mr-2" /> Registrar Pagamento
                 </Button>
               </CardContent>
@@ -340,11 +341,11 @@ export function DebtsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Valor Total *</Label>
-                <Input type="number" step="0.01" value={debtForm.totalAmount} onChange={(e) => handleTotalAmountChange(e.target.value)} className="rounded-xl h-11" placeholder="0.00" />
+                <MoneyInput value={debtForm.totalAmount} onValueChange={(v) => handleTotalAmountChange(v)} className="rounded-xl h-11" placeholder="0.00" />
               </div>
               <div className="space-y-2">
                 <Label>Valor da Parcela</Label>
-                <Input type="number" step="0.01" value={debtForm.monthlyPayment} onChange={(e) => handleMonthlyPaymentChange(e.target.value)} className="rounded-xl h-11" placeholder="0.00" />
+                <MoneyInput value={debtForm.monthlyPayment} onValueChange={(v) => handleMonthlyPaymentChange(v)} className="rounded-xl h-11" placeholder="0.00" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -367,7 +368,7 @@ export function DebtsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Já Pago</Label>
-                <Input type="number" step="0.01" value={debtForm.paidAmount} onChange={(e) => setDebtForm(prev => ({ ...prev, paidAmount: e.target.value }))} className="rounded-xl h-11" placeholder="0.00" />
+                <MoneyInput value={debtForm.paidAmount} onValueChange={(v) => setDebtForm(prev => ({ ...prev, paidAmount: v }))} className="rounded-xl h-11" placeholder="0.00" />
               </div>
               <div className="space-y-2">
                 <Label>Próximo Vencimento</Label>
@@ -409,7 +410,7 @@ export function DebtsPage() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Valor do Pagamento</Label>
-              <Input type="number" step="0.01" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="rounded-xl h-11" />
+              <MoneyInput value={paymentAmount} onValueChange={(v) => setPaymentAmount(v)} className="rounded-xl h-11" />
             </div>
           </div>
           <DialogFooter className="gap-2">

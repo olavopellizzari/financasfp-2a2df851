@@ -7,6 +7,7 @@ import { QuickWidget } from '@/components/QuickWidget';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/MoneyInput';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -50,15 +51,15 @@ export function EvolutionPage() {
 
   const [configForm, setConfigForm] = useState({
     userId: currentUser?.id || '',
-    netSalary: '',
-    savingsGoal: '',
+    netSalary: '0.00',
+    savingsGoal: '0.00',
     cycleEndDay: '28'
   });
 
   const [snapshotForm, setSnapshotForm] = useState({
     userId: currentUser?.id || 'all',
     month: getCurrentMonth(),
-    totalBalance: ''
+    totalBalance: '0.00'
   });
 
   const loadSnapshots = useCallback(async () => {
@@ -75,8 +76,8 @@ export function EvolutionPage() {
       const bud = allBudgets.find(b => b.user_id === targetUserId && b.month === selectedMonthStr);
       setConfigForm(prev => ({
         ...prev,
-        netSalary: bud?.income.toString() || '',
-        savingsGoal: bud?.savings_goal.toString() || '',
+        netSalary: bud?.income.toFixed(2) || '0.00',
+        savingsGoal: bud?.savings_goal.toFixed(2) || '0.00',
         cycleEndDay: (bud?.cycle_end_day || 28).toString()
       }));
     }
@@ -259,7 +260,7 @@ export function EvolutionPage() {
           <h1 className="text-3xl font-bold">Evolução & Ciclo</h1>
           <p className="text-muted-foreground">Gestão de limite diário e patrimônio automático</p>
         </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
           <Select value={selectedUserId} onValueChange={setSelectedUserId}>
             <SelectTrigger className="w-[160px] sm:w-[200px] shrink-0">
               <Users className="h-4 w-4 mr-2" />
@@ -387,8 +388,14 @@ export function EvolutionPage() {
           <DialogHeader><DialogTitle>Configuração do Ciclo</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2"><Label>Usuário</Label><Select value={configForm.userId} onValueChange={v => setConfigForm({...configForm, userId: v})}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent></Select></div>
-            <div className="space-y-2"><Label>Salário Líquido</Label><Input type="number" value={configForm.netSalary} onChange={e => setConfigForm({...configForm, netSalary: e.target.value})} /></div>
-            <div className="space-y-2"><Label>Meta de Economia</Label><Input type="number" value={configForm.savingsGoal} onChange={e => setConfigForm({...configForm, savingsGoal: e.target.value})} /></div>
+            <div className="space-y-2">
+              <Label>Salário Líquido</Label>
+              <MoneyInput value={configForm.netSalary} onValueChange={v => setConfigForm({...configForm, netSalary: v})} />
+            </div>
+            <div className="space-y-2">
+              <Label>Meta de Economia</Label>
+              <MoneyInput value={configForm.savingsGoal} onValueChange={v => setConfigForm({...configForm, savingsGoal: v})} />
+            </div>
             <div className="space-y-2"><Label>Dia de Fechamento</Label><Input type="number" value={configForm.cycleEndDay} onChange={e => setConfigForm({...configForm, cycleEndDay: e.target.value})} /></div>
           </div>
           <DialogFooter className="gap-2"><Button variant="outline" onClick={() => setConfigDialogOpen(false)} className="flex-1">Cancelar</Button><Button onClick={handleSaveConfig} className="flex-1">Salvar</Button></DialogFooter>
@@ -400,7 +407,10 @@ export function EvolutionPage() {
           <DialogHeader><DialogTitle>Registro Manual</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2"><Label>Mês</Label><Input type="month" value={snapshotForm.month} onChange={e => setSnapshotForm({...snapshotForm, month: e.target.value})} /></div>
-            <div className="space-y-2"><Label>Saldo Total (Opcional)</Label><Input type="number" value={snapshotForm.totalBalance} onChange={e => setSnapshotForm({...snapshotForm, totalBalance: e.target.value})} placeholder="0.00" /></div>
+            <div className="space-y-2">
+              <Label>Saldo Total (Opcional)</Label>
+              <MoneyInput value={snapshotForm.totalBalance} onValueChange={v => setSnapshotForm({...snapshotForm, totalBalance: v})} placeholder="0.00" />
+            </div>
           </div>
           <DialogFooter className="gap-2"><Button variant="outline" onClick={() => setDialogOpen(false)} className="flex-1">Cancelar</Button><Button onClick={handleSaveSnapshot} className="flex-1">Registrar</Button></DialogFooter>
         </DialogContent>

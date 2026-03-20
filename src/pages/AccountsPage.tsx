@@ -5,6 +5,7 @@ import { formatCurrency, Account } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/MoneyInput';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { UserFilter } from '@/components/UserFilter';
@@ -106,7 +107,7 @@ export function AccountsPage() {
     name: '',
     bank: 'nubank',
     type: 'checking',
-    balance: '0',
+    balance: '0.00',
     userId: currentUser?.id || '',
     privacyMode: 'shared',
     excludeFromTotals: false,
@@ -132,7 +133,7 @@ export function AccountsPage() {
       name: '',
       bank: 'nubank',
       type: 'checking',
-      balance: '0',
+      balance: '0.00',
       userId: currentUser?.id || '',
       privacyMode: 'shared',
       excludeFromTotals: false,
@@ -156,7 +157,7 @@ export function AccountsPage() {
       name: account.name,
       bank: account.bank || 'outro',
       type: account.account_type === 'corrente' ? 'checking' : account.account_type as any,
-      balance: account.opening_balance.toString(),
+      balance: account.opening_balance.toFixed(2),
       userId: account.user_id || currentUser?.id || '',
       privacyMode,
       excludeFromTotals: account.exclude_from_totals || false,
@@ -518,7 +519,7 @@ export function AccountsPage() {
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Saldo Inicial</Label>
-                <Input type="number" step="0.01" value={formData.balance} onChange={e => setFormData({...formData, balance: e.target.value})} className="rounded-xl h-12 border-2 font-bold" />
+                <MoneyInput value={formData.balance} onValueChange={v => setFormData({...formData, balance: v})} className="rounded-xl h-12 border-2" />
               </div>
             </div>
 

@@ -5,6 +5,7 @@ import { formatCurrency, Card as CardType, Transaction } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/MoneyInput';
 import { Label } from '@/components/ui/label';
 import { UserFilter } from '@/components/UserFilter';
 import { 
@@ -86,7 +87,7 @@ export function CardsPage() {
     name: '',
     lastDigits: '',
     brand: 'Visa',
-    limit: '',
+    limit: '0.00',
     closingDay: '10',
     dueDay: '20',
     color: CARD_COLORS[0],
@@ -156,7 +157,7 @@ export function CardsPage() {
       name: '',
       lastDigits: '',
       brand: 'Visa',
-      limit: '',
+      limit: '0.00',
       closingDay: '10',
       dueDay: '20',
       color: CARD_COLORS[0],
@@ -182,7 +183,7 @@ export function CardsPage() {
       name: card.name,
       lastDigits: card.last_digits || '',
       brand: card.brand || 'Visa',
-      limit: card.limit.toString(),
+      limit: card.limit.toFixed(2),
       closingDay: card.closing_day.toString(),
       dueDay: card.due_day.toString(),
       color: card.color,
@@ -605,10 +606,9 @@ export function CardsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Limite Total</Label>
-                <Input 
-                  type="number" 
+                <MoneyInput 
                   value={formData.limit} 
-                  onChange={e => setFormData({...formData, limit: e.target.value})} 
+                  onValueChange={v => setFormData({...formData, limit: v})} 
                   placeholder="0.00" 
                   required 
                 />

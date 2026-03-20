@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/MoneyInput';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -177,7 +178,12 @@ export function TransactionForm({
               </div>
               <div className="space-y-2">
                 <Label>Valor {formData.type === 'CREDIT' && formData.installments > 1 ? 'Total' : ''}</Label>
-                <Input type="number" step="0.01" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} placeholder="0,00" required />
+                <MoneyInput 
+                  value={formData.amount} 
+                  onValueChange={v => setFormData({ ...formData, amount: v })} 
+                  placeholder="0,00" 
+                  required 
+                />
               </div>
             </div>
 
