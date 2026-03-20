@@ -509,33 +509,37 @@ export function SettingsPage() {
               </div>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="space-y-2">
-                <Label>Modo de Exibição</Label>
-                <Select value={theme} onValueChange={setTheme}>
-                  <SelectTrigger className="w-full sm:w-[240px] h-11 rounded-xl">
-                    <SelectValue placeholder="Selecione o tema" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="light">
-                      <div className="flex items-center gap-2">
-                        <Sun className="h-4 w-4 text-orange-500" />
-                        <span>Claro</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="dark">
-                      <div className="flex items-center gap-2">
-                        <Moon className="h-4 w-4 text-blue-400" />
-                        <span>Escuro</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="system">
-                      <div className="flex items-center gap-2">
-                        <Monitor className="h-4 w-4 text-muted-foreground" />
-                        <span>Sistema</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-3 gap-4">
+                <button
+                  onClick={() => setTheme('light')}
+                  className={cn(
+                    "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                    theme === 'light' ? "border-primary bg-primary/5" : "border-border hover:border-border/80"
+                  )}
+                >
+                  <Sun className={cn("h-6 w-6", theme === 'light' ? "text-primary" : "text-muted-foreground")} />
+                  <span className="text-xs font-bold">Claro</span>
+                </button>
+                <button
+                  onClick={() => setTheme('dark')}
+                  className={cn(
+                    "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                    theme === 'dark' ? "border-primary bg-primary/5" : "border-border hover:border-border/80"
+                  )}
+                >
+                  <Moon className={cn("h-6 w-6", theme === 'dark' ? "text-primary" : "text-muted-foreground")} />
+                  <span className="text-xs font-bold">Escuro</span>
+                </button>
+                <button
+                  onClick={() => setTheme('system')}
+                  className={cn(
+                    "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                    theme === 'system' ? "border-primary bg-primary/5" : "border-border hover:border-border/80"
+                  )}
+                >
+                  <Monitor className={cn("h-6 w-6", theme === 'system' ? "text-primary" : "text-muted-foreground")} />
+                  <span className="text-xs font-bold">Sistema</span>
+                </button>
               </div>
             </CardContent>
           </Card>
