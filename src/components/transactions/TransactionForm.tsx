@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
-import { Check, ChevronsUpDown, CalendarIcon, Loader2, ArrowRight, Sparkles } from 'lucide-react';
+import { Check, ChevronsUpDown, CalendarIcon, Loader2, ArrowRight, Sparkles, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/db';
 import { useFinance } from '@/contexts/FinanceContext';
@@ -37,6 +37,13 @@ interface TransactionFormProps {
   onDescriptionChange: (desc: string) => void;
 }
 
+const CURRENCIES = [
+  { code: 'BRL', symbol: 'R$', name: 'Real' },
+  { code: 'USD', symbol: '$', name: 'Dólar' },
+  { code: 'EUR', symbol: '€', name: 'Euro' },
+  { code: 'GBP', symbol: '£', name: 'Libra' },
+];
+
 export function TransactionForm({
   isOpen, onOpenChange, editingTransaction, formData, setFormData,
   onSubmit, isSaving, users, availableAccounts, availableCards, categories, onDescriptionChange
@@ -50,9 +57,17 @@ export function TransactionForm({
   const { getMerchantCategoryMapping } = useFinance();
   const { currentUser } = useAuth();
 
-  const parsedAmount = parseFloat(formData.amount) || 0;
-  const parsedInstallments = parseInt(formData.installments) || 1;
-  const installmentValue = parsedInstallments > 0 ? parsedAmount / parsedInstallments : 0;
+  // Inicializa campos de moeda se não existirem
+  useEffect(() => {
+    if (isOpen && !formData.currency) {
+      setFormData(prev => ({
+        ...prev,
+        currency: 'BRL',
+        exchangeRate: '1.00',
+        originalAmount: prev.amount || '0.00'
+      }));
+    }
+  }, [isOpen]);
 
   const handleTypeChange = (newType: TransactionType) => {
     const isPaid = newType !== 'CREDIT';
@@ -102,6 +117,31 @@ export function TransactionForm({
     }
   };
 
+  const handleOriginalAmountChange = (val: string) => {
+    const original = parseFloat(val) || 0;
+    const rate = parseFloat(formData.exchangeRate) || 1;
+    const converted = (original * rate).toFixed(2);
+    setFormData({ ...formData, originalAmount: val, amount: converted });
+  };
+
+  const handleExchangeRateChange = (val: string) => {
+    const rate = parseFloat(val) || 1;
+    const original = parseFloat(formData.originalAmount) || 0;
+    const converted = (original * rate).toFixed(2);
+    setFormData({ ...formData, exchangeRate: val, amount: converted });
+  };
+
+  const handleCurrencyChange = (code: string) => {
+    if (code === 'BRL') {
+      setFormData({ ...formData, currency: code, exchangeRate: '1.00', amount: formData.originalAmount });
+    } else {
+      setFormData({ ...formData, currency: code });
+    }
+  };
+
+  const selectedCurrency = CURRENCIES.find(c => c.code === formData.currency) || CURRENCIES[0];
+  const isInternational = formData.currency !== 'BRL';
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl">
@@ -115,6 +155,60 @@ export function TransactionForm({
             <TabsTrigger value="REFUND" className="text-[10px] sm:text-xs">Estorno</TabsTrigger>
           </TabsList>
           <form onSubmit={onSubmit} className="space-y-4 mt-4">
+            
+            <div className="p-3 bg-muted/30 rounded-xl border border-dashed space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  <Globe className="w-3 h-3" /> Moeda & Câmbio
+                </Label>
+                <Select value={formData.currency} onValueChange={handleCurrencyChange}>
+                  <SelectTrigger className="w-32 h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CURRENCIES.map(c => (
+                      <SelectItem key={c.code} value={c.code}>{c.code} ({c.symbol})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] uppercase font-bold">Valor em {formData.currency}</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-xs">{selectedCurrency.symbol}</span>
+                    <Input 
+                      type="number" 
+                      step="0.01"
+                      value={formData.originalAmount} 
+                      onChange={e => handleOriginalAmountChange(e.target.value)}
+                      className="pl-8 h-9 text-sm font-bold"
+                    />
+                  </div>
+                </div>
+                {isInternational && (
+                  <div className="space-y-1.5 animate-scale-in">
+                    <Label className="text-[10px] uppercase font-bold">Cotação (Câmbio)</Label>
+                    <Input 
+                      type="number" 
+                      step="0.0001"
+                      value={formData.exchangeRate} 
+                      onChange={e => handleExchangeRateChange(e.target.value)}
+                      className="h-9 text-sm font-bold"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {isInternational && (
+                <div className="pt-2 border-t border-dashed flex items-center justify-between text-[10px] font-bold text-primary uppercase">
+                  <span>Total Convertido:</span>
+                  <span>{formatCurrency(parseFloat(formData.amount) || 0)}</span>
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Usuário {formData.type === 'TRANSFER' && 'Origem'}</Label>
@@ -177,12 +271,14 @@ export function TransactionForm({
                 </Popover>
               </div>
               <div className="space-y-2">
-                <Label>Valor {formData.type === 'CREDIT' && formData.installments > 1 ? 'Total' : ''}</Label>
+                <Label>Valor Final (BRL)</Label>
                 <MoneyInput 
                   value={formData.amount} 
                   onValueChange={v => setFormData({ ...formData, amount: v })} 
                   placeholder="0,00" 
                   required 
+                  readOnly={isInternational}
+                  className={cn(isInternational && "bg-muted/50")}
                 />
               </div>
             </div>
@@ -258,11 +354,11 @@ export function TransactionForm({
               </div>
             </div>
 
-            {formData.type === 'CREDIT' && parsedInstallments > 1 && (
+            {formData.type === 'CREDIT' && (parseInt(formData.installments) || 1) > 1 && (
               <div className="space-y-2 animate-fade-in">
                 <Label>Valor da Parcela</Label>
                 <Input 
-                  value={formatCurrency(installmentValue)} 
+                  value={formatCurrency((parseFloat(formData.amount) || 0) / (parseInt(formData.installments) || 1))} 
                   readOnly 
                   className="font-bold text-lg bg-muted/50 border-dashed" 
                 />

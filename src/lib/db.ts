@@ -91,6 +91,8 @@ export interface Transaction {
   createdAt: Date;
   isParcelled?: boolean;
   originalAmount?: number;
+  currency?: string;
+  exchangeRate?: number;
 }
 
 export interface AppNotification {
@@ -259,7 +261,7 @@ class FinancasDB {
       const tx = db.transaction(storeName, 'readonly');
       const request = tx.objectStore(storeName).getAll();
       request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+      request.onerror = () => reject(tx.error);
     });
   }
 

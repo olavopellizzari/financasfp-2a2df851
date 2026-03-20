@@ -137,7 +137,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         accountId: t.account_id, cardId: t.card_id, categoryId: t.category_id,
         installmentGroupId: t.installment_group_id, installmentNumber: t.installment_number,
         totalInstallments: t.total_installments, notes: t.notes || '',
-        isRecurring: t.is_recurring, createdAt: new Date(t.created_at)
+        isRecurring: t.is_recurring, createdAt: new Date(t.created_at),
+        originalAmount: t.original_amount, currency: t.currency, exchangeRate: t.exchange_rate
       })) as Transaction[];
     },
     enabled: familyUserIds.length > 0
@@ -293,7 +294,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       installment_group_id: data.installment_group_id, 
       is_recurring: data.isRecurring, 
       is_paid: data.isPaid, 
-      notes: data.notes
+      notes: data.notes,
+      original_amount: data.originalAmount || data.amount,
+      currency: data.currency || 'BRL',
+      exchange_rate: data.exchangeRate || 1.0
     };
 
     const { data: inserted, error } = await supabase.from('transactions').insert([payload]).select().single();
@@ -317,6 +321,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.categoryId !== undefined) updateData.category_id = data.categoryId || null;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.userId !== undefined) updateData.user_id = data.userId;
+    if (data.originalAmount !== undefined) updateData.original_amount = data.originalAmount;
+    if (data.currency !== undefined) updateData.currency = data.currency;
+    if (data.exchangeRate !== undefined) updateData.exchange_rate = data.exchangeRate;
     
     if (data.purchaseDate !== undefined) {
       const pDate = data.purchaseDate instanceof Date ? data.purchaseDate : parseISO(data.purchaseDate);

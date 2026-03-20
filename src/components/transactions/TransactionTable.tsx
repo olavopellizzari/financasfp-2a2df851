@@ -7,8 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Pencil, Trash2, Check, RotateCcw, Clock, CheckCircle2, ArrowUpRight, ArrowDownRight, ArrowLeftRight, CreditCard, Undo2, Wallet } from 'lucide-react';
+import { Pencil, Trash2, Check, RotateCcw, Clock, CheckCircle2, ArrowUpRight, ArrowDownRight, ArrowLeftRight, CreditCard, Undo2, Wallet, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const TYPE_ICONS: any = {
   INCOME: { icon: ArrowUpRight, color: 'text-income' },
@@ -80,6 +86,7 @@ export function TransactionTable({
             const typeInfo = TYPE_ICONS[tx.type] || TYPE_ICONS.EXPENSE;
             const Icon = typeInfo.icon;
             const entity = getEntityName(tx);
+            const isInternational = tx.currency && tx.currency !== 'BRL';
 
             return (
               <tr key={tx.id} className={cn("hover:bg-muted/30 transition-colors group", selectedIds.has(tx.id) && "bg-primary/5")}>
@@ -94,7 +101,24 @@ export function TransactionTable({
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-muted shrink-0"><Icon className={cn("w-4 h-4", typeInfo.color)} /></div>
                     <div className="flex flex-col min-w-[120px]">
-                      <span className="font-semibold truncate max-w-[200px]">{tx.description}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold truncate max-w-[200px]">{tx.description}</span>
+                        {isInternational && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant="secondary" className="h-4 px-1 text-[8px] bg-primary/10 text-primary border-none">
+                                  <Globe className="w-2 h-2 mr-1" /> {tx.currency}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs">Valor original: {tx.currency} {tx.originalAmount?.toFixed(2)}</p>
+                                <p className="text-[10px] opacity-70">Câmbio: {tx.exchangeRate?.toFixed(4)}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
                       {tx.totalInstallments && tx.totalInstallments > 1 && (
                         <span className="text-[10px] text-primary font-bold mt-0.5">
                           Parcela {tx.installmentNumber}/{tx.totalInstallments}
