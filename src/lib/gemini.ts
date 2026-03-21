@@ -1,6 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Chave de API fornecida pelo usuário
 const API_KEY = "AIzaSyAJ2ZGh_MPIKXk0u6NwWFIfcIlw1_g-hb4";
 const genAI = new GoogleGenerativeAI(API_KEY);
 
@@ -63,14 +62,70 @@ export async function parseVoiceWithGemini(transcript: string, categories: any[]
       "type": "INCOME" | "EXPENSE" | "TRANSFER",
       "categoryId": "string (id da categoria mais adequada)"
     }
-    
-    Se não conseguir identificar o valor, use null. Se não identificar a categoria, use o ID da categoria 'Outras Despesas' ou similar.
   `;
 
   const result = await geminiModel.generateContent(prompt);
   const text = result.response.text();
-  
-  // Limpa possíveis blocos de código markdown do JSON
+  const jsonStr = text.replace(/```json|```/g, "").trim();
+  return JSON.parse(jsonStr);
+}
+
+/**
+ * Função para analisar imagem de comprovante (OCR)
+ */
+export async function analyzeReceipt(base64Image: string, categories: any[]) {
+  const prompt = `
+    Analise esta imagem de comprovante fiscal ou recibo e extraia os dados para um lançamento financeiro.
+    
+    CATEGORIAS DISPONÍVEIS:
+    ${categories.map(c => `${c.id}: ${c.name}`).join('\n')}
+    
+    Retorne APENAS um JSON no seguinte formato:
+    {
+      "amount": number,
+      "description": "string (nome do estabelecimento)",
+      "date": "YYYY-MM-DD",
+      "categoryId": "string (id da categoria mais adequada)"
+    }
+  `;
+
+  const result = await geminiModel.generateContent([
+    prompt,
+    {
+      inlineData: {
+        data: base64Image.split(',')[1],
+        mimeType: "image/jpeg"
+      }
+    }
+  ]);
+
+  const text = result.response.text();
+  const jsonStr = text.replace(/```json|```/g, "").trim();
+  return JSON.parse(jsonStr);
+}
+
+/**
+ * Função para gerar previsão de fluxo de caixa
+ */
+export async function getCashflowPrediction(history: any[]) {
+  const prompt = `
+    Com base no histórico de transações abaixo, projete o saldo final para os próximos 3 meses.
+    Identifique padrões recorrentes (aluguel, salário, assinaturas).
+    
+    HISTÓRICO:
+    ${JSON.stringify(history, null, 2)}
+    
+    Retorne APENAS um JSON no formato:
+    {
+      "predictions": [
+        { "month": "YYYY-MM", "projectedBalance": number, "reason": "string" }
+      ],
+      "insight": "string (uma dica curta de economia)"
+    }
+  `;
+
+  const result = await geminiModel.generateContent(prompt);
+  const text = result.response.text();
   const jsonStr = text.replace(/```json|```/g, "").trim();
   return JSON.parse(jsonStr);
 }

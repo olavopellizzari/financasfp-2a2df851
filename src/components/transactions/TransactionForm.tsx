@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Transaction, TransactionType, Account, Card as CardType, Category, User } from '@/lib/db';
 import { matchCategory } from '@/lib/category-matcher';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
@@ -14,13 +14,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
-import { Check, ChevronsUpDown, CalendarIcon, Loader2, ArrowRight, Sparkles, Globe, Plane } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { Check, CalendarIcon, Loader2, ArrowRight, Sparkles, Globe, Plane, Camera, Scan } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/db';
 import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { AICategoryBadge } from '@/components/AICategoryBadge';
+import { analyzeReceipt } from '@/lib/gemini';
 
 interface TransactionFormProps {
   isOpen: boolean;
@@ -54,11 +55,12 @@ export function TransactionForm({
   const [showSuggestionAnimation, setShowSuggestionAnimation] = useState(false);
   const [isAISuggested, setIsAISuggested] = useState(false);
   const [showTravelMode, setShowTravelMode] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { getMerchantCategoryMapping } = useFinance();
   const { currentUser } = useAuth();
 
-  // Inicializa campos de moeda se não existirem
   useEffect(() => {
     if (isOpen) {
       const isInternational = formData.currency && formData.currency !== 'BRL';
@@ -74,6 +76,34 @@ export function TransactionForm({
       }
     }
   }, [isOpen]);
+
+  const handleScanReceipt = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsScanning(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+        const result = await analyzeReceipt(base64, categories);
+        
+        setFormData(prev => ({
+          ...prev,
+          amount: result.amount?.toString() || prev.amount,
+          description: result.description || prev.description,
+          purchaseDate: result.date ? parseISO(result.date) : prev.purchaseDate,
+          categoryId: result.categoryId || prev.categoryId
+        }));
+        setIsAISuggested(true);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Erro no OCR:", err);
+    } finally {
+      setIsScanning(false);
+    }
+  };
 
   const handleTypeChange = (newType: TransactionType) => {
     const isPaid = newType !== 'CREDIT';
@@ -150,19 +180,33 @@ export function TransactionForm({
         <DialogHeader>
           <div className="flex items-center justify-between pr-6">
             <DialogTitle>{editingTransaction ? 'Editar Lançamento' : 'Novo Lançamento'}</DialogTitle>
-            <Button 
-              type="button"
-              variant="outline" 
-              size="sm" 
-              className={cn(
-                "h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5 rounded-full transition-all",
-                showTravelMode ? "bg-primary/10 text-primary border-primary/20" : "text-muted-foreground"
-              )}
-              onClick={() => setShowTravelMode(!showTravelMode)}
-            >
-              <Plane className={cn("w-3 h-3", showTravelMode && "animate-bounce")} />
-              Modo Viagem
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                type="button"
+                variant="outline" 
+                size="sm" 
+                className={cn(
+                  "h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5 rounded-full transition-all",
+                  showTravelMode ? "bg-primary/10 text-primary border-primary/20" : "text-muted-foreground"
+                )}
+                onClick={() => setShowTravelMode(!showTravelMode)}
+              >
+                <Plane className={cn("w-3 h-3", showTravelMode && "animate-bounce")} />
+                Modo Viagem
+              </Button>
+              <Button 
+                type="button"
+                variant="outline" 
+                size="sm" 
+                className="h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5 rounded-full bg-primary/5 text-primary border-primary/20"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isScanning}
+              >
+                {isScanning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Scan className="w-3 h-3" />}
+                Escanear Recibo
+              </Button>
+              <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleScanReceipt} />
+            </div>
           </div>
         </DialogHeader>
         

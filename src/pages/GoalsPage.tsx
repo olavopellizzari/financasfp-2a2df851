@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { UserFilter } from '@/components/UserFilter';
+import { GoalAIAssistant } from '@/components/GoalAIAssistant';
 import { Plus, Target, Pencil, Trash2, Trophy, CalendarIcon, CheckCircle, Wallet } from 'lucide-react';
 import { Goal, formatCurrency, generateId } from '@/lib/db';
 import { toast } from '@/hooks/use-toast';
@@ -145,6 +146,8 @@ export function GoalsPage() {
           </Button>
         </div>
       </div>
+
+      <GoalAIAssistant />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="gradient-primary text-primary-foreground shadow-primary border-0">
