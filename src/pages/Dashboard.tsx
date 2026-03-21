@@ -46,14 +46,15 @@ import {
   Sparkles,
   Users,
   MessageSquare,
-  HeartPulse
+  HeartPulse,
+  Tags
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, addMonths, subMonths, startOfYear, endOfYear, eachMonthOfInterval, getYear, isValid, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, Legend } from 'recharts';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -402,7 +403,7 @@ export function Dashboard() {
             <PredictiveCashflow />
           </div>
 
-          <Accordion type="multiple" defaultValue={["financial-balance", "smart-control", "transaction-flow"]} className="w-full space-y-4">
+          <Accordion type="multiple" defaultValue={["financial-balance", "smart-control", "transaction-flow", "category-distribution"]} className="w-full space-y-4">
             <AccordionItem value="financial-balance" className="border-none shadow-md rounded-xl overflow-hidden">
               <AccordionTrigger className="px-6 py-4 hover:no-underline bg-card hover:bg-muted/50">
                 <div className="flex items-center gap-3 text-left">
@@ -460,6 +461,53 @@ export function Dashboard() {
                   <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-bold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-primary" /> Fluxo de Lançamentos</CardTitle><div className="flex bg-muted p-1 rounded-lg"><Button variant={chartView === 'mensal' ? 'secondary' : 'ghost'} size="sm" className="h-7 text-[10px] px-3" onClick={() => setChartView('mensal')}>Mensal</Button><Button variant={chartView === 'anual' ? 'secondary' : 'ghost'} size="sm" className="h-7 text-[10px] px-3" onClick={() => setChartView('anual')}>Anual</Button></div></CardHeader>
                   <CardContent><div className="h-[250px] sm:h-[300px] w-full mt-4"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartData}><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#888' }} /><YAxis hide /><Tooltip cursor={{ fill: '#f5f5f5' }} content={({ active, payload }) => { if (active && payload && payload.length) { return (<div className="bg-white p-3 border rounded-xl shadow-xl"><p className="text-xs font-bold mb-2">{payload[0].payload.name}</p><div className="space-y-1"><p className="text-[10px] text-income flex justify-between gap-4">Receitas: <span>{formatCurrency(payload[0].value as number)}</span></p><p className="text-[10px] text-expense flex justify-between gap-4">Despesas: <span>{formatCurrency(payload[1].value as number)}</span></p></div></div>); } return null; }} /><Bar dataKey="receitas" fill="#22c55e" radius={[4, 4, 0, 0]} barSize={20} /><Bar dataKey="despesas" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={20} /></BarChart></ResponsiveContainer></div></CardContent>
                 </Card>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="category-distribution" className="border-none shadow-md rounded-xl overflow-hidden">
+              <AccordionTrigger className="px-6 py-4 hover:no-underline bg-card hover:bg-muted/50">
+                <div className="flex items-center gap-3 text-left">
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                    <Tags className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Gastos por Categoria</CardTitle>
+                    <CardDescription>Distribuição percentual das suas despesas.</CardDescription>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="p-6 bg-card">
+                <div className="h-[300px] w-full">
+                  {topExpensesData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={topExpensesData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {topExpensesData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value: number) => formatCurrency(value)}
+                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        />
+                        <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
+                      <PieChartIcon className="w-12 h-12 opacity-20 mb-2" />
+                      <p className="text-xs">Nenhum gasto registrado neste período.</p>
+                    </div>
+                  )}
+                </div>
               </AccordionContent>
             </AccordionItem>
           </Accordion>
