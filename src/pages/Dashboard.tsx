@@ -14,6 +14,7 @@ import { AIChatFloatingButton } from '@/components/AIChatFloatingButton';
 import { TransactionForm } from '@/components/transactions/TransactionForm';
 import { FinancialHealthScore } from '@/components/FinancialHealthScore';
 import { PredictiveCashflow } from '@/components/PredictiveCashflow';
+import { GoalAIAssistant } from '@/components/GoalAIAssistant';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -402,6 +403,8 @@ export function Dashboard() {
             <FinancialHealthScore />
             <PredictiveCashflow />
           </div>
+
+          <GoalAIAssistant />
 
           <Accordion type="multiple" defaultValue={["financial-balance", "smart-control", "transaction-flow", "category-distribution"]} className="w-full space-y-4">
             <AccordionItem value="financial-balance" className="border-none shadow-md rounded-xl overflow-hidden">
