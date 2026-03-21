@@ -13,6 +13,22 @@ export const geminiModel = genAI.getGenerativeModel({
 });
 
 /**
+ * Helper para extrair JSON de uma string que pode conter texto extra
+ */
+function extractJSON(text: string) {
+  try {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    return JSON.parse(text);
+  } catch (e) {
+    console.error("Falha ao extrair JSON da resposta da IA:", text);
+    throw new Error("Resposta da IA em formato inválido");
+  }
+}
+
+/**
  * Função para processar chat com contexto financeiro
  */
 export async function askGemini(prompt: string, context: any) {
@@ -65,9 +81,7 @@ export async function parseVoiceWithGemini(transcript: string, categories: any[]
   `;
 
   const result = await geminiModel.generateContent(prompt);
-  const text = result.response.text();
-  const jsonStr = text.replace(/```json|```/g, "").trim();
-  return JSON.parse(jsonStr);
+  return extractJSON(result.response.text());
 }
 
 /**
@@ -99,9 +113,7 @@ export async function analyzeReceipt(base64Image: string, categories: any[]) {
     }
   ]);
 
-  const text = result.response.text();
-  const jsonStr = text.replace(/```json|```/g, "").trim();
-  return JSON.parse(jsonStr);
+  return extractJSON(result.response.text());
 }
 
 /**
@@ -125,7 +137,5 @@ export async function getCashflowPrediction(history: any[]) {
   `;
 
   const result = await geminiModel.generateContent(prompt);
-  const text = result.response.text();
-  const jsonStr = text.replace(/```json|```/g, "").trim();
-  return JSON.parse(jsonStr);
+  return extractJSON(result.response.text());
 }

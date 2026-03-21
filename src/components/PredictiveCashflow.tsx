@@ -5,20 +5,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFinance } from '@/contexts/FinanceContext';
 import { getCashflowPrediction } from '@/lib/gemini';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { Sparkles, TrendingUp, Loader2, Info } from 'lucide-react';
+import { Sparkles, TrendingUp, Loader2, Info, AlertCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/db';
-import { format, addMonths, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export function PredictiveCashflow() {
   const { allTransactions, allAccounts, getAccountBalance } = useFinance();
   const [prediction, setPrediction] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPrediction = async () => {
-      if (allTransactions.length < 10) return;
+      if (allTransactions.length < 5) return;
+      
       setIsLoading(true);
+      setError(null);
       try {
         const history = allTransactions.slice(0, 50).map(t => ({
           desc: t.description,
@@ -30,6 +33,7 @@ export function PredictiveCashflow() {
         setPrediction(result);
       } catch (err) {
         console.error("Erro na previsão:", err);
+        setError("Não foi possível gerar a previsão no momento.");
       } finally {
         setIsLoading(false);
       }
@@ -44,16 +48,36 @@ export function PredictiveCashflow() {
     const currentBalance = allAccounts.reduce((sum, a) => sum + getAccountBalance(a.id), 0);
     const data = [{ month: 'Hoje', balance: currentBalance, isFuture: false }];
     
-    prediction.predictions.forEach((p: any) => {
-      data.push({
-        month: format(parseISO(p.month + '-01'), 'MMM/yy', { locale: ptBR }),
-        balance: p.projectedBalance,
-        isFuture: true
+    if (prediction.predictions && Array.isArray(prediction.predictions)) {
+      prediction.predictions.forEach((p: any) => {
+        try {
+          data.push({
+            month: format(parseISO(p.month + '-01'), 'MMM/yy', { locale: ptBR }),
+            balance: p.projectedBalance,
+            isFuture: true
+          });
+        } catch (e) {}
       });
-    });
+    }
     
     return data;
   }, [prediction, allAccounts, getAccountBalance]);
+
+  if (allTransactions.length < 5) {
+    return (
+      <Card className="border-none shadow-lg bg-muted/20 h-64 flex items-center justify-center text-center p-6">
+        <div className="space-y-3">
+          <div className="p-3 bg-background rounded-full w-fit mx-auto shadow-sm">
+            <Info className="w-6 h-6 text-muted-foreground" />
+          </div>
+          <div>
+            <p className="text-sm font-bold">Dados Insuficientes</p>
+            <p className="text-[11px] text-muted-foreground">A IA precisa de pelo menos 5 lançamentos para começar a projetar seu futuro financeiro.</p>
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   if (isLoading) return (
     <Card className="border-none shadow-md h-64 flex items-center justify-center">
@@ -64,7 +88,14 @@ export function PredictiveCashflow() {
     </Card>
   );
 
-  if (!prediction) return null;
+  if (error || !prediction) return (
+    <Card className="border-none shadow-md h-64 flex items-center justify-center p-6 text-center">
+      <div className="space-y-2">
+        <AlertCircle className="w-8 h-8 text-destructive/50 mx-auto" />
+        <p className="text-xs text-muted-foreground">{error || "Aguardando dados da IA..."}</p>
+      </div>
+    </Card>
+  );
 
   return (
     <Card className="border-none shadow-lg overflow-hidden">
@@ -111,12 +142,14 @@ export function PredictiveCashflow() {
             </AreaChart>
           </ResponsiveContainer>
         </div>
-        <div className="p-3 bg-primary/5 rounded-xl border border-primary/10 flex items-start gap-3">
-          <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-          <p className="text-[11px] text-muted-foreground leading-relaxed italic">
-            "{prediction.insight}"
-          </p>
-        </div>
+        {prediction.insight && (
+          <div className="p-3 bg-primary/5 rounded-xl border border-primary/10 flex items-start gap-3">
+            <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <p className="text-[11px] text-muted-foreground leading-relaxed italic">
+              "{prediction.insight}"
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
