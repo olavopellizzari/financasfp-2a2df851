@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFinance } from '@/contexts/FinanceContext';
@@ -19,7 +21,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { UserFilter } from '@/components/UserFilter';
 import { GoalAIAssistant } from '@/components/GoalAIAssistant';
-import { Plus, Target, Pencil, Trash2, Trophy, CalendarIcon, CheckCircle, Wallet } from 'lucide-react';
+import { Plus, Target, Pencil, Trash2, Trophy, CalendarIcon, CheckCircle, Wallet, Loader2 } from 'lucide-react';
 import { Goal, formatCurrency, generateId } from '@/lib/db';
 import { toast } from '@/hooks/use-toast';
 import { format, isValid } from 'date-fns';
@@ -32,6 +34,7 @@ export function GoalsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || 'all');
+  const [isSaving, setIsSaving] = useState(false);
   
   const [goalForm, setGoalForm] = useState({
     name: '',
@@ -61,15 +64,24 @@ export function GoalsPage() {
   const overallPercentage = totalTarget > 0 ? (currentBalance / totalTarget) * 100 : 0;
 
   const handleSaveGoal = async () => {
-    if (!goalForm.name || !goalForm.targetAmount) {
-      toast({ title: 'Erro', description: 'Preencha os campos obrigatórios', variant: 'destructive' });
+    if (!goalForm.name || parseFloat(goalForm.targetAmount) <= 0) {
+      toast({ title: 'Campos obrigatórios', description: 'Informe o nome e um valor alvo maior que zero.', variant: 'destructive' });
       return;
     }
 
+    if (!currentUser?.family_id) {
+      toast({ title: 'Erro de conta', description: 'Você precisa estar em uma família para criar metas.', variant: 'destructive' });
+      return;
+    }
+
+    setIsSaving(true);
     try {
+      const targetUserId = isAdmin ? (goalForm.userId || currentUser.id) : currentUser.id;
+
       await saveGoal({
         id: editingGoal?.id || generateId(),
-        user_id: isAdmin ? goalForm.userId : (currentUser?.id || ''),
+        user_id: targetUserId,
+        household_id: currentUser.family_id, // Adicionando vínculo com a família
         name: goalForm.name,
         target_amount: parseFloat(goalForm.targetAmount),
         current_amount: 0,
@@ -82,8 +94,15 @@ export function GoalsPage() {
       toast({ title: editingGoal ? 'Meta atualizada!' : 'Meta criada!' });
       setDialogOpen(false);
       resetForm();
-    } catch (error) {
-      toast({ title: 'Erro ao salvar meta', variant: 'destructive' });
+    } catch (error: any) {
+      console.error("Erro ao salvar meta:", error);
+      toast({ 
+        title: 'Erro ao salvar meta', 
+        description: error.message || 'Ocorreu um erro inesperado no banco de dados.', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -105,8 +124,8 @@ export function GoalsPage() {
     try {
       await deleteGoal(id);
       toast({ title: 'Meta excluída!' });
-    } catch (error) {
-      toast({ title: 'Erro ao excluir meta', variant: 'destructive' });
+    } catch (error: any) {
+      toast({ title: 'Erro ao excluir meta', description: error.message, variant: 'destructive' });
     }
   };
 
@@ -244,7 +263,13 @@ export function GoalsPage() {
               <div className="flex flex-wrap gap-2">{icons.map(icon => (<button key={icon} type="button" className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all ${goalForm.icon === icon ? 'ring-2 ring-primary bg-primary/10' : 'bg-muted hover:bg-muted/80'}`} onClick={() => setGoalForm(prev => ({ ...prev, icon }))}>{icon}</button>))}</div>
             </div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button><Button onClick={handleSaveGoal} className="gradient-primary">Salvar</Button></DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={isSaving}>Cancelar</Button>
+            <Button onClick={handleSaveGoal} className="gradient-primary" disabled={isSaving}>
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Salvar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
