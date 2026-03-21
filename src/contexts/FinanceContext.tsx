@@ -63,11 +63,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const familyId = currentUser?.family_id;
   const familyUserIds = useMemo(() => users.map(u => u.id), [users]);
 
-  // Helper para registrar logs
   const logAction = async (action: AuditLog['action'], entityType: string, entityId: string, before?: any, after?: any) => {
     if (!currentUser) return;
     try {
-      // Garante que os dados sejam serializáveis (sem funções ou referências circulares)
       const cleanBefore = before ? JSON.parse(JSON.stringify(before)) : null;
       const cleanAfter = after ? JSON.parse(JSON.stringify(after)) : null;
 
@@ -86,7 +84,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Queries individuais com TanStack Query
   const { data: categories = [], isLoading: loadingCats } = useQuery({
     queryKey: ['categories', familyId],
     queryFn: async () => {
@@ -188,7 +185,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     enabled: familyUserIds.length > 0
   });
 
-  // Filtros para o usuário logado
   const filteredAccounts = useMemo(() => {
     return allAccountsRaw.filter(a => a.user_id === currentUser?.id || a.is_shared);
   }, [allAccountsRaw, currentUser?.id]);
@@ -238,7 +234,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     return day >= card.closing_day ? format(addMonths(purchaseDate, 1), 'yyyy-MM') : format(purchaseDate, 'yyyy-MM');
   };
 
-  // Funções para MerchantCategoryMapping
   const getMerchantCategoryMapping = async (userId: string, merchantName: string): Promise<MerchantCategoryMapping | undefined> => {
     const mappings = await db.getAll<MerchantCategoryMapping>('merchantCategoryMappings');
     return mappings.find(m => m.userId === userId && m.merchantName.toLowerCase() === merchantName.toLowerCase());
@@ -260,7 +255,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Mutadores
   const createTransaction = async (data: any) => {
     const pDate = data.purchaseDate instanceof Date ? data.purchaseDate : new Date(data.purchaseDate);
     const eDate = data.effectiveDate ? (data.effectiveDate instanceof Date ? data.effectiveDate : new Date(data.effectiveDate)) : pDate;
@@ -276,7 +270,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       mesFatura = null;
     }
 
-    const payload = {
+    const payload: any = {
       user_id: data.userId, 
       account_id: data.accountId || null, 
       card_id: data.cardId || null,
@@ -294,11 +288,16 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       installment_group_id: data.installment_group_id, 
       is_recurring: data.isRecurring, 
       is_paid: data.isPaid, 
-      notes: data.notes,
-      original_amount: data.originalAmount || data.amount,
-      currency: data.currency || 'BRL',
-      exchange_rate: data.exchangeRate || 1.0
+      notes: data.notes
     };
+
+    // Só envia colunas de câmbio se a moeda for diferente de BRL
+    // Isso evita erros se as colunas ainda não existirem no banco de dados
+    if (data.currency && data.currency !== 'BRL') {
+      payload.original_amount = data.originalAmount || data.amount;
+      payload.currency = data.currency;
+      payload.exchange_rate = data.exchangeRate || 1.0;
+    }
 
     const { data: inserted, error } = await supabase.from('transactions').insert([payload]).select().single();
     if (error) throw new Error(error.message);
@@ -321,9 +320,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.categoryId !== undefined) updateData.category_id = data.categoryId || null;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.userId !== undefined) updateData.user_id = data.userId;
-    if (data.originalAmount !== undefined) updateData.original_amount = data.originalAmount;
-    if (data.currency !== undefined) updateData.currency = data.currency;
-    if (data.exchangeRate !== undefined) updateData.exchange_rate = data.exchangeRate;
+    
+    // Só atualiza câmbio se explicitamente enviado e diferente de BRL
+    if (data.currency && data.currency !== 'BRL') {
+      updateData.original_amount = data.originalAmount;
+      updateData.currency = data.currency;
+      updateData.exchange_rate = data.exchangeRate;
+    }
     
     if (data.purchaseDate !== undefined) {
       const pDate = data.purchaseDate instanceof Date ? data.purchaseDate : parseISO(data.purchaseDate);

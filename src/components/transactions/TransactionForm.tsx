@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
-import { Check, ChevronsUpDown, CalendarIcon, Loader2, ArrowRight, Sparkles, Globe } from 'lucide-react';
+import { Check, ChevronsUpDown, CalendarIcon, Loader2, ArrowRight, Sparkles, Globe, Plane } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/db';
 import { useFinance } from '@/contexts/FinanceContext';
@@ -53,19 +53,25 @@ export function TransactionForm({
   const [categoryPopoverOpen, setCategoryPopoverOpen] = React.useState(false);
   const [showSuggestionAnimation, setShowSuggestionAnimation] = useState(false);
   const [isAISuggested, setIsAISuggested] = useState(false);
+  const [showTravelMode, setShowTravelMode] = useState(false);
 
   const { getMerchantCategoryMapping } = useFinance();
   const { currentUser } = useAuth();
 
   // Inicializa campos de moeda se não existirem
   useEffect(() => {
-    if (isOpen && !formData.currency) {
-      setFormData(prev => ({
-        ...prev,
-        currency: 'BRL',
-        exchangeRate: '1.00',
-        originalAmount: prev.amount || '0.00'
-      }));
+    if (isOpen) {
+      const isInternational = formData.currency && formData.currency !== 'BRL';
+      setShowTravelMode(isInternational);
+      
+      if (!formData.currency) {
+        setFormData(prev => ({
+          ...prev,
+          currency: 'BRL',
+          exchangeRate: '1.00',
+          originalAmount: prev.amount || '0.00'
+        }));
+      }
     }
   }, [isOpen]);
 
@@ -90,19 +96,15 @@ export function TransactionForm({
     onDescriptionChange(newDescription);
 
     let suggestedCategoryId = '';
-    let source = '';
-
     if (currentUser?.id && newDescription.trim()) {
       const mapping = await getMerchantCategoryMapping(currentUser.id, newDescription);
       if (mapping) {
         suggestedCategoryId = mapping.categoryId;
-        source = 'history';
       }
     }
 
     if (!suggestedCategoryId) {
       suggestedCategoryId = matchCategory(newDescription, categories, formData.type) || '';
-      source = suggestedCategoryId ? 'ai' : '';
     }
 
     if (suggestedCategoryId && suggestedCategoryId !== formData.categoryId) {
@@ -145,7 +147,25 @@ export function TransactionForm({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl">
-        <DialogHeader><DialogTitle>{editingTransaction ? 'Editar Lançamento' : 'Novo Lançamento'}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <div className="flex items-center justify-between pr-6">
+            <DialogTitle>{editingTransaction ? 'Editar Lançamento' : 'Novo Lançamento'}</DialogTitle>
+            <Button 
+              type="button"
+              variant="outline" 
+              size="sm" 
+              className={cn(
+                "h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5 rounded-full transition-all",
+                showTravelMode ? "bg-primary/10 text-primary border-primary/20" : "text-muted-foreground"
+              )}
+              onClick={() => setShowTravelMode(!showTravelMode)}
+            >
+              <Plane className={cn("w-3 h-3", showTravelMode && "animate-bounce")} />
+              Modo Viagem
+            </Button>
+          </div>
+        </DialogHeader>
+        
         <Tabs value={formData.type} onValueChange={(v: any) => handleTypeChange(v)}>
           <TabsList className="grid grid-cols-5 w-full overflow-x-auto">
             <TabsTrigger value="INCOME" className="text-[10px] sm:text-xs">Receita</TabsTrigger>
@@ -154,60 +174,63 @@ export function TransactionForm({
             <TabsTrigger value="CREDIT" className="text-[10px] sm:text-xs">Cartão</TabsTrigger>
             <TabsTrigger value="REFUND" className="text-[10px] sm:text-xs">Estorno</TabsTrigger>
           </TabsList>
+          
           <form onSubmit={onSubmit} className="space-y-4 mt-4">
             
-            <div className="p-3 bg-muted/30 rounded-xl border border-dashed space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                  <Globe className="w-3 h-3" /> Moeda & Câmbio
-                </Label>
-                <Select value={formData.currency} onValueChange={handleCurrencyChange}>
-                  <SelectTrigger className="w-32 h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CURRENCIES.map(c => (
-                      <SelectItem key={c.code} value={c.code}>{c.code} ({c.symbol})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase font-bold">Valor em {formData.currency}</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-xs">{selectedCurrency.symbol}</span>
-                    <Input 
-                      type="number" 
-                      step="0.01"
-                      value={formData.originalAmount} 
-                      onChange={e => handleOriginalAmountChange(e.target.value)}
-                      className="pl-8 h-9 text-sm font-bold"
-                    />
-                  </div>
+            {showTravelMode && (
+              <div className="p-3 bg-primary/5 rounded-xl border border-primary/10 border-dashed space-y-3 animate-scale-in">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+                    <Globe className="w-3 h-3" /> Moeda & Câmbio
+                  </Label>
+                  <Select value={formData.currency} onValueChange={handleCurrencyChange}>
+                    <SelectTrigger className="w-32 h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CURRENCIES.map(c => (
+                        <SelectItem key={c.code} value={c.code}>{c.code} ({c.symbol})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] uppercase font-bold">Valor em {formData.currency}</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-xs">{selectedCurrency.symbol}</span>
+                      <Input 
+                        type="number" 
+                        step="0.01"
+                        value={formData.originalAmount} 
+                        onChange={e => handleOriginalAmountChange(e.target.value)}
+                        className="pl-8 h-9 text-sm font-bold"
+                      />
+                    </div>
+                  </div>
+                  {isInternational && (
+                    <div className="space-y-1.5 animate-scale-in">
+                      <Label className="text-[10px] uppercase font-bold">Cotação (Câmbio)</Label>
+                      <Input 
+                        type="number" 
+                        step="0.0001"
+                        value={formData.exchangeRate} 
+                        onChange={e => handleExchangeRateChange(e.target.value)}
+                        className="h-9 text-sm font-bold"
+                      />
+                    </div>
+                  )}
+                </div>
+
                 {isInternational && (
-                  <div className="space-y-1.5 animate-scale-in">
-                    <Label className="text-[10px] uppercase font-bold">Cotação (Câmbio)</Label>
-                    <Input 
-                      type="number" 
-                      step="0.0001"
-                      value={formData.exchangeRate} 
-                      onChange={e => handleExchangeRateChange(e.target.value)}
-                      className="h-9 text-sm font-bold"
-                    />
+                  <div className="pt-2 border-t border-primary/10 border-dashed flex items-center justify-between text-[10px] font-bold text-primary uppercase">
+                    <span>Total Convertido:</span>
+                    <span>{formatCurrency(parseFloat(formData.amount) || 0)}</span>
                   </div>
                 )}
               </div>
-
-              {isInternational && (
-                <div className="pt-2 border-t border-dashed flex items-center justify-between text-[10px] font-bold text-primary uppercase">
-                  <span>Total Convertido:</span>
-                  <span>{formatCurrency(parseFloat(formData.amount) || 0)}</span>
-                </div>
-              )}
-            </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
