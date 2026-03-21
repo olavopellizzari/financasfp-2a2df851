@@ -291,8 +291,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       notes: data.notes
     };
 
-    // Só envia colunas de câmbio se a moeda for diferente de BRL
-    // Isso evita erros se as colunas ainda não existirem no banco de dados
     if (data.currency && data.currency !== 'BRL') {
       payload.original_amount = data.originalAmount || data.amount;
       payload.currency = data.currency;
@@ -321,7 +319,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (data.status !== undefined) updateData.status = data.status;
     if (data.userId !== undefined) updateData.user_id = data.userId;
     
-    // Só atualiza câmbio se explicitamente enviado e diferente de BRL
     if (data.currency && data.currency !== 'BRL') {
       updateData.original_amount = data.originalAmount;
       updateData.currency = data.currency;
@@ -461,6 +458,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       category_limits: data.category_limits
     });
     if (error) throw new Error(error.message);
+    
+    await logAction('update', 'budget', data.id, null, data);
     await refresh();
   };
 
@@ -477,12 +476,17 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       is_completed: data.is_completed
     });
     if (error) throw new Error(error.message);
+    
+    await logAction('update', 'goal', data.id, null, data);
     await refresh();
   };
 
   const deleteGoal = async (id: string) => {
+    const before = goals.find(g => g.id === id);
     const { error } = await supabase.from('goals').delete().eq('id', id);
     if (error) throw new Error(error.message);
+    
+    await logAction('delete', 'goal', id, before, null);
     await refresh();
   };
 
@@ -504,12 +508,17 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       notes: data.notes
     });
     if (error) throw new Error(error.message);
+    
+    await logAction('update', 'debt', data.id, null, data);
     await refresh();
   };
 
   const deleteDebt = async (id: string) => {
+    const before = debts.find(d => d.id === id);
     const { error } = await supabase.from('debts').delete().eq('id', id);
     if (error) throw new Error(error.message);
+    
+    await logAction('delete', 'debt', id, before, null);
     await refresh();
   };
 

@@ -7,15 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, History, User, FileText, Eye, RefreshCw, Loader2, Trash2 } from 'lucide-react';
+import { Search, History, User, FileText, Eye, RefreshCw, Loader2 } from 'lucide-react';
 import { db, AuditLog } from '@/lib/db';
 import { format, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { toast } from '@/hooks/use-toast';
 
 export function AuditPage() {
-  const { users, isCurrentUserAdmin } = useAuth();
+  const { users } = useAuth();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,17 +41,6 @@ export function AuditPage() {
       console.error('Failed to load audit logs:', error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleClearLogs = async () => {
-    if (!confirm('Tem certeza que deseja limpar todo o histórico de auditoria local?')) return;
-    try {
-      await db.clear('auditLogs');
-      setLogs([]);
-      toast({ title: 'Histórico limpo!' });
-    } catch (e) {
-      toast({ title: 'Erro ao limpar', variant: 'destructive' });
     }
   };
 
@@ -137,14 +125,9 @@ export function AuditPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Auditoria</h1>
-          <p className="text-muted-foreground">Histórico completo de alterações no sistema</p>
+          <p className="text-muted-foreground">Histórico completo e imutável de alterações no sistema</p>
         </div>
         <div className="flex items-center gap-2">
-          {isCurrentUserAdmin() && logs.length > 0 && (
-            <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={handleClearLogs}>
-              <Trash2 className="h-4 w-4 mr-2" /> Limpar Tudo
-            </Button>
-          )}
           <Button variant="outline" onClick={loadData}>
             <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
             Atualizar
@@ -221,7 +204,7 @@ export function AuditPage() {
           {isLoading ? (
             <div className="p-12 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /></div>
           ) : filteredLogs.length === 0 ? (
-            <div className="p-12 text-center text-muted-foreground">Nenhum registro encontrado. Comece a usar o app para gerar logs.</div>
+            <div className="p-12 text-center text-muted-foreground">Nenhum registro encontrado.</div>
           ) : (
             <div className="divide-y">
               {filteredLogs.map(log => {
