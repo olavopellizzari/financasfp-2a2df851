@@ -5,7 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Mic, Loader2, Sparkles, Volume2, AlertCircle } from 'lucide-react';
 import { useVoiceRecognition } from '@/hooks/use-voice-recognition';
-import { parseVoiceCommand } from '@/lib/voice-parser';
+import { parseVoiceWithGemini } from '@/lib/gemini';
+import { useFinance } from '@/contexts/FinanceContext';
 import { cn } from '@/lib/utils';
 
 interface VoiceTransactionDialogProps {
@@ -16,6 +17,7 @@ interface VoiceTransactionDialogProps {
 
 export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: VoiceTransactionDialogProps) {
   const { isListening, transcript, error, startListening, stopListening, resetTranscript, isSupported } = useVoiceRecognition();
+  const { categories } = useFinance();
   const [isProcessing, setIsProcessing] = useState(false);
   const hasProcessedRef = useRef(false);
 
@@ -27,30 +29,29 @@ export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: Voice
   }, [isOpen]);
 
   useEffect(() => {
-    if (transcript && !isListening && !hasProcessedRef.current) {
-      hasProcessedRef.current = true;
-      setIsProcessing(true);
-      
-      const parsed = parseVoiceCommand(transcript);
-      
-      const timer = setTimeout(() => {
-        onResult(parsed);
-        setIsProcessing(false);
-        resetTranscript();
-        onOpenChange(false);
-      }, 800);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [transcript, isListening, onResult, onOpenChange, resetTranscript]);
+    const processWithAI = async () => {
+      if (transcript && !isListening && !hasProcessedRef.current) {
+        hasProcessedRef.current = true;
+        setIsProcessing(true);
+        
+        try {
+          const parsed = await parseVoiceWithGemini(transcript, categories);
+          onResult(parsed);
+          onOpenChange(false);
+        } catch (err) {
+          console.error("Erro ao processar voz com Gemini:", err);
+        } finally {
+          setIsProcessing(false);
+          resetTranscript();
+        }
+      }
+    };
+
+    processWithAI();
+  }, [transcript, isListening, categories, onResult, onOpenChange, resetTranscript]);
 
   const handlePressStart = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isSupported || isProcessing) return;
-    // Importante: não dar preventDefault em tudo para não quebrar o scroll, 
-    // mas aqui precisamos para evitar o menu de contexto do mobile
-    if (e.type === 'touchstart') {
-      // Feedback visual imediato no toque
-    }
     startListening();
   };
 
@@ -80,9 +81,9 @@ export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: Voice
           <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
             <Sparkles className="w-8 h-8 text-primary animate-pulse" />
           </div>
-          <DialogTitle className="text-2xl font-bold">Comando de Voz</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">Comando de Voz IA</DialogTitle>
           <DialogDescription className="text-base">
-            Segure o botão para falar seu gasto
+            Segure o botão e fale naturalmente seu gasto
           </DialogDescription>
         </DialogHeader>
 
@@ -100,13 +101,11 @@ export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: Voice
                 "w-24 h-24 rounded-full shadow-xl transition-all duration-300 relative z-10 select-none touch-none",
                 isListening ? "bg-primary scale-110 shadow-primary/40" : "bg-muted hover:bg-muted/80"
               )}
-              // Eventos combinados para mobile e desktop
               onMouseDown={handlePressStart}
               onMouseUp={handlePressEnd}
               onMouseLeave={handlePressEnd}
               onTouchStart={handlePressStart}
               onTouchEnd={handlePressEnd}
-              // Previne o menu de "copiar/salvar" ao segurar o botão no mobile
               onContextMenu={(e) => e.preventDefault()}
             >
               {isListening ? <Volume2 className="w-10 h-10 text-white" /> : <Mic className="w-10 h-10 text-muted-foreground" />}
@@ -122,7 +121,7 @@ export function VoiceTransactionDialog({ isOpen, onOpenChange, onResult }: Voice
             ) : isProcessing ? (
               <div className="flex flex-col items-center gap-2">
                 <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Processando com IA...</p>
+                <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Gemini está analisando...</p>
               </div>
             ) : transcript ? (
               <p className="text-lg font-semibold italic text-foreground">"{transcript}"</p>
