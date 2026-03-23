@@ -15,13 +15,19 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO } from 'date-fns';
-import { Check, CalendarIcon, Loader2, ArrowRight, Sparkles, Globe, Plane, Camera, Scan } from 'lucide-react';
+import { Check, CalendarIcon, Loader2, ArrowRight, Sparkles, Globe, Plane, Camera, Scan, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/db';
 import { useFinance } from '@/contexts/FinanceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { AICategoryBadge } from '@/components/AICategoryBadge';
 import { analyzeReceipt } from '@/lib/gemini';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface TransactionFormProps {
   isOpen: boolean;
@@ -176,92 +182,106 @@ export function TransactionForm({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl">
-        <DialogHeader>
-          <div className="flex items-center justify-between pr-6">
-            <DialogTitle>{editingTransaction ? 'Editar Lançamento' : 'Novo Lançamento'}</DialogTitle>
-            <div className="flex gap-2">
-              <Button 
-                type="button"
-                variant="outline" 
-                size="sm" 
-                className={cn(
-                  "h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5 rounded-full transition-all",
-                  showTravelMode ? "bg-primary/10 text-primary border-primary/20" : "text-muted-foreground"
-                )}
-                onClick={() => setShowTravelMode(!showTravelMode)}
-              >
-                <Plane className={cn("w-3 h-3", showTravelMode && "animate-bounce")} />
-                Modo Viagem
-              </Button>
-              <Button 
-                type="button"
-                variant="outline" 
-                size="sm" 
-                className="h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5 rounded-full bg-primary/5 text-primary border-primary/20"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isScanning}
-              >
-                {isScanning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Scan className="w-3 h-3" />}
-                Escanear Recibo
-              </Button>
-              <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleScanReceipt} />
-            </div>
+      <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[92vh] overflow-y-auto rounded-[24px] p-4 sm:p-6">
+        <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <DialogTitle className="text-lg font-bold">
+            {editingTransaction ? 'Editar Lançamento' : 'Novo Lançamento'}
+          </DialogTitle>
+          <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    type="button"
+                    variant="outline" 
+                    size="icon" 
+                    className={cn(
+                      "h-9 w-9 rounded-full transition-all",
+                      showTravelMode ? "bg-primary/10 text-primary border-primary/20" : "text-muted-foreground"
+                    )}
+                    onClick={() => setShowTravelMode(!showTravelMode)}
+                  >
+                    <Plane className={cn("w-4 h-4", showTravelMode && "animate-bounce")} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>Modo Viagem (Câmbio)</p></TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    type="button"
+                    variant="outline" 
+                    size="icon" 
+                    className="h-9 w-9 rounded-full bg-primary/5 text-primary border-primary/20"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isScanning}
+                  >
+                    {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Scan className="w-4 h-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>Escanear Recibo (IA)</p></TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleScanReceipt} />
           </div>
         </DialogHeader>
         
         <Tabs value={formData.type} onValueChange={(v: any) => handleTypeChange(v)}>
-          <TabsList className="grid grid-cols-5 w-full overflow-x-auto">
-            <TabsTrigger value="INCOME" className="text-[10px] sm:text-xs">Receita</TabsTrigger>
-            <TabsTrigger value="EXPENSE" className="text-[10px] sm:text-xs">Despesa</TabsTrigger>
-            <TabsTrigger value="TRANSFER" className="text-[10px] sm:text-xs">Transf.</TabsTrigger>
-            <TabsTrigger value="CREDIT" className="text-[10px] sm:text-xs">Cartão</TabsTrigger>
-            <TabsTrigger value="REFUND" className="text-[10px] sm:text-xs">Estorno</TabsTrigger>
+          <TabsList className="grid grid-cols-5 w-full h-10 bg-muted/50 p-1 rounded-xl">
+            <TabsTrigger value="INCOME" className="text-[10px] sm:text-xs rounded-lg">Receita</TabsTrigger>
+            <TabsTrigger value="EXPENSE" className="text-[10px] sm:text-xs rounded-lg">Gasto</TabsTrigger>
+            <TabsTrigger value="TRANSFER" className="text-[10px] sm:text-xs rounded-lg">Transf.</TabsTrigger>
+            <TabsTrigger value="CREDIT" className="text-[10px] sm:text-xs rounded-lg">Cartão</TabsTrigger>
+            <TabsTrigger value="REFUND" className="text-[10px] sm:text-xs rounded-lg">Estorno</TabsTrigger>
           </TabsList>
           
-          <form onSubmit={onSubmit} className="space-y-4 mt-4">
+          <form onSubmit={onSubmit} className="space-y-4 mt-6">
             
             {showTravelMode && (
               <div className="p-3 bg-primary/5 rounded-xl border border-primary/10 border-dashed space-y-3 animate-scale-in">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-2">
                     <Globe className="w-3 h-3" /> Moeda & Câmbio
                   </Label>
                   <Select value={formData.currency} onValueChange={handleCurrencyChange}>
-                    <SelectTrigger className="w-32 h-8 text-xs">
+                    <SelectTrigger className="w-28 h-8 text-xs rounded-lg">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {CURRENCIES.map(c => (
-                        <SelectItem key={c.code} value={c.code}>{c.code} ({c.symbol})</SelectItem>
+                        <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] uppercase font-bold">Valor em {formData.currency}</Label>
+                    <Label className="text-[9px] uppercase font-bold text-muted-foreground">Valor em {formData.currency}</Label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-xs">{selectedCurrency.symbol}</span>
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-[10px]">{selectedCurrency.symbol}</span>
                       <Input 
                         type="number" 
                         step="0.01"
                         value={formData.originalAmount} 
                         onChange={e => handleOriginalAmountChange(e.target.value)}
-                        className="pl-8 h-9 text-sm font-bold"
+                        className="pl-7 h-9 text-xs font-bold rounded-lg"
                       />
                     </div>
                   </div>
                   {isInternational && (
                     <div className="space-y-1.5 animate-scale-in">
-                      <Label className="text-[10px] uppercase font-bold">Cotação (Câmbio)</Label>
+                      <Label className="text-[9px] uppercase font-bold text-muted-foreground">Cotação</Label>
                       <Input 
                         type="number" 
                         step="0.0001"
                         value={formData.exchangeRate} 
                         onChange={e => handleExchangeRateChange(e.target.value)}
-                        className="h-9 text-sm font-bold"
+                        className="h-9 text-xs font-bold rounded-lg"
                       />
                     </div>
                   )}
@@ -276,24 +296,24 @@ export function TransactionForm({
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Usuário {formData.type === 'TRANSFER' && 'Origem'}</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] uppercase font-bold text-muted-foreground">Usuário</Label>
                 <Select value={formData.userId} onValueChange={v => setFormData({ ...formData, userId: v })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger className="h-10 rounded-xl"><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>{users.filter(u => u.is_active !== false).map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>{(formData.type === 'CREDIT' || formData.type === 'REFUND') ? 'Cartão' : 'Conta Origem'}</Label>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] uppercase font-bold text-muted-foreground">{(formData.type === 'CREDIT' || formData.type === 'REFUND') ? 'Cartão' : 'Origem'}</Label>
                 {(formData.type === 'CREDIT' || formData.type === 'REFUND') ? (
                   <Select value={formData.cardId} onValueChange={v => setFormData({ ...formData, cardId: v })}>
-                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectTrigger className="h-10 rounded-xl"><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>{availableCards.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                   </Select>
                 ) : (
                   <Select value={formData.accountId} onValueChange={v => setFormData({ ...formData, accountId: v })}>
-                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectTrigger className="h-10 rounded-xl"><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>{availableAccounts.map(a => (<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}</SelectContent>
                   </Select>
                 )}
@@ -301,20 +321,20 @@ export function TransactionForm({
             </div>
 
             {formData.type === 'TRANSFER' && (
-              <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-4">
-                <div className="flex items-center gap-2 text-primary font-bold text-sm"><ArrowRight className="w-4 h-4" /> Destino</div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Usuário Destino</Label>
+              <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 space-y-3 animate-slide-up">
+                <div className="flex items-center gap-2 text-primary font-bold text-[10px] uppercase tracking-widest"><ArrowRight className="w-3 h-3" /> Destino</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold text-muted-foreground">Usuário</Label>
                     <Select value={formData.destinationUserId} onValueChange={v => setFormData({ ...formData, destinationUserId: v })}>
-                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectTrigger className="h-9 rounded-lg text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger>
                       <SelectContent>{users.filter(u => u.is_active !== false).map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Conta Destino</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold text-muted-foreground">Conta</Label>
                     <Select value={formData.destinationAccountId} onValueChange={v => setFormData({ ...formData, destinationAccountId: v })}>
-                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectTrigger className="h-9 rounded-lg text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger>
                       <SelectContent>{availableAccounts.map(a => (<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}</SelectContent>
                     </Select>
                   </div>
@@ -322,14 +342,14 @@ export function TransactionForm({
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Data</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] uppercase font-bold text-muted-foreground">Data</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start text-left font-normal h-11 rounded-xl">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.purchaseDate ? format(formData.purchaseDate, "dd/MM/yyyy") : <span>Selecione</span>}
+                    <Button variant="outline" className="w-full justify-start text-left font-normal h-10 rounded-xl text-xs">
+                      <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                      {formData.purchaseDate ? format(formData.purchaseDate, "dd/MM/yy") : <span>Selecione</span>}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -337,47 +357,50 @@ export function TransactionForm({
                   </PopoverContent>
                 </Popover>
               </div>
-              <div className="space-y-2">
-                <Label>Valor Final (BRL)</Label>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] uppercase font-bold text-muted-foreground">Valor (BRL)</Label>
                 <MoneyInput 
                   value={formData.amount} 
                   onValueChange={v => setFormData({ ...formData, amount: v })} 
                   placeholder="0,00" 
                   required 
                   readOnly={isInternational}
-                  className={cn(isInternational && "bg-muted/50")}
+                  className={cn("h-10 rounded-xl text-sm", isInternational && "bg-muted/50")}
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Descrição</Label>
+            <div className="space-y-1.5">
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground">Descrição</Label>
               <div className="relative">
                 <Input 
                   value={formData.description} 
                   onChange={e => handleDescriptionChange(e.target.value)} 
                   placeholder="Ex: iFood, Aluguel..." 
                   required 
+                  className="h-10 rounded-xl text-sm"
                 />
                 {showSuggestionAnimation && (
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 animate-pulse-once">
-                    <Sparkles className="h-5 w-5 text-primary" />
+                    <Sparkles className="h-4 w-4 text-primary" />
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label>Categoria</Label>
+                  <Label className="text-[10px] uppercase font-bold text-muted-foreground">Categoria</Label>
                   {isAISuggested && <AICategoryBadge />}
                 </div>
                 <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-between font-normal", isAISuggested && "border-primary/30 bg-primary/5")}>
-                      {formData.categoryId ? sortedCategories.find((cat) => cat.id === formData.categoryId)?.name : "Selecionar..."}
-                      <Check className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    <Button variant="outline" className={cn("w-full justify-between font-normal h-10 rounded-xl text-xs", isAISuggested && "border-primary/30 bg-primary/5")}>
+                      <span className="truncate">
+                        {formData.categoryId ? sortedCategories.find((cat) => cat.id === formData.categoryId)?.name : "Selecionar..."}
+                      </span>
+                      <Check className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[240px] p-0" align="start">
@@ -398,8 +421,8 @@ export function TransactionForm({
                   </PopoverContent>
                 </Popover>
               </div>
-              <div className="space-y-2">
-                <Label>{formData.type === 'CREDIT' ? 'Parcelas' : 'Repetir'}</Label>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] uppercase font-bold text-muted-foreground">{formData.type === 'CREDIT' ? 'Parcelas' : 'Repetir'}</Label>
                 {formData.type === 'CREDIT' ? (
                   <Input 
                     type="number" 
@@ -407,10 +430,11 @@ export function TransactionForm({
                     max="96" 
                     value={formData.installments} 
                     onChange={e => setFormData({ ...formData, installments: e.target.value })} 
+                    className="h-10 rounded-xl text-sm"
                   />
                 ) : (
                   <Select value={formData.recurrence} onValueChange={(v: any) => setFormData({ ...formData, recurrence: v })} disabled={!!editingTransaction}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-10 rounded-xl text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Não repetir</SelectItem>
                       <SelectItem value="custom">Repetir X vezes</SelectItem>
@@ -422,24 +446,27 @@ export function TransactionForm({
             </div>
 
             {formData.type === 'CREDIT' && (parseInt(formData.installments) || 1) > 1 && (
-              <div className="space-y-2 animate-fade-in">
-                <Label>Valor da Parcela</Label>
-                <Input 
-                  value={formatCurrency((parseFloat(formData.amount) || 0) / (parseInt(formData.installments) || 1))} 
-                  readOnly 
-                  className="font-bold text-lg bg-muted/50 border-dashed" 
-                />
+              <div className="p-3 bg-muted/30 rounded-xl border border-dashed animate-fade-in">
+                <div className="flex justify-between items-center">
+                  <Label className="text-[10px] uppercase font-bold text-muted-foreground">Valor da Parcela</Label>
+                  <span className="font-bold text-sm text-primary">
+                    {formatCurrency((parseFloat(formData.amount) || 0) / (parseInt(formData.installments) || 1))}
+                  </span>
+                </div>
               </div>
             )}
 
             <div className="flex items-center justify-between p-3 bg-muted/50 rounded-xl border border-dashed">
-              <div className="space-y-0.5"><Label className="text-sm font-bold">Lançamento Pago</Label></div>
+              <div className="space-y-0.5">
+                <Label className="text-xs font-bold">Lançamento Pago</Label>
+                <p className="text-[9px] text-muted-foreground">Marcar como liquidado no saldo.</p>
+              </div>
               <Switch checked={formData.isPaid} onCheckedChange={(checked) => setFormData({ ...formData, isPaid: checked })} />
             </div>
 
-            <div className="flex gap-3 pt-4">
-              <DialogClose asChild><Button variant="outline" className="flex-1">Cancelar</Button></DialogClose>
-              <Button type="submit" className="flex-1 gradient-primary" disabled={isSaving}>
+            <div className="flex gap-3 pt-2">
+              <DialogClose asChild><Button variant="outline" className="flex-1 h-11 rounded-xl font-bold">Cancelar</Button></DialogClose>
+              <Button type="submit" className="flex-1 h-11 rounded-xl gradient-primary font-bold shadow-lg shadow-primary/20" disabled={isSaving}>
                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : 'Salvar'}
               </Button>
             </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 export function useVoiceRecognition() {
   const [isListening, setIsListening] = useState(false);
@@ -19,8 +19,7 @@ export function useVoiceRecognition() {
     const recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.lang = 'pt-BR';
-    recognition.interimResults = false;
-    // No mobile, o tempo de silêncio para encerrar é menor, então forçamos o fim manual
+    recognition.interimResults = true; // Melhora o feedback visual no mobile
     
     recognition.onstart = () => {
       setIsListening(true);
@@ -35,6 +34,7 @@ export function useVoiceRecognition() {
     recognition.onerror = (event: any) => {
       // 'aborted' acontece quando paramos manualmente, não é um erro real
       if (event.error !== 'aborted' && event.error !== 'no-speech') {
+        console.error("Erro reconhecimento de voz:", event.error);
         setError(event.error);
       }
       setIsListening(false);
@@ -49,7 +49,7 @@ export function useVoiceRecognition() {
 
   const startListening = useCallback(() => {
     try {
-      // Limpa instâncias anteriores
+      // Limpa instâncias anteriores para evitar conflitos no mobile
       if (recognitionRef.current) {
         try { recognitionRef.current.abort(); } catch(e) {}
       }
@@ -59,6 +59,8 @@ export function useVoiceRecognition() {
       
       recognitionRef.current = recognition;
       setTranscript('');
+      
+      // No mobile, o start() deve ser chamado imediatamente no evento de toque
       recognition.start();
       
       // Feedback tátil (vibração curta) se disponível
@@ -66,6 +68,7 @@ export function useVoiceRecognition() {
         navigator.vibrate(50);
       }
     } catch (e) {
+      console.error("Falha ao iniciar reconhecimento:", e);
       setError('start-failed');
       setIsListening(false);
     }
@@ -86,6 +89,15 @@ export function useVoiceRecognition() {
 
   const resetTranscript = useCallback(() => {
     setTranscript('');
+  }, []);
+
+  // Cleanup ao desmontar
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
   }, []);
 
   return {

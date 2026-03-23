@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+// Chave API configurada para o nível gratuito (Gemini 2.0 Flash)
 const API_KEY = "AIzaSyAJ2ZGh_MPIKXk0u6NwWFIfcIlw1_g-hb4";
 const genAI = new GoogleGenerativeAI(API_KEY);
 
@@ -17,6 +18,7 @@ export const geminiModel = genAI.getGenerativeModel({
  */
 function extractJSON(text: string) {
   try {
+    // Tenta encontrar um bloco JSON na resposta
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]);
@@ -24,7 +26,7 @@ function extractJSON(text: string) {
     return JSON.parse(text);
   } catch (e) {
     console.error("Falha ao extrair JSON da resposta da IA:", text);
-    throw new Error("Resposta da IA em formato inválido");
+    throw new Error("A IA retornou um formato inesperado. Tente novamente.");
   }
 }
 
@@ -32,32 +34,38 @@ function extractJSON(text: string) {
  * Função para processar chat com contexto financeiro
  */
 export async function askGemini(prompt: string, context: any) {
-  const chat = geminiModel.startChat({
-    history: [
-      {
-        role: "user",
-        parts: [{ text: `Você é o Dyad AI, um assistente financeiro pessoal inteligente. 
-        Você tem acesso aos dados do usuário abaixo para responder perguntas de forma precisa, amigável e útil.
-        
-        DADOS DO USUÁRIO:
-        ${JSON.stringify(context, null, 2)}
-        
-        REGRAS:
-        1. Responda sempre em Português (PT-BR).
-        2. Seja conciso mas informativo.
-        3. Se o usuário perguntar sobre saldos ou gastos, use os dados fornecidos.
-        4. Use Markdown para formatar valores em negrito.
-        5. Se não encontrar uma informação específica, diga que não tem acesso a esse detalhe no momento.` }],
-      },
-      {
-        role: "model",
-        parts: [{ text: "Entendido. Sou o Dyad AI e estou pronto para ajudar com suas finanças baseando-me nos seus dados reais. Como posso ajudar hoje?" }],
-      },
-    ],
-  });
+  try {
+    const chat = geminiModel.startChat({
+      history: [
+        {
+          role: "user",
+          parts: [{ text: `Você é o Dyad AI, um assistente financeiro pessoal inteligente. 
+          Você tem acesso aos dados do usuário abaixo para responder perguntas de forma precisa, amigável e útil.
+          
+          DADOS DO USUÁRIO:
+          ${JSON.stringify(context, null, 2)}
+          
+          REGRAS:
+          1. Responda sempre em Português (PT-BR).
+          2. Seja conciso mas informativo.
+          3. Se o usuário perguntar sobre saldos ou gastos, use os dados fornecidos.
+          4. Use Markdown para formatar valores em negrito.
+          5. Se não encontrar uma informação específica, diga que não tem acesso a esse detalhe no momento.` }],
+        },
+        {
+          role: "model",
+          parts: [{ text: "Entendido. Sou o Dyad AI e estou pronto para ajudar com suas finanças baseando-me nos seus dados reais. Como posso ajudar hoje?" }],
+        },
+      ],
+    });
 
-  const result = await chat.sendMessage(prompt);
-  return result.response.text();
+    const result = await chat.sendMessage(prompt);
+    const response = await result.response;
+    return response.text();
+  } catch (error) {
+    console.error("Erro na chamada do Gemini:", error);
+    throw error;
+  }
 }
 
 /**
