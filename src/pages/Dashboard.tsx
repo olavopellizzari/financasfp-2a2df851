@@ -364,6 +364,11 @@ export function Dashboard() {
     }
   };
 
+  const handleGoalAction = async (prompt: string) => {
+    setIsAIChatOpen(true);
+    await sendMessage(prompt);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in w-full max-w-full overflow-x-hidden pb-10">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -404,7 +409,7 @@ export function Dashboard() {
             <PredictiveCashflow />
           </div>
 
-          <GoalAIAssistant />
+          <GoalAIAssistant onClick={handleGoalAction} />
 
           <Accordion type="multiple" defaultValue={["financial-balance", "smart-control", "transaction-flow", "category-distribution"]} className="w-full space-y-4">
             <AccordionItem value="financial-balance" className="border-none shadow-md rounded-xl overflow-hidden">
