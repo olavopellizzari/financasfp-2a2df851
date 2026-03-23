@@ -19,7 +19,7 @@ export function useVoiceRecognition() {
     const recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.lang = 'pt-BR';
-    recognition.interimResults = true; // Melhora o feedback visual no mobile
+    recognition.interimResults = false; // Desativado para maior estabilidade no mobile
     
     recognition.onstart = () => {
       setIsListening(true);
@@ -32,7 +32,6 @@ export function useVoiceRecognition() {
     };
 
     recognition.onerror = (event: any) => {
-      // 'aborted' acontece quando paramos manualmente, não é um erro real
       if (event.error !== 'aborted' && event.error !== 'no-speech') {
         console.error("Erro reconhecimento de voz:", event.error);
         setError(event.error);
@@ -49,7 +48,6 @@ export function useVoiceRecognition() {
 
   const startListening = useCallback(() => {
     try {
-      // Limpa instâncias anteriores para evitar conflitos no mobile
       if (recognitionRef.current) {
         try { recognitionRef.current.abort(); } catch(e) {}
       }
@@ -59,11 +57,8 @@ export function useVoiceRecognition() {
       
       recognitionRef.current = recognition;
       setTranscript('');
-      
-      // No mobile, o start() deve ser chamado imediatamente no evento de toque
       recognition.start();
       
-      // Feedback tátil (vibração curta) se disponível
       if ('vibrate' in navigator) {
         navigator.vibrate(50);
       }
@@ -91,7 +86,6 @@ export function useVoiceRecognition() {
     setTranscript('');
   }, []);
 
-  // Cleanup ao desmontar
   useEffect(() => {
     return () => {
       if (recognitionRef.current) {

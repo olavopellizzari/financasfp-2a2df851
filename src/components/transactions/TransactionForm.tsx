@@ -185,46 +185,32 @@ export function TransactionForm({
       <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[92vh] overflow-y-auto rounded-[24px] p-4 sm:p-6">
         <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <DialogTitle className="text-lg font-bold">
-            {editingTransaction ? 'Editar Lançamento' : 'Novo Lançamento'}
+            {editingTransaction ? 'Editar' : 'Novo Lançamento'}
           </DialogTitle>
           <div className="flex items-center gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    type="button"
-                    variant="outline" 
-                    size="icon" 
-                    className={cn(
-                      "h-9 w-9 rounded-full transition-all",
-                      showTravelMode ? "bg-primary/10 text-primary border-primary/20" : "text-muted-foreground"
-                    )}
-                    onClick={() => setShowTravelMode(!showTravelMode)}
-                  >
-                    <Plane className={cn("w-4 h-4", showTravelMode && "animate-bounce")} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>Modo Viagem (Câmbio)</p></TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Button 
+              type="button"
+              variant="outline" 
+              size="icon" 
+              className={cn(
+                "h-9 w-9 rounded-full transition-all",
+                showTravelMode ? "bg-primary/10 text-primary border-primary/20" : "text-muted-foreground"
+              )}
+              onClick={() => setShowTravelMode(!showTravelMode)}
+            >
+              <Plane className={cn("w-4 h-4", showTravelMode && "animate-bounce")} />
+            </Button>
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    type="button"
-                    variant="outline" 
-                    size="icon" 
-                    className="h-9 w-9 rounded-full bg-primary/5 text-primary border-primary/20"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isScanning}
-                  >
-                    {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Scan className="w-4 h-4" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>Escanear Recibo (IA)</p></TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Button 
+              type="button"
+              variant="outline" 
+              size="icon" 
+              className="h-9 w-9 rounded-full bg-primary/5 text-primary border-primary/20"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isScanning}
+            >
+              {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Scan className="w-4 h-4" />}
+            </Button>
             
             <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleScanReceipt} />
           </div>
