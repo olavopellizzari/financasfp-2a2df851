@@ -56,7 +56,10 @@ export function useAIChat() {
         debts: debts.filter(d => d.is_active).map(d => ({ name: d.name, total: d.total_amount, remaining: d.total_amount - d.paid_amount }))
       };
 
-      const response = await askGemini(text, context);
+      // CORREÇÃO: Serializa o objeto 'context' para uma string JSON
+      const contextString = JSON.stringify(context);
+
+      const response = await askGemini(text, contextString);
 
       const assistantMessage: Message = { 
         role: 'assistant', 
