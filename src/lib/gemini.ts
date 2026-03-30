@@ -1,72 +1,65 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Chave API configurada para o nível gratuito
-const API_KEY = "AIzaSyAJ2ZGh_MPIKXk0u6NwWFIfcIlw1_g-hb4";
-const genAI = new GoogleGenerativeAI(API_KEY);
+// Busca a chave das variáveis de ambiente do Vite
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
-// Modelo estável
+if (!API_KEY) {
+  console.warn("Aviso: VITE_GEMINI_API_KEY não encontrada no arquivo .env");
+}
+
+const genAI = new GoogleGenerativeAI(API_KEY || "");
+
+// Modelo otimizado para velocidade e custo zero (Flash)
 const MODEL_NAME = "gemini-1.5-flash";
 
 export const geminiModel = genAI.getGenerativeModel({ 
   model: MODEL_NAME,
   generationConfig: {
-    temperature: 0.5,
+    temperature: 0.7,
     topP: 0.8,
     topK: 40,
-    maxOutputTokens: 500,
+    maxOutputTokens: 1000,
   }
 });
 
-function extractJSON(text: string) {
+/**
+ * Função utilitária para extrair JSON de respostas de texto da IA
+ */
+export function extractJSON(text: string) {
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     return jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(text);
   } catch (e) {
-    console.error("Erro ao extrair JSON:", text);
-    throw new Error("Resposta da IA inválida.");
+    console.error("Erro ao extrair JSON da resposta da IA:", text);
+    throw new Error("A IA não retornou um formato de dados válido.");
   }
 }
 
-export async function askGemini(prompt: string, context: any) {
+/**
+ * Função base para chat simples
+ */
+export async function askGemini(prompt: string, context: string = "") {
   try {
-    // Contexto ultra-simplificado para evitar erros de token
-    const summary = `
-      Usuário: ${context.userName || 'Usuário'}
-      Saldos: ${context.accounts?.map((a: any) => `${a.name}: R$${a.balance}`).join(', ')}
-      Últimos 5 gastos: ${context.recentTransactions?.slice(0, 5).map((t: any) => `${t.desc}(R$${t.val})`).join('; ')}
-    `;
-
-    const chat = geminiModel.startChat({
-      history: [
-        {
-          role: "user",
-          parts: [{ text: `Você é o Dyad AI, assistente financeiro. Responda de forma curta. Dados: ${summary}` }],
-        },
-        {
-          role: "model",
-          parts: [{ text: "Olá! Sou o Dyad AI. Como posso ajudar com suas finanças?" }],
-        },
-      ],
-    });
-
-    const result = await chat.sendMessage(prompt);
+    const fullPrompt = context ? `Contexto: ${context}\n\nPergunta: ${prompt}` : prompt;
+    const result = await geminiModel.generateContent(fullPrompt);
     return result.response.text();
   } catch (error: any) {
-    console.error("Erro Gemini:", error);
+    console.error("Erro na API Gemini:", error);
     throw error;
   }
 }
 
+// Funções específicas já existentes mantidas para compatibilidade
 export async function parseVoiceWithGemini(transcript: string, categories: any[]) {
-  const catList = categories.slice(0, 15).map(c => `${c.id}:${c.name}`).join('|');
+  const catList = categories.slice(0, 20).map(c => `${c.id}:${c.name}`).join('|');
   const prompt = `Extraia JSON de: "${transcript}". Categorias: ${catList}. Formato: {"amount": number, "description": "string", "type": "INCOME"|"EXPENSE", "categoryId": "string"}`;
   const result = await geminiModel.generateContent(prompt);
   return extractJSON(result.response.text());
 }
 
 export async function analyzeReceipt(base64Image: string, categories: any[]) {
-  const catList = categories.slice(0, 10).map(c => `${c.id}:${c.name}`).join('|');
-  const prompt = `Extraia valor(amount), local(description), data(YYYY-MM-DD) e categoryId de: ${catList}. Retorne apenas JSON.`;
+  const catList = categories.slice(0, 15).map(c => `${c.id}:${c.name}`).join('|');
+  const prompt = `Analise este comprovante. Extraia valor(amount), local(description), data(YYYY-MM-DD) e categoryId de: ${catList}. Retorne apenas JSON puro.`;
   const result = await geminiModel.generateContent([
     prompt,
     { inlineData: { data: base64Image.split(',')[1], mimeType: "image/jpeg" } }
@@ -75,7 +68,7 @@ export async function analyzeReceipt(base64Image: string, categories: any[]) {
 }
 
 export async function getCashflowPrediction(history: any[]) {
-  const prompt = `Projete saldo 3 meses: ${JSON.stringify(history.slice(0, 10))}. Retorne JSON: {"predictions": [{"month": "YYYY-MM", "projectedBalance": number}], "insight": "string"}`;
+  const prompt = `Com base neste histórico: ${JSON.stringify(history.slice(0, 15))}, projete o saldo para os próximos 3 meses. Retorne JSON: {"predictions": [{"month": "YYYY-MM", "projectedBalance": number}], "insight": "string"}`;
   const result = await geminiModel.generateContent(prompt);
   return extractJSON(result.response.text());
 }
