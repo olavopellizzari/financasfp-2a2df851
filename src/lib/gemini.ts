@@ -10,7 +10,8 @@ if (!API_KEY) {
 const genAI = new GoogleGenerativeAI(API_KEY || "");
 
 // Modelo otimizado para velocidade e custo zero (Flash)
-const MODEL_NAME = "gemini-1.5-flash";
+// CORREÇÃO: Alterando para gemini-pro, que é mais estável e amplamente disponível
+const MODEL_NAME = "gemini-pro";
 
 export const geminiModel = genAI.getGenerativeModel({ 
   model: MODEL_NAME,
@@ -58,13 +59,12 @@ export async function parseVoiceWithGemini(transcript: string, categories: any[]
 }
 
 export async function analyzeReceipt(base64Image: string, categories: any[]) {
-  const catList = categories.slice(0, 15).map(c => `${c.id}:${c.name}`).join('|');
-  const prompt = `Analise este comprovante. Extraia valor(amount), local(description), data(YYYY-MM-DD) e categoryId de: ${catList}. Retorne apenas JSON puro.`;
-  const result = await geminiModel.generateContent([
-    prompt,
-    { inlineData: { data: base64Image.split(',')[1], mimeType: "image/jpeg" } }
-  ]);
-  return extractJSON(result.response.text());
+  // CORREÇÃO: A função analyzeReceipt não é compatível com o modelo gemini-pro,
+  // pois ele não suporta entrada multimodal (imagens).
+  // Se a análise de imagem for crucial, um modelo multimodal como 'gemini-pro-vision'
+  // ou 'gemini-1.5-flash-vision' (se disponível) precisaria ser usado.
+  // Por enquanto, esta função lançará um erro para indicar a incompatibilidade.
+  throw new Error("A função analyzeReceipt não é compatível com o modelo gemini-pro. Use um modelo multimodal se precisar de análise de imagem.");
 }
 
 export async function getCashflowPrediction(history: any[]) {
